@@ -1,0 +1,12 @@
+-Q theories iris_ni
+-arg -w -arg -notation-overridden,-redundant-canonical-projection,-several-object-files
+theories/program_logic/dwp.v
+theories/program_logic/lifting.v
+theories/program_logic/ectx_lifting.v
+theories/program_logic/classes.v
+theories/program_logic/heap_lang_lifting.v
+theories/program_logic/dwp_adequacy.v
+theories/proofmode/dwp_tactics.v
+theories/logrel/types.v
+theories/logrel/typemap.v
+theories/logrel/interp.v
