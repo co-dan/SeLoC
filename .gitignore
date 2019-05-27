@@ -15,3 +15,10 @@ build-dep/
 Makefile.coq
 Makefile.coq.conf
 *.crashcoqide
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.synctex.gz
+*.log
+*.out
