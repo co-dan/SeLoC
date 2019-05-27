@@ -96,7 +96,7 @@ Section logic.
   Proof.
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as
-        %[foo _]%auth_valid_discrete_2.
+        %[foo _]%auth_both_valid.
         (* %[[τ' [Hf Hτ'%Some_included]]%singleton_included _] *)
         (*  %auth_valid_discrete_2. *)
     apply (singleton_included (to_typemap f)) in foo.

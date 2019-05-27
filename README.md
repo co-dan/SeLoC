@@ -1,1 +1,3 @@
-Secure language with state
+non-interference
+
+Iris version: c9984c7fc0b2067b11012099ce7884c981e492ed
