@@ -422,10 +422,58 @@ Section rules.
     { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
       - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr'".
       - iIntros "_". by iApply dwp_bool. }
-    (* dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E. *)
-    destruct h1, h2.
-    { dwp_pures. simpl. admit. }
+    (* Attempt by structural reasoning (will fail at `let x = ..`) *)
+    dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
+    iApply (dwp_wand with "[]").
+    { iApply (dwp_if _ _ _ _ _ _ _ (tref (tbool Low) Low)).
+      - iApply dwp_value. iApply "Hh".
+      - iSplit.
+        + iApply dwp_value. simpl.
+          iApply (interp_sub_mono with "Hr").
+          apply type_sub_ref. eauto.
+        + iIntros (?).
+    (* Attempt by symbolic execution (will fail at the store) *)
+    (* destruct h1, h2. *)
+    (* { dwp_pures. simpl. admit. } *)
   Abort.
 
+  Definition prog_good (r r' : loc) (h : bool) : expr :=
+    #r <- #true;;
+    #r' <- #true;;
+    let: "x" := if: #h then #r else #r' in
+    !#r'.
 
+  Definition good_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
+    ⟦ tref (tbool Low) Low ⟧ Low #r1 #r2 -∗
+    ⟦ tref (tbool Low) Low ⟧ Low #r1' #r2' -∗
+    ⟦ tbool High ⟧ Low #h1 #h2 -∗
+    refines (prog_good r1 r1' h1) (prog_good r2 r2' h2) ⟦ tbool Low ⟧ Low.
+  Proof.
+    iIntros "#Hr #Hr' #Hh #Hinv".
+    iApply dwp_seq.
+    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr".
+      - iIntros "_". by iApply dwp_bool. }
+    iApply dwp_seq.
+    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr'".
+      - iIntros "_". by iApply dwp_bool. }
+    destruct h1, h2.
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+  Qed.
 End rules.
