@@ -10,3 +10,4 @@ theories/proofmode/dwp_tactics.v
 theories/logrel/types.v
 theories/logrel/typemap.v
 theories/logrel/interp.v
+theories/examples/rand.v

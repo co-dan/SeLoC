@@ -185,7 +185,7 @@ Notation "⟦ τ ⟧" := (interp τ).
 Section rules.
   Context `{!heapDG Σ, !typemapG (loc*loc) Σ}.
 
-  Lemma dwp_int ξ (i : Z) l :
+  Lemma refines_int ξ (i : Z) l :
     refines #i #i ⟦ tint l ⟧ ξ.
   Proof.
     iIntros "#Hinv".
@@ -193,7 +193,7 @@ Section rules.
     iExists i, i. iPureIntro. naive_solver.
   Qed.
 
-  Lemma dwp_int_high ξ (i1 i2 : Z) l :
+  Lemma refines_int_high ξ (i1 i2 : Z) l :
     ¬ (l ⊑ ξ) →
     refines (of_val #i1) (of_val #i2) ⟦ tint l ⟧ ξ.
   Proof.
@@ -201,7 +201,7 @@ Section rules.
     iExists i1, i2. iPureIntro. naive_solver.
   Qed.
 
-  Lemma dwp_unit ξ :
+  Lemma refines_unit ξ :
     refines (of_val #()) (of_val #()) ⟦ tunit ⟧ ξ.
   Proof.
     iIntros "#Hinv".
@@ -209,7 +209,7 @@ Section rules.
     iPureIntro. eauto.
   Qed.
 
-  Lemma dwp_bool ξ (b : bool) l :
+  Lemma refines_bool ξ (b : bool) l :
     refines #b #b ⟦ tbool l ⟧ ξ.
   Proof.
     iIntros "#Hinv".
@@ -296,7 +296,7 @@ Section rules.
 
   (* TODO: we can relax the interpretation of tref here????
      do it without stamping and get a stronger spec *)
-  Lemma dwp_alloc ξ e1 e2 τ l :
+  Lemma refines_alloc ξ e1 e2 τ l :
     (refines e1 e2 ⟦ τ ⟧ ξ) -∗
     refines (ref e1) (ref e2) ⟦ tref τ l ⟧ ξ.
   Proof.
@@ -325,7 +325,7 @@ Section rules.
       iModIntro. iNext. iExists _,_. repeat iSplit; eauto.
   Admitted.
 
-  Lemma dwp_load ξ e1 e2 τ l :
+  Lemma refines_load ξ e1 e2 τ l :
     (refines e1 e2 ⟦ tref τ l ⟧ ξ) -∗
     refines !e1 !e2 ⟦ stamp τ l ⟧ ξ.
   Proof.
@@ -363,7 +363,7 @@ Section rules.
       admit.
   Admitted.
 
-  Lemma dwp_store ξ e1 e2 t1 t2 τ l :
+  Lemma refines_store ξ e1 e2 t1 t2 τ l :
     (refines e1 e2 ⟦ tref τ l ⟧ ξ) -∗
     (refines t1 t2 ⟦ τ ⟧ ξ) -∗
     refines (e1 <- t1) (e2 <- t2) ⟦ tunit ⟧ ξ.
@@ -400,11 +400,15 @@ Section rules.
 
   (*****************************************************************)
   Definition prog (r r' : loc) (h : bool) : expr :=
-    #r <- #true;;
-    #r' <- #true;;
-    let: "x" := if: #h then #r else #r' in
+    #r <- #true;;   (* r : (ref bool^low)^low *)
+    #r' <- #true;;  (* r' : (ref bool^low)^low *)
+    let: "x" := if: #h then #r else #r' in   (* x : (ref bool^low)^high *)
+    (* DWP #r_1 & #r'_2 { ... }
+
+     ⟦ τ^high ⟧ (v1, v2) == ⟦ τ ⟧(v1) ∧ ⟦ τ ⟧(v2)
+    *)
     (* we wouldn't be able to prog even the program without this assignment *)
-    "x" <- #false;;
+    "x" <- #false;;   (* false : bool^low , x : (ref bool^low)^high ==> high <= low *)
     !#r'.
 
   Definition bad_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
@@ -415,13 +419,13 @@ Section rules.
   Proof.
     iIntros "#Hr #Hr' #Hh #Hinv".
     iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
       - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr".
-      - iIntros "_". by iApply dwp_bool. }
+      - iIntros "_". by iApply refines_bool. }
     iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
       - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr'".
-      - iIntros "_". by iApply dwp_bool. }
+      - iIntros "_". by iApply refines_bool. }
     (* Attempt by structural reasoning (will fail at `let x = ..`) *)
     dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
     iApply (dwp_wand with "[]").
@@ -451,28 +455,28 @@ Section rules.
   Proof.
     iIntros "#Hr #Hr' #Hh #Hinv".
     iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
       - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr".
-      - iIntros "_". by iApply dwp_bool. }
+      - iIntros "_". by iApply refines_bool. }
     iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
       - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr'".
-      - iIntros "_". by iApply dwp_bool. }
+      - iIntros "_". by iApply refines_bool. }
     destruct h1, h2.
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
   Qed.

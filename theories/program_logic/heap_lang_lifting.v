@@ -84,8 +84,9 @@ Proof.
 Qed.
 
 (* TODO:
-   all these `to_val ei = None` and "no forks" conditions
-   should be dischargeable automatically
+   - all these `to_val ei = None` and "no forks" conditions
+     should be dischargeable automatically
+   - |={E1,E2}=> ∃ Ψ1 Ψ2, ...
 *)
 Lemma dwp_atomic_lift_wp E1 E2 Ψ1 Ψ2 e1 e2 Φ
   `{Atomic _ StronglyAtomic e1}
@@ -144,8 +145,8 @@ Proof.
 Qed.
 
 Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
-  l1 ↦ₗ v1 -∗
-  l2 ↦ᵣ v2 -∗
+  ▷l1 ↦ₗ v1 -∗
+  ▷l2 ↦ᵣ v2 -∗
   ▷ (l1 ↦ₗ v1 ∗ l2 ↦ᵣ v2 -∗ Φ v1 v2) -∗
   dwp E (! #l1) (! #l2) Φ.
 Proof.
@@ -161,6 +162,41 @@ Proof.
     iNext. done. eauto. }
   iIntros (? ?) "[% Hl1] [% Hl2]". simplify_eq.
   iModIntro. iNext. iApply "HΦ". iFrame.
+Qed.
+
+Lemma dwp_atomic E1 E2 e1 e2 Φ
+  `{Atomic _ StronglyAtomic e1}
+  `{Atomic _ StronglyAtomic e2}
+  {NF1 : NoFork e1}
+  {NF2 : NoFork e2}
+  {NO1 : NoObs e1}
+  {NO2 : NoObs e2} :
+  to_val e1 = None →
+  to_val e2 = None →
+  (|={E1,E2}=> dwp E2 e1 e2 (λ v1 v2, |={E2,E1}=> Φ v1 v2)) -∗
+  dwp E1 e1 e2 Φ.
+Proof.
+  iIntros (He1 He2) "H".
+  rewrite (dwp_unfold E1) /dwp_pre /= He1.
+  iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
+  iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
+  iMod "H" as "H".
+  rewrite dwp_unfold /dwp_pre /= He1.
+  iSpecialize ("H" $! σ1 σ2 κ1 κs1 κ2 κs2 with "[$Hσ1 $Hκs1 $Hσ2 $Hκs2]").
+  iMod "H" as (??) "H". iModIntro.
+  do 2 (iSplit; first done).
+  iIntros (e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
+  iSpecialize ("H" $! e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
+  iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "[Hst [H $]]".
+  destruct (to_val e1') as [v1|] eqn:Hv1; last first.
+  { exfalso. destruct (atomic _ _ _ _ _ Hstep1). naive_solver. }
+  destruct (to_val e2') as [v2|] eqn:Hv2; last first.
+  { exfalso. destruct (atomic _ _ _ _ _ Hstep2). naive_solver. }
+  rewrite -(of_to_val _ _ Hv1) -(of_to_val _ _ Hv2).
+  rewrite dwp_value_inv' -dwp_value. iMod "H". iMod "H" as "$".
+  iModIntro. iFrame. done.
 Qed.
 
 End lifting.
