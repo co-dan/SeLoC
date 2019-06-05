@@ -12,3 +12,4 @@ theories/logrel/typemap.v
 theories/logrel/interp.v
 theories/examples/rand.v
 theories/examples/lock.v
+theories/examples/par.v

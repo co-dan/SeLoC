@@ -86,6 +86,7 @@ Qed.
 (* TODO:
    - all these `to_val ei = None` and "no forks" conditions
      should be dischargeable automatically
+   - better positioning of laters (if it is possible?)
 *)
 Lemma dwp_atomic_lift_wp_strong E1 E2 e1 e2 Φ
   `{Atomic _ StronglyAtomic e1}
