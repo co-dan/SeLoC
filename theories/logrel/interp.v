@@ -84,7 +84,8 @@ Section semtypes.
         A ξ v1 v2 ∗ B ξ v1' v2')%I.
 
 
-  (* TODO: DF: use the level `l`? *)
+  (* TODO: use the level `l`?
+     DF: we use it in the actual interpretation of arrows *)
   Definition lrel_arr (A1 A2 : lrel Σ) (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
     □ ∀ v1 v2, A1 ξ v1 v2 -∗ DWP (w1 v1) & (w2 v2) : A2 ξ)%I.
 
@@ -225,14 +226,13 @@ Section rules.
     iExists b1, b2. iPureIntro. naive_solver.
   Qed.
 
-  (* TODO: is the stamping needed here? *)
-  Lemma dwp_if ξ (e1 e2 t1 t2 u1 u2 : expr) (τ : type) l :
+  Lemma dwp_if ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
     (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
-    ((DWP t1 & t2 : ⟦ stamp τ l ⟧ ξ) ∧
-        (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : ⟦ stamp τ l ⟧ ξ)) -∗
-    ((DWP u1 & u2 : interp (stamp τ l) ξ) ∧
-        (⌜¬ l ⊑ ξ⌝ → DWP t1 & u2 : ⟦ stamp τ l ⟧ ξ)) -∗
-    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : interp (stamp τ l) ξ.
+    ((DWP t1 & t2 : A ξ) ∧
+        (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : A ξ)) -∗
+    ((DWP u1 & u2 : A ξ) ∧
+        (⌜¬ l ⊑ ξ⌝ → DWP t1 & u2 : A ξ)) -∗
+    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A ξ.
   Proof.
     iIntros "He Ht Hu".
     dwp_bind e1 e2.
@@ -294,8 +294,7 @@ Section rules.
     - iNext. eauto.
   Qed.
 
-  (* TODO: we can relax the interpretation of tref here????
-     do it without stamping and get a stronger spec *)
+  (* DF: Equivalently do it for l = Low *)
   Lemma refines_alloc ξ e1 e2 τ l :
     (refines e1 e2 ⟦ τ ⟧ ξ) -∗
     refines (ref e1) (ref e2) ⟦ tref τ l ⟧ ξ.
@@ -359,9 +358,8 @@ Section rules.
       { iNext. iExists _. iFrame. iApply "Hlocs".
         eauto with iFrame. }
       iModIntro. iNext. simpl. iApply (interp_sub_mono with "Hτ'").
-      (* TODO: need stamp_mono_2 *)
-      admit.
-  Admitted.
+      by apply stamp_mono_2.
+  Qed.
 
   Lemma refines_store ξ e1 e2 t1 t2 τ l :
     (refines e1 e2 ⟦ tref τ l ⟧ ξ) -∗
@@ -429,7 +427,7 @@ Section rules.
     (* Attempt by structural reasoning (will fail at `let x = ..`) *)
     dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
     iApply (dwp_wand with "[]").
-    { iApply (dwp_if _ _ _ _ _ _ _ (tref (tbool Low) Low)).
+    { iApply dwp_if.
       - iApply dwp_value. iApply "Hh".
       - iSplit.
         + iApply dwp_value. simpl.

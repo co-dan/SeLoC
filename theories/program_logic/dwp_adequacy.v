@@ -328,7 +328,7 @@ Proof.
   iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. iFrame.
 Qed.
 
-(* TODO efs sfs *)
+(** XXX TODO: the steps should produce forked off threads! *)
 Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' Φ :
   length es = length ss →
   dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 Φ →
