@@ -303,7 +303,7 @@ Section rules.
     iIntros (v1 v2) "#Hv".
     pose (Φ1 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∗ l ↦ₗ v1)%I).
     pose (Φ2 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∗ l ↦ᵣ v2)%I).
-    iApply (dwp_atomic_lift_wp _ _ Φ1 Φ2%I); try done.
+    iApply (dwp_atomic_lift_wp Φ1 Φ2%I); try done.
     iModIntro. repeat iSplitR.
     - rewrite /WP1 /Φ1. wp_alloc l1 as "Hl". eauto with iFrame.
     - rewrite /WP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame.
@@ -336,7 +336,7 @@ Section rules.
     pose (Φ1 := (λ v, l1 ↦ₗ{1/2} v)%I).
     pose (Φ2 := (λ v, l2 ↦ᵣ{1/2} v)%I).
 
-    iApply (dwp_atomic_lift_wp _ _ Φ1 Φ2); try done.
+    iApply (dwp_atomic_lift_wp Φ1 Φ2); try done.
     iInv locsN as (f) "[>Hf Hlocs]" "Hcl".
     iDestruct (typemap_lookup with "Hf Hll") as %[l' [Hf Hl']].
     rewrite (big_sepM_lookup_acc _ f (l1,l2))=>//.
@@ -375,7 +375,7 @@ Section rules.
     pose (Φ1 := (λ v, ⌜v = #()⌝ ∧ r1 ↦ₗ w1)%I).
     pose (Φ2 := (λ v, ⌜v = #()⌝ ∧ r2 ↦ᵣ w2)%I).
 
-    iApply (dwp_atomic_lift_wp _ _ Φ1 Φ2); try done.
+    iApply (dwp_atomic_lift_wp Φ1 Φ2); try done.
     iInv locsN as (f) "[>Hf Hlocs]" "Hcl".
     iDestruct (typemap_lookup with "Hf Hr") as %[l' [Hf Hl']].
     rewrite (big_sepM_lookup_acc _ f (r1,r2))=>//.

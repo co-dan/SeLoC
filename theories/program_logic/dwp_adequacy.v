@@ -180,7 +180,7 @@ Proof.
   iApply (dwp_bind (fill [AppRCtx _]) (fill [AppRCtx _])). simpl.
   pose (Ψ1 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∧ l ↦ₗ #0)%I).
   pose (Ψ2 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∧ l ↦ᵣ #0)%I).
-  iApply (dwp_atomic_lift_wp _ _ Ψ1 Ψ2); try done.
+  iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
   iModIntro. repeat iSplitL.
   { iApply wp_alloc=>//. unfold Ψ1. eauto with iFrame. }
   { iApply wp_alloc=>//. unfold Ψ2.

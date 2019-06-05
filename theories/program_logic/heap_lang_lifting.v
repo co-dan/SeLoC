@@ -86,9 +86,8 @@ Qed.
 (* TODO:
    - all these `to_val ei = None` and "no forks" conditions
      should be dischargeable automatically
-   - |={E1,E2}=> ∃ Ψ1 Ψ2, ...
 *)
-Lemma dwp_atomic_lift_wp E1 E2 Ψ1 Ψ2 e1 e2 Φ
+Lemma dwp_atomic_lift_wp_strong E1 E2 e1 e2 Φ
   `{Atomic _ StronglyAtomic e1}
   `{Atomic _ StronglyAtomic e2}
   {NF1 : NoFork e1}
@@ -97,17 +96,18 @@ Lemma dwp_atomic_lift_wp E1 E2 Ψ1 Ψ2 e1 e2 Φ
   {NO2 : NoObs e2} :
   to_val e1 = None →
   to_val e2 = None →
-  ((|={E1,E2}=> WP1 e1 E2 Ψ1 ∗ WP2 e2 ∅ (λ v, |={E2}=> Ψ2 v) ∗
+  ((|={E1,E2}=> ∃ Ψ1 Ψ2,
+      WP1 e1 E2 Ψ1 ∗ WP2 e2 ∅ (λ v, |={E2}=> Ψ2 v) ∗
      (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 ={E2,E1}=∗ ▷ Φ v1 v2)) -∗
   dwp E1 e1 e2 Φ).
 Proof.
   intros He1 He2.
   iIntros "H".
-  rewrite dwp_unfold /dwp_pre /=.
-  rewrite /WP1 /WP2 !wp_unfold /wp_pre /= !He1 !He2.
+  rewrite dwp_unfold /dwp_pre /= He1.
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
-  iMod "H" as "(HWP1 & HWP2 & H)".
+  iMod "H" as (Ψ1 Ψ2) "(HWP1 & HWP2 & H)".
+  rewrite /WP1 /WP2 !wp_unfold /wp_pre /= !He1 !He2.
   iSpecialize ("HWP1" $! σ1 [] (κ1++κs1) 0%nat with "[$Hσ1 $Hκs1]").
   iSpecialize ("HWP2" $! σ2 [] (κ2++κs2) 0%nat with "[$Hσ2 $Hκs2]").
   iMod "HWP1" as (Hred1) "HWP1".
@@ -144,6 +144,25 @@ Proof.
   simpl. eauto with iFrame.
 Qed.
 
+Lemma dwp_atomic_lift_wp Ψ1 Ψ2 E1 E2 e1 e2 Φ
+  `{Atomic _ StronglyAtomic e1}
+  `{Atomic _ StronglyAtomic e2}
+  {NF1 : NoFork e1}
+  {NF2 : NoFork e2}
+  {NO1 : NoObs e1}
+  {NO2 : NoObs e2} :
+  to_val e1 = None →
+  to_val e2 = None →
+  ((|={E1,E2}=> WP1 e1 E2 Ψ1 ∗ WP2 e2 ∅ (λ v, |={E2}=> Ψ2 v) ∗
+     (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 ={E2,E1}=∗ ▷ Φ v1 v2)) -∗
+  dwp E1 e1 e2 Φ).
+Proof.
+  intros He1 He2.
+  iIntros "H".
+  iApply dwp_atomic_lift_wp_strong; auto.
+  iMod "H" as "H". iModIntro. by iExists Ψ1, Ψ2.
+Qed.
+
 Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
   ▷l1 ↦ₗ v1 -∗
   ▷l2 ↦ᵣ v2 -∗
@@ -151,7 +170,7 @@ Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
   dwp E (! #l1) (! #l2) Φ.
 Proof.
   iIntros "Hl1 Hl2 HΦ".
-  iApply (dwp_atomic_lift_wp _ _
+  iApply (dwp_atomic_lift_wp
     (λ v, ⌜v = v1⌝ ∗ l1 ↦ₗ v1)%I
     (λ v, ⌜v = v2⌝ ∗ l2 ↦ᵣ v2)%I)=>//.
   iModIntro. iSplitL "Hl1".

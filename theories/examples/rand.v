@@ -22,7 +22,7 @@ Section proof.
     dwp_bind (ref #true)%E (ref #true)%E.
     pose (Φ1 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∗ l ↦ₗ #true)%I).
     pose (Φ2 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∗ l ↦ᵣ #true)%I).
-    iApply (dwp_atomic_lift_wp _ _ Φ1 Φ2%I); try done.
+    iApply (dwp_atomic_lift_wp Φ1 Φ2%I); try done.
     iModIntro. repeat iSplitR.
     { rewrite /WP1 /Φ1. wp_alloc l1 as "Hl". eauto with iFrame. }
     { rewrite /WP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame. }
@@ -40,7 +40,7 @@ Section proof.
     { iApply (dwp_fork ξ).
       pose (Φ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ #false)%I).
       pose (Φ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ #false)%I).
-      iApply (dwp_atomic_lift_wp _ _ Φ1 Φ2%I); try done.
+      iApply (dwp_atomic_lift_wp Φ1 Φ2%I); try done.
       iInv N as (b) "[Hl1 Hl2]" "Hcl". iModIntro.
       iSplitL "Hl1"; [|iSplitL "Hl2"].
       - rewrite /WP1 /Φ1. wp_store. eauto.
