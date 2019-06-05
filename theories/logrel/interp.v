@@ -176,8 +176,7 @@ Section semtypes.
       by iApply (has_type_weaken with "Hrs").
   Admitted.
 
-  Definition refines (e1 e2 : expr) (A : lrel Σ) ξ : iProp Σ :=
-    (inv locsN (locs_inv ξ interp) -∗ DWP e1 & e2 : A ξ)%I.
+  Definition locationsI ξ := inv locsN (locs_inv ξ interp).
 
 End semtypes.
 
@@ -186,34 +185,31 @@ Notation "⟦ τ ⟧" := (interp τ).
 Section rules.
   Context `{!heapDG Σ, !typemapG (loc*loc) Σ}.
 
-  Lemma refines_int ξ (i : Z) l :
-    refines #i #i ⟦ tint l ⟧ ξ.
+  Lemma dwp_int ξ (i : Z) l :
+    DWP #i & #i : ⟦ tint l ⟧ ξ.
   Proof.
-    iIntros "#Hinv".
     iApply dwp_value. iModIntro.
     iExists i, i. iPureIntro. naive_solver.
   Qed.
 
-  Lemma refines_int_high ξ (i1 i2 : Z) l :
+  Lemma dwp_int_high ξ (i1 i2 : Z) l :
     ¬ (l ⊑ ξ) →
-    refines (of_val #i1) (of_val #i2) ⟦ tint l ⟧ ξ.
+    DWP (of_val #i1) & (of_val #i2) : ⟦ tint l ⟧ ξ.
   Proof.
-    iIntros (?) "#Hinv". iApply dwp_value. iModIntro.
+    iIntros (?). iApply dwp_value. iModIntro.
     iExists i1, i2. iPureIntro. naive_solver.
   Qed.
 
-  Lemma refines_unit ξ :
-    refines (of_val #()) (of_val #()) ⟦ tunit ⟧ ξ.
+  Lemma dwp_unit ξ :
+    DWP (of_val #()) & (of_val #()) : ⟦ tunit ⟧ ξ.
   Proof.
-    iIntros "#Hinv".
     iApply dwp_value. iModIntro.
     iPureIntro. eauto.
   Qed.
 
-  Lemma refines_bool ξ (b : bool) l :
-    refines #b #b ⟦ tbool l ⟧ ξ.
+  Lemma dwp_bool ξ (b : bool) l :
+    DWP #b & #b : ⟦ tbool l ⟧ ξ.
   Proof.
-    iIntros "#Hinv".
     iApply dwp_value. iModIntro.
     iExists b, b. iPureIntro. naive_solver.
   Qed.
@@ -250,7 +246,8 @@ Section rules.
   Qed.
 
   Lemma dwp_lam ξ x e1 e2 τ1 τ2 l :
-    □ (∀ v1 v2, ⟦ τ1 ⟧ ξ v1 v2 -∗ DWP subst' x v1 e1 & subst' x v2 e2 : ⟦ stamp τ2 l ⟧ ξ) -∗
+    □ (∀ v1 v2, ⟦ τ1 ⟧ ξ v1 v2 -∗
+         DWP subst' x v1 e1 & subst' x v2 e2 : ⟦ stamp τ2 l ⟧ ξ) -∗
     DWP (λ: x, e1)%V & (λ: x, e2)%V : ⟦ tarrow τ1 τ2 l ⟧ ξ.
   Proof.
     iIntros "#H".
@@ -295,11 +292,12 @@ Section rules.
   Qed.
 
   (* DF: Equivalently do it for l = Low *)
-  Lemma refines_alloc ξ e1 e2 τ l :
-    (refines e1 e2 ⟦ τ ⟧ ξ) -∗
-    refines (ref e1) (ref e2) ⟦ tref τ l ⟧ ξ.
+  Lemma dwp_alloc ξ e1 e2 τ l :
+    locationsI ξ -∗
+    (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
+    DWP (ref e1) & (ref e2) : ⟦ tref τ l ⟧ ξ.
   Proof.
-    iIntros "He #Hinv". iSpecialize ("He" with "Hinv").
+    iIntros "#Hinv He". rewrite /locationsI.
     dwp_bind e1 e2.
     iApply (dwp_wand with "He").
     iIntros (v1 v2) "#Hv".
@@ -324,11 +322,12 @@ Section rules.
       iModIntro. iNext. iExists _,_. repeat iSplit; eauto.
   Admitted.
 
-  Lemma refines_load ξ e1 e2 τ l :
-    (refines e1 e2 ⟦ tref τ l ⟧ ξ) -∗
-    refines !e1 !e2 ⟦ stamp τ l ⟧ ξ.
+  Lemma dwp_deref ξ e1 e2 τ l :
+    locationsI ξ -∗
+    (DWP e1 & e2 : ⟦ tref τ l ⟧ ξ) -∗
+    DWP !e1 & !e2 : ⟦ stamp τ l ⟧ ξ.
   Proof.
-    iIntros "He #Hinv". iSpecialize ("He" with "Hinv").
+    iIntros "#Hinv He". rewrite /locationsI.
     dwp_bind e1 e2.
     iApply (dwp_wand with "He").
     iIntros (v1 v2). rewrite interp_eq /lrel_car /=.
@@ -361,14 +360,13 @@ Section rules.
       by apply stamp_mono_2.
   Qed.
 
-  Lemma refines_store ξ e1 e2 t1 t2 τ l :
-    (refines e1 e2 ⟦ tref τ l ⟧ ξ) -∗
-    (refines t1 t2 ⟦ τ ⟧ ξ) -∗
-    refines (e1 <- t1) (e2 <- t2) ⟦ tunit ⟧ ξ.
+  Lemma dwp_store ξ e1 e2 t1 t2 τ l :
+    locationsI ξ -∗
+    (DWP e1 & e2 : ⟦ tref τ l ⟧ ξ) -∗
+    (DWP t1 & t2 : ⟦ τ ⟧ ξ) -∗
+    DWP (e1 <- t1) & (e2 <- t2) : ⟦ tunit ⟧ ξ.
   Proof.
-    iIntros "He Ht #Hinv".
-    iSpecialize ("He" with "Hinv").
-    iSpecialize ("Ht" with "Hinv").
+    iIntros "#Hinv He Ht". rewrite /locationsI.
     dwp_bind t1 t2. iApply (dwp_wand with "Ht").
     iIntros (w1 w2) "Hw".
     dwp_bind e1 e2. iApply (dwp_wand with "He").
@@ -410,20 +408,21 @@ Section rules.
     !#r'.
 
   Definition bad_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
+    locationsI Low -∗
     ⟦ tref (tbool Low) Low ⟧ Low #r1 #r2 -∗
     ⟦ tref (tbool Low) Low ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
-    refines (prog r1 r1' h1) (prog r2 r2' h2) ⟦ tbool Low ⟧ Low.
+    DWP (prog r1 r1' h1) & (prog r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
-    iIntros "#Hr #Hr' #Hh #Hinv".
+    iIntros "#Hinv #Hr #Hr' #Hh".
     iApply dwp_seq.
-    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
-      - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr".
-      - iIntros "_". by iApply refines_bool. }
+    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr".
+      - by iApply dwp_bool. }
     iApply dwp_seq.
-    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
-      - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr'".
-      - iIntros "_". by iApply refines_bool. }
+    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr'".
+      - by iApply dwp_bool. }
     (* Attempt by structural reasoning (will fail at `let x = ..`) *)
     dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
     iApply (dwp_wand with "[]").
@@ -446,35 +445,36 @@ Section rules.
     !#r'.
 
   Definition good_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
+    locationsI Low -∗
     ⟦ tref (tbool Low) Low ⟧ Low #r1 #r2 -∗
     ⟦ tref (tbool Low) Low ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
-    refines (prog_good r1 r1' h1) (prog_good r2 r2' h2) ⟦ tbool Low ⟧ Low.
+    DWP (prog_good r1 r1' h1) & (prog_good r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
-    iIntros "#Hr #Hr' #Hh #Hinv".
+    iIntros "#Hinv #Hr #Hr' #Hh".
     iApply dwp_seq.
-    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
-      - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr".
-      - iIntros "_". by iApply refines_bool. }
+    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr".
+      - by iApply dwp_bool. }
     iApply dwp_seq.
-    { iApply (refines_store Low _ _ _ _ (tbool Low)); auto.
-      - iIntros "_". iApply dwp_value. iModIntro. iApply "Hr'".
-      - iIntros "_". by iApply refines_bool. }
+    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr'".
+      - by iApply dwp_bool. }
     destruct h1, h2.
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply dwp_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply dwp_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply dwp_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply refines_load; eauto. iIntros "_". iApply dwp_value.
+      { iApply dwp_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
   Qed.
