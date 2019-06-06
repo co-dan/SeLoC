@@ -68,7 +68,14 @@ Tactic Notation "dwp_pure" open_constr(efoc1) open_constr(efoc2) :=
     || fail "dwp_pure: cannot find" efoc1 efoc2 "or they are not redexes"
   end.
 
+Tactic Notation "dwp_rec" :=
+  let H := fresh in
+  assert (H := AsRecV_recv);
+  dwp_pure (App _ _) (App _ _); iSimpl;
+  clear H.
+
 Ltac dwp_pures :=
   iStartProof;
-  repeat (dwp_pure _ _; []). (* The `;[]` makes sure that no side-condition
-                                magically spawns. *)
+  repeat (dwp_pure _ _; [iSimpl]).
+(* The `;[]` makes sure that no side-condition
+   magically spawns. *)

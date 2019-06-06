@@ -1,7 +1,7 @@
 From iris.base_logic Require Export gen_heap.
 From iris_ni.program_logic Require Export dwp classes ectx_lifting.
 From iris.heap_lang Require Export lang lifting notation.
-From iris.heap_lang Require Import tactics.
+From iris.heap_lang Require Import tactics proofmode.
 From iris.proofmode Require Import tactics.
 From stdpp Require Import fin_maps.
 Set Default Proof Using "Type".
@@ -184,6 +184,39 @@ Proof.
   iModIntro. iNext. iApply "HΦ". iFrame.
 Qed.
 
+Lemma dwp_alloc E (v1 v2 : val) Φ :
+  (∀ r1 r2, r1 ↦ₗ v1 -∗ r2 ↦ᵣ v2 -∗ ▷ Φ #r1 #r2) -∗
+  DWP ref v1 & ref v2 @ E : Φ.
+Proof.
+  iIntros "H".
+  pose (Ψ1 := (λ v, ∃ r : loc, ⌜v = #r⌝ ∧ r ↦ₗ v1)%I).
+  pose (Ψ2 := (λ v, ∃ r : loc, ⌜v = #r⌝ ∧ r ↦ᵣ v2)%I).
+  iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
+  iModIntro. repeat iSplitR.
+  { rewrite /WP1 /Ψ1. wp_alloc r as "Hr". eauto with iFrame. }
+  { rewrite /WP2 /Ψ2. wp_alloc r as "Hr". eauto with iFrame. }
+  iIntros (? ?). iDestruct 1 as (r1 ->) "Hr1". iDestruct 1 as (r2 ->) "Hr2".
+  iModIntro. by iApply ("H" with "Hr1 Hr2").
+Qed.
+
+Lemma dwp_store E (v1 v2 v1' v2' : val) (l1 l2 : loc) Φ :
+  ▷l1 ↦ₗ v1 -∗
+  ▷l2 ↦ᵣ v2 -∗
+  (l1 ↦ₗ v1' -∗ l2 ↦ᵣ v2' -∗ ▷Φ #() #()) -∗
+  DWP #l1 <- v1' & #l2 <- v2' @ E : Φ.
+Proof.
+  iIntros "Hl1 Hl2 HΦ".
+  pose (Ψ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ v1')%I).
+  pose (Ψ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ v2')%I).
+  iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
+  iModIntro. iSplitL "Hl1"; [|iSplitL"Hl2"].
+  { rewrite /WP1 /Ψ1. wp_store. eauto with iFrame. }
+  { rewrite /WP2 /Ψ2. wp_store. eauto with iFrame. }
+  iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
+  iModIntro. iApply ("HΦ" with "Hl1 Hl2").
+Qed.
+
+
 Lemma dwp_atomic E1 E2 e1 e2 Φ
   `{Atomic _ StronglyAtomic e1}
   `{Atomic _ StronglyAtomic e2} :
@@ -217,6 +250,7 @@ Proof.
   rewrite dwp_value_inv' -dwp_value. iMod "H". iMod "H" as "$".
   iModIntro. iFrame. done.
 Qed.
+
 
 End lifting.
 

@@ -6,7 +6,7 @@ From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang proofmode.
 From iris.algebra Require Import excl.
 
-From iris.heap_lang.lib Require Import spawn par.
+From iris.heap_lang.lib Require Export spawn par.
 
 Section proof.
   Context `{!heapDG Σ, !spawnG Σ}.

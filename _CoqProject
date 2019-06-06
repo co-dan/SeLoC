@@ -13,3 +13,4 @@ theories/logrel/interp.v
 theories/examples/rand.v
 theories/examples/lock.v
 theories/examples/par.v
+theories/examples/value_sensitivity.v
