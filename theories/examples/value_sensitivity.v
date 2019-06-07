@@ -1,3 +1,4 @@
+(** Example from Ernst-Murray CAV 2019 *)
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
