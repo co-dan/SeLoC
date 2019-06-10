@@ -8,8 +8,8 @@ Set Default Proof Using "Type".
 
 Class heapDG Σ := HeapDG {
   heapDG_invG :> invG Σ;
-  heapDG_proph_mapG1 :> proph_mapG proph_id val Σ;
-  heapDG_proph_mapG2 :> proph_mapG proph_id val Σ;
+  heapDG_proph_mapG1 :> proph_mapG proph_id (val*val) Σ;
+  heapDG_proph_mapG2 :> proph_mapG proph_id (val*val) Σ;
   heapDG_gen_heapG1 :> gen_heapG loc val Σ;
   heapDG_gen_heapG2 :> gen_heapG loc val Σ
 }.

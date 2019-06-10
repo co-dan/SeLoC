@@ -1,3 +1,3 @@
 non-interference
 
-Iris version: c9984c7fc0b2067b11012099ce7884c981e492ed
+Required Iris version: 31bf88ff46fd89815e49dd22dbc5fea4a77fb62e

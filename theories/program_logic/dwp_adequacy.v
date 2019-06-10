@@ -8,8 +8,8 @@ Import uPred.
 
 (** Now we define a simulation from a DWP *)
 Class heapPreDG Σ := HeapPreDG {
-  heapPreDG_proph_mapG1 :> proph_mapPreG proph_id val Σ;
-  heapPreDG_proph_mapG2 :> proph_mapPreG proph_id val Σ;
+  heapPreDG_proph_mapG1 :> proph_mapPreG proph_id (val*val) Σ;
+  heapPreDG_proph_mapG2 :> proph_mapPreG proph_id (val*val) Σ;
   heapPreDG_gen_heapG1 :> gen_heapPreG loc val Σ;
   heapPreDG_gen_heapG2 :> gen_heapPreG loc val Σ
 }.
@@ -164,7 +164,7 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   ∃ n, ∀ `{Hinv : !invG Σ},
       (Nat.iter n mega_future
          (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
-                   (p1 p2 : proph_mapG proph_id val Σ),
+                   (p1 p2 : proph_mapG proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
             [∗ list] e;s ∈ es;ss, dwp ⊤ e s Φ))%I.
@@ -372,27 +372,3 @@ Proof.
   iMod "HWP" as "HWP". iModIntro. iNext.
   iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. iFrame.
 Qed.
-
-(* Lemma dwp_symm Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 Φ : *)
-(*   dwp_rel Σ e s σ1 σ2 Φ → *)
-(*   dwp_rel Σ s e σ2 σ1 (λ v1 v2, Φ v2 v1). *)
-(* Proof. *)
-(*   intros [n HR]. *)
-(*   exists n=>Hinv. *)
-(*   iPoseProof (HR Hinv) as "H". *)
-(*   (* rewrite Nat_iter_S_r. *) *)
-(*   iApply (mega_futureN_mono with "H"). *)
-(*   iIntros "H". rewrite /mega_future. *)
-(*   iMod "H" as (h1 h2 p1 p2) "[(Hh1 & Hp1 & Hh2 & Hp2) H]". *)
-(*   iExists h2,h1,p2,p1. iLöb as "IH". *)
-(*   destruct (to_val e) as [v1|] eqn:He. *)
-(*   - iFrame. rewrite !dwp_unfold /dwp_pre. *)
-(*     simpl. rewrite He. *)
-(*     destruct (to_val s) as [v2|] eqn:Hs. *)
-(*     + iModIntro. iApply "H". *)
-(*     + iModIntro. iIntros (??????) "?". iMod "H". by iExFalso. *)
-(*   - rewrite {2}dwp_unfold /dwp_pre. *)
-(*     iSimpl in "H". rewrite He. *)
-(*     iSpecialize ("H" $! _ _ [] [] [] [] with "[Hh1 Hp1 Hh2 Hp2]"); first by iFrame. *)
-(*     iMod "H" as (Hred1 Hred2) "H". *)
-
