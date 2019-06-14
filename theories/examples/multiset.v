@@ -55,6 +55,18 @@ Definition size : val := λ: "l",
   let: "l-low" := Snd "x" in
   size_loop "l-low" #0 + size_loop "l-high" #0.
 
+Definition new_ms : val := λ: <>,
+  let: "hs" := ref NONE in
+  let: "ls" := ref NONE in
+  let: "ms" := ref ("hs", "ls") in
+  let: "lk" := newlock #() in
+  let: "insert" := λ: "v" "b",
+    acquire "lk";; insert "ms" "v" "b";; release "lk"
+  in
+  let: "size" := λ: <>,
+    acquire "lk";; let: "n" := size "ms" in release "lk";; "n"
+  in ("insert", "size").
+
 Section proof.
   Context `{!heapDG Σ, !typemapG (loc*loc) Σ, !lockG Σ}.
 
@@ -319,6 +331,68 @@ Section proof.
     iIntros (z1 z2) "Hz".
     iApply ("HΦ" with "Hz [-]").
     iExists _,_,_,_. by iFrame "Hl1 Hl2 Hhs Hls".
+  Qed.
+
+  Lemma multiset_spec ξ Φ :
+    (∀ (ins1 ins2 siz1 siz2 : val),
+        □ (∀ (b: bool) v1 v2,
+           ⟦ tint (if b then High else Low) ⟧ ξ v1 v2 -∗
+           DWP ins1 v1 #b & ins2 v2 #b : ⟦ tunit ⟧ ξ) -∗
+        ⟦ tarrow tunit (tint Low) Low ⟧ ξ siz1 siz2 -∗
+        Φ (ins1, siz1)%V (ins2, siz2)%V) -∗
+    DWP new_ms #() & new_ms #() : Φ.
+  Proof.
+    iIntros "HΦ".
+    dwp_rec. dwp_pures.
+    dwp_bind (ref _)%E (ref _)%E.
+    iApply heap_lang_lifting.dwp_alloc.
+    iIntros (hs1 hs2) "Hhs1 Hhs2". iNext.
+
+    dwp_pures. dwp_bind (ref _)%E (ref _)%E.
+    iApply heap_lang_lifting.dwp_alloc.
+    iIntros (ls1 ls2) "Hls1 Hls2". iNext.
+
+    dwp_pures. dwp_bind (ref _)%E (ref _)%E.
+    iApply heap_lang_lifting.dwp_alloc.
+    iIntros (ms1 ms2) "Hms1 Hms2". iNext.
+
+    dwp_pures. dwp_bind (newlock _) (newlock _).
+    pose (N:=nroot.@"あ").
+    iApply (newlock_spec N (ls_inv ms1 ms2 ξ) with "[-HΦ]").
+    { iExists _,_,_,_. iFrame.
+      iSplitL "Hhs1 Hhs2";
+      rewrite /sec_list joint_list_unfold; iLeft; by iFrame. }
+    iIntros (γ lk1 lk2) "#Hlock".
+
+    dwp_pures. iApply dwp_value. iModIntro.
+    iApply "HΦ".
+    - iAlways. iIntros (b v1 v2) "Hv".
+      dwp_pures. dwp_bind (acquire _) (acquire _).
+      iApply (acquire_spec with "Hlock").
+      iIntros "Hlk Hls".
+
+      dwp_pures. dwp_bind (insert _ _ _) (insert _ _ _).
+      iApply (insert_spec with "Hls Hv").
+      iNext. iIntros "Hls".
+
+      dwp_pures. iApply (release_spec with "Hlock Hlk Hls").
+
+      eauto with iFrame.
+    - rewrite interp_eq /= /lrel_car /=. iAlways.
+      iIntros (??) "_". dwp_rec.
+      dwp_bind (acquire _) (acquire _).
+      iApply (acquire_spec with "Hlock").
+      iIntros "Hlk Hls".
+
+      dwp_pures. dwp_bind (size _) (size _).
+      iApply (size_spec with "Hls").
+      iNext. iIntros (v1 v2) "Hv Hls".
+
+      dwp_pures. dwp_bind (release _) (release _).
+      iApply (release_spec with "Hlock Hlk Hls").
+
+      dwp_pures. iApply dwp_value. iModIntro.
+      iSimpl. iFrame "Hv".
   Qed.
 
 End proof.

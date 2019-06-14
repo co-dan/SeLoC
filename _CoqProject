@@ -15,3 +15,4 @@ theories/examples/lock.v
 theories/examples/par.v
 theories/examples/value_sensitivity.v
 theories/examples/various.v
+theories/examples/multiset.v
