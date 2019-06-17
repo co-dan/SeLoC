@@ -27,7 +27,7 @@ Definition insert_loop : val := rec: "loop" "hd" "v" :=
     let: "tl" := Snd "x" in
     if: "w" ≤ "v"
     then "hd" <- SOME ("v", ref (SOME ("w", "tl")))
-    else "loop" "hd" "v"
+    else "loop" "tl" "v"
   end.
 
 Definition insert_ordered : val := λ: "hd" "v",
@@ -216,7 +216,8 @@ Section proof.
         iRight. iExists _,_,_,_. iFrame "Hhd1' Hhd2' Hls".
         iExists _,_. eauto with iFrame.
       + (* Continue with the recursion. *)
-        iApply ("IH" with "[-HΦ] HΦ").
+        iApply ("IH" with "Hls [-]").
+        iIntros "Htls". iApply "HΦ".
         rewrite /sec_list (joint_list_unfold _ hd1 hd2).
         iRight. iExists _,_,_,_. iFrame.
         iExists _. eauto with iFrame.
