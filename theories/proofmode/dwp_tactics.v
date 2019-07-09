@@ -1,5 +1,6 @@
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 From iris.proofmode Require Import environments coq_tactics tactics.
+From iris.heap_lang Require Import tactics proofmode.
 
 Lemma tac_dwp_bind `{!heapDG Σ} K1 K2 Δ E Φ e1 e2 f1 f2 :
   f1 = (λ e, fill K1 e) → (* as an eta expanded hypothesis so that we can `simpl` it *)

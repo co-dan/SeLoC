@@ -71,7 +71,7 @@ Section proof.
   Context `{!heapDG Σ, !typemapG (loc*loc) Σ, !lockG Σ}.
 
   Program Definition joint_list_pre (P : val -> val -> iProp Σ) :
-    (locC -n> locC -n> iProp Σ) -n> (locC -n> locC -n> iProp Σ)
+    (locO -n> locO -n> iProp Σ) -n> (locO -n> locO -n> iProp Σ)
     := (λne R hd1 hd2,
         (hd1 ↦ₗ NONEV ∗ hd2 ↦ᵣ NONEV)
        ∨ (∃ v1 v2 (tl1 tl2 : loc), hd1 ↦ₗ SOMEV (v1, #tl1) ∗

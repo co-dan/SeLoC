@@ -4,7 +4,7 @@ From iris.algebra Require Import cmra.
 Inductive slevel := Low | High.
 Instance slevel_eqdec : EqDecision slevel.
 Proof. solve_decision. Qed.
-Canonical Structure slevelC := leibnizC slevel.
+Canonical Structure slevelO := leibnizO slevel.
 
 Instance slevel_join : Join slevel := λ lv1 lv2,
   match lv1, lv2 with
@@ -76,32 +76,32 @@ Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
 Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
 
 Section slevelR_cmra.
-  Implicit Types l : slevelC.
-  Instance slevelC_valid : Valid slevelC := λ x, True.
-  Instance slevelC_validN : ValidN slevelC := λ n x, True.
-  Instance slevelC_pcore : PCore slevelC := Some.
-  Instance slevelC_op : Op slevelC := slevel_meet.
-  Definition slevelC_op_meet l1 l2 : l1 ⋅ l2 = l1 ⊓ l2 := eq_refl.
+  Implicit Types l : slevelO.
+  Instance slevelO_valid : Valid slevelO := λ x, True.
+  Instance slevelO_validN : ValidN slevelO := λ n x, True.
+  Instance slevelO_pcore : PCore slevelO := Some.
+  Instance slevelO_op : Op slevelO := slevel_meet.
+  Definition slevelO_op_meet l1 l2 : l1 ⋅ l2 = l1 ⊓ l2 := eq_refl.
 
-  Instance slevelC_equiv : Equiv slevelC := (=).
-  Instance slevelC_leibniz_equiv : LeibnizEquiv slevelC.
+  Instance slevelO_equiv : Equiv slevelO := (=).
+  Instance slevelO_leibniz_equiv : LeibnizEquiv slevelO.
   Proof. intros ???. eauto. Qed.
 
   Lemma slevelR_included l1 l2 : l1 ≼ l2 ↔ l2 ⊑ l1.
   Proof.
     split.
     - intros [σ ->]. eauto.
-    - exists l2. rewrite slevelC_op_meet.
+    - exists l2. rewrite slevelO_op_meet.
       fold_leibniz. symmetry. eauto.
   Qed.
 
-  Lemma slevelC_ra_mixin : RAMixin slevelC.
+  Lemma slevelO_ra_mixin : RAMixin slevelO.
   Proof.
     apply ra_total_mixin; try by eauto; try apply _.
     - intros x. apply idemp. apply _.
   Qed.
 
-  Canonical Structure slevelR : cmraT := discreteR slevelC slevelC_ra_mixin.
+  Canonical Structure slevelR : cmraT := discreteR slevelO slevelO_ra_mixin.
 
   Global Instance slevelR_cmra_discrete : CmraDiscrete slevelR.
   Proof. apply discrete_cmra_discrete. Qed.

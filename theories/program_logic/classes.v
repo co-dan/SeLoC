@@ -64,11 +64,11 @@ Proof.
   intros <- <-. rewrite /NoFork.
 Admitted.
 
-Instance cas_nofork e1 e2 e3 v1 v2 v3 :
+Instance cmpxchg_nofork e1 e2 e3 v1 v2 v3 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   IntoVal e3 v3 →
-  NoFork (CAS e1 e2 e3).
+  NoFork (CmpXchg e1 e2 e3).
 Proof. Admitted.
 
 Instance faa_nofork e1 e2 v1 v2 :
@@ -135,11 +135,11 @@ Proof.
   intros <- <-. rewrite /NoObs.
 Admitted.
 
-Instance cas_noobs e1 e2 e3 v1 v2 v3 :
+Instance cmpxchg_noobs e1 e2 e3 v1 v2 v3 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   IntoVal e3 v3 →
-  NoObs (CAS e1 e2 e3).
+  NoObs (CmpXchg e1 e2 e3).
 Proof. Admitted.
 
 Instance faa_noobs e1 e2 v1 v2 :

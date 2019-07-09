@@ -182,9 +182,8 @@ Proof.
   pose (Ψ2 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∧ l ↦ᵣ #0)%I).
   iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
   iModIntro. repeat iSplitL.
-  { iApply wp_alloc=>//. unfold Ψ1. eauto with iFrame. }
-  { iApply wp_alloc=>//. unfold Ψ2.
-    iNext. iIntros (l) "Hl". iModIntro. eauto. }
+  { unfold WP1, Ψ1. wp_alloc l as "Hl". eauto with iFrame. }
+  { unfold WP2, Ψ2. wp_alloc l as "Hl". eauto with iFrame. }
   iIntros (? ?) "H1 H2".
   iDestruct "H1" as (l1 ->) "Hl1".
   iDestruct "H2" as (l2 ->) "Hl2".

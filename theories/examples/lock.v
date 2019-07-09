@@ -54,21 +54,23 @@ Section proof.
   Proof.
     iIntros "#Hlk HΦ". iDestruct "Hlk" as (l1 l2 -> ->) "#Hinv".
     unlock try_acquire. dwp_pures=>/=.
+    dwp_bind (CmpXchg _ _ _) (CmpXchg _ _ _).
     iApply dwp_atomic_lift_wp_strong; try done.
     iInv N as (b) "(Hl1 & Hl2 & HR)" "Hcl". iModIntro.
-    pose (Ψ1 := (λ v, ⌜v = #(negb b)⌝ ∗ l1 ↦ₗ #true)%I).
-    pose (Ψ2 := (λ v, ⌜v = #(negb b)⌝ ∗ l2 ↦ᵣ #true)%I).
+    pose (Ψ1 := (λ v, ⌜v = (#b, #(negb b))%V⌝ ∗ l1 ↦ₗ #true)%I).
+    pose (Ψ2 := (λ v, ⌜v = (#b, #(negb b))%V⌝ ∗ l2 ↦ᵣ #true)%I).
     iExists Ψ1, Ψ2. iSplitL "Hl1"; [|iSplitL "Hl2"].
     { rewrite /WP1 /Ψ1. destruct b.
-      by wp_cas_fail; iFrame.
-      by wp_cas_suc; iFrame. }
+      by wp_cmpxchg_fail; iFrame.
+      by wp_cmpxchg_suc; iFrame. }
     { rewrite /WP2 /Ψ2. destruct b.
-      by wp_cas_fail; iFrame.
-      by wp_cas_suc; iFrame. }
+      by wp_cmpxchg_fail; iFrame.
+      by wp_cmpxchg_suc; iFrame. }
     iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
     iMod ("Hcl" with "[-HR HΦ]") as "_".
     { iNext. iExists true. by iFrame. }
-    iModIntro. iNext. iApply ("HΦ" $! (negb b)).
+    iModIntro. iNext. dwp_pures. iApply dwp_value. iModIntro.
+    iApply ("HΦ" $! (negb b)).
     by destruct b.
   Qed.
 

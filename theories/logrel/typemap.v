@@ -9,10 +9,10 @@ From iris_ni.logrel Require Import types.
 From iris.heap_lang Require Import lang.
 Import uPred.
 
-Canonical Structure typeC := leibnizC type.
+Canonical Structure typeO := leibnizO type.
 
 Definition typemapUR A `{!EqDecision A, !Countable A} :=
-  gmapUR A (prodR (agreeR typeC) slevelR).
+  gmapUR A (prodR (agreeR typeO) slevelR).
 
 Class typemapPreG A `{!EqDecision A, !Countable A} Σ := TypemapPreG
 { typemaPreG_inG :> authG Σ (typemapUR A) }.
@@ -84,7 +84,7 @@ Section logic.
   Proof.
     intros Hinc%slevelR_included. rewrite /has_type.
     apply own_mono, auth_frag_mono.
-    pose (y := (to_agree τ, l') : prodR (agreeR typeC) slevelR).
+    pose (y := (to_agree τ, l') : prodR (agreeR typeO) slevelR).
     apply (gmap_singleton_mono x y (to_agree τ, l)).
     apply (prod_included y (to_agree τ, l)). split; eauto.
   Qed.
@@ -101,7 +101,7 @@ Section logic.
         (*  %auth_valid_discrete_2. *)
     apply (singleton_included (to_typemap f)) in foo.
     destruct foo as [[τ' l'] [Hf Hτ']].
-    pose (y := (to_agree τ, l) : prodR (agreeR typeC) slevelR).
+    pose (y := (to_agree τ, l) : prodR (agreeR typeO) slevelR).
     apply (Some_included y) in Hτ'. subst y.
     iPureIntro. exists l'.
     admit.
