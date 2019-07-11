@@ -23,7 +23,7 @@ Section proof.
   stuttering. *)
   Lemma t4_safe (l1 l2 : val) ξ :
     locationsI ξ -∗
-    ⟦ tref (tint Low) Low ⟧ ξ l1 l2 -∗
+    ⟦ tref (tint Low) ⟧ ξ l1 l2 -∗
     DWP (t4 l1) & (t4 l2) : ⟦ tprod tunit tunit ⟧ ξ.
   Proof.
     iIntros "#Hinv #Hl". dwp_rec. dwp_pures.

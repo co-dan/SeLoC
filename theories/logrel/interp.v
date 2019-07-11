@@ -97,9 +97,9 @@ Section semtypes.
    but then we will not be able to prove that reference are monotone in the label
    (because invariants are, well, invariant)
    *)
-  Definition lrel_ref (τ : type) l : lrel Σ := LRel (λ ξ w1 w2,
+  Definition lrel_ref (τ : type) : lrel Σ := LRel (λ ξ w1 w2,
     ∃ l1 l2: loc, ⌜w1 = #l1⌝ ∧ ⌜w2 = #l2⌝ ∧
-      has_type (l1,l2) τ l)%I.
+      has_type (l1,l2) τ Low)%I.
 
   Equations interp (τ : type) : lrel Σ
     by wf (type_measure τ) :=
@@ -110,7 +110,7 @@ Section semtypes.
     lrel_arr (interp s) (interp (stamp t l)) l;
   (* TODO: is this stamp needed here? *)
   interp (tprod τ1 τ2) := lrel_prod (interp τ1) (interp τ2);
-  interp (tref τ l) := lrel_ref τ l.
+  interp (tref τ) := lrel_ref τ.
   Next Obligation. lia. Qed.
   Next Obligation. rewrite -stamp_measure. lia. Qed.
   Next Obligation. lia. Qed.
@@ -126,7 +126,7 @@ Section semtypes.
     | tarrow s t l =>
       lrel_arr (interp s) (interp (stamp t l)) l
     | tprod τ1 τ2 => lrel_prod (interp τ1) (interp τ2)
-    | tref τ l => lrel_ref τ l
+    | tref τ => lrel_ref τ
     end.
   Proof. by funelim (interp τ). Qed.
 
@@ -168,12 +168,6 @@ Section semtypes.
       iIntros (uwu owo). rewrite !(interp_eq (tprod _ _)).
       iDestruct 1 as (v1 v2 w1 w2 -> ->) "[Hv Hw]".
       rewrite IHHsub1 IHHsub2. iExists _,_,_,_. repeat iSplit; eauto.
-    - (* References *)
-      iIntros (v1 v2).
-      rewrite !(interp_eq (tref _ _)).
-      iDestruct 1 as (r1 r2 -> ->) "#Hrs".
-      iExists r1,r2. repeat iSplit; eauto.
-      by iApply (has_type_weaken with "Hrs").
   Admitted.
 
   Definition locationsI ξ := inv locsN (locs_inv ξ interp).
@@ -292,10 +286,10 @@ Section rules.
   Qed.
 
   (* DF: Equivalently do it for l = Low *)
-  Lemma dwp_alloc ξ e1 e2 τ l :
+  Lemma dwp_alloc ξ e1 e2 τ :
     locationsI ξ -∗
     (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
-    DWP (ref e1) & (ref e2) : ⟦ tref τ l ⟧ ξ.
+    DWP (ref e1) & (ref e2) : ⟦ tref τ ⟧ ξ.
   Proof.
     iIntros "#Hinv He". rewrite /locationsI.
     dwp_bind e1 e2.
@@ -313,7 +307,7 @@ Section rules.
       assert (f !! (l1, l2) = None).
       { (* otherwise we can extract l1 ↦ .. from the Hlocs and get a
       contradiction *) admit. }
-      iMod (typemap_alloc f (l1,l2) τ l with "Hf") as "[Hf Hll]"; auto.
+      iMod (typemap_alloc f (l1,l2) τ with "Hf") as "[Hf Hll]"; auto.
       iMod ("Hcl" with "[-Hll]") as "_".
       { iNext. iExists _. iFrame.
         rewrite big_sepM_insert=>//. iFrame.
@@ -322,10 +316,10 @@ Section rules.
       iModIntro. iNext. iExists _,_. repeat iSplit; eauto.
   Admitted.
 
-  Lemma dwp_deref ξ e1 e2 τ l :
+  Lemma dwp_deref ξ e1 e2 τ :
     locationsI ξ -∗
-    (DWP e1 & e2 : ⟦ tref τ l ⟧ ξ) -∗
-    DWP !e1 & !e2 : ⟦ stamp τ l ⟧ ξ.
+    (DWP e1 & e2 : ⟦ tref τ ⟧ ξ) -∗
+    DWP !e1 & !e2 : ⟦ τ ⟧ ξ.
   Proof.
     iIntros "#Hinv He". rewrite /locationsI.
     dwp_bind e1 e2.
@@ -357,12 +351,13 @@ Section rules.
       { iNext. iExists _. iFrame. iApply "Hlocs".
         eauto with iFrame. }
       iModIntro. iNext. simpl. iApply (interp_sub_mono with "Hτ'").
+      rewrite -{2}(stamp_low τ).
       by apply stamp_mono_2.
   Qed.
 
-  Lemma dwp_store ξ e1 e2 t1 t2 τ l :
+  Lemma dwp_store ξ e1 e2 t1 t2 τ :
     locationsI ξ -∗
-    (DWP e1 & e2 : ⟦ tref τ l ⟧ ξ) -∗
+    (DWP e1 & e2 : ⟦ tref τ ⟧ ξ) -∗
     (DWP t1 & t2 : ⟦ τ ⟧ ξ) -∗
     DWP (e1 <- t1) & (e2 <- t2) : ⟦ tunit ⟧ ξ.
   Proof.
@@ -409,8 +404,8 @@ Section rules.
 
   Definition bad_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
     locationsI Low -∗
-    ⟦ tref (tbool Low) Low ⟧ Low #r1 #r2 -∗
-    ⟦ tref (tbool Low) Low ⟧ Low #r1' #r2' -∗
+    ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
+    ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
     DWP (prog r1 r1' h1) & (prog r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
@@ -430,8 +425,7 @@ Section rules.
       - iApply dwp_value. iApply "Hh".
       - iSplit.
         + iApply dwp_value. simpl.
-          iApply (interp_sub_mono with "Hr").
-          apply type_sub_ref. eauto.
+          iApply "Hr".
         + iIntros (?).
     (* Attempt by symbolic execution (will fail at the store) *)
     (* destruct h1, h2. *)
@@ -446,8 +440,8 @@ Section rules.
 
   Definition good_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
     locationsI Low -∗
-    ⟦ tref (tbool Low) Low ⟧ Low #r1 #r2 -∗
-    ⟦ tref (tbool Low) Low ⟧ Low #r1' #r2' -∗
+    ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
+    ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
     DWP (prog_good r1 r1' h1) & (prog_good r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.

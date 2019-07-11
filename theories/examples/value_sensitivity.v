@@ -47,7 +47,7 @@ Section proof.
 
   Lemma proof out1 out2 dat1 dat2 ξ :
     locationsI ξ -∗
-    ⟦ tref (tint Low) Low ⟧ ξ out1 out2 -∗
+    ⟦ tref (tint Low) ⟧ ξ out1 out2 -∗
     ⟦ tint High ⟧ ξ dat1 dat2 -∗
     DWP (prog dat1 out1) & (prog dat2 out2) : ⟦ tprod tunit tunit ⟧ ξ.
   Proof.
