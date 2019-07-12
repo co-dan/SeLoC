@@ -114,16 +114,21 @@ Local Hint Extern 0 (head_step (AllocN _ _) _ _ _ _ _) => apply alloc_fresh : co
 Local Hint Extern 0 (head_step NewProph _ _ _ _ _) => apply new_proph_id_fresh : core.
 Local Hint Resolve to_of_val : core.
 
-Lemma head_step_det e σ e'1 σ'1 obs1 efs1 e'2 σ'2 obs2 efs2 :
+(** The op sem is actually deterministic. *)
+Theorem head_step_det e σ e'1 σ'1 obs1 efs1 e'2 σ'2 obs2 efs2 :
   head_step e σ obs1 e'1 σ'1 efs1 →
   head_step e σ obs2 e'2 σ'2 efs2 →
-  e'1 = e'2 ∧ σ'1 = σ'2 ∧ efs1 = efs2.
+  obs1 = obs2 ∧ e'1 = e'2 ∧ σ'1 = σ'2 ∧ efs1 = efs2.
 Proof.
-  intros Hst1 Hst2.
-  induction Hst1; inversion Hst2; repeat simplify_map_eq/=; eauto.
-  apply IHHst1.
-  admit. (* annoying *)
-Admitted.
+  intros Hst1. revert obs2 e'2 σ'2 efs2.
+  induction Hst1; intros obs2 e'2 σ'2 efs2;
+    inversion 1; repeat simplify_map_eq/=; eauto.
+  specialize (IHHst1 κs0 (Val v0) σ'2 efs2).
+  assert (v = v0) as <-.
+  { enough (Val v = Val v0); first by simplify_eq/=.
+    by apply IHHst1. }
+  repeat split; try f_equiv; eauto; by apply IHHst1.
+Qed.
 
 (** Basic properties *)
 Instance fill_item_inj Ki : Inj (=) (=) (fill_item Ki).
