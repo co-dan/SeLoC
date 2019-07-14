@@ -1,4 +1,5 @@
 (** Small examples *)
+From iris.algebra Require Import csum agree excl.
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
@@ -39,9 +40,9 @@ Section t4_proof.
 
 End t4_proof.
 
-(** Awkward exmples *)
+(** Awkward examples *)
 
-(* awk : tint^low → (tunit → τ) → tint^low *)
+(* awk : tint^l → (tunit → τ) → tint^Low *)
 Definition awk : val :=
   λ: "v", let: "x" := ref "v" in
           λ: "f", "x" <- #1;; "f" #();; !"x".
@@ -51,9 +52,9 @@ Section awk_proof.
 
   Definition f_ty τ l : type := tarrow tunit τ l.
 
-  Lemma awk_typing τ l ξ :
+  Lemma awk_typing1 τ l2 ξ :
     DWP awk & awk : ⟦ tarrow (tint Low)
-                       (tarrow (f_ty τ l) (tint Low) Low) Low ⟧ ξ.
+                       (tarrow (f_ty τ l2) (tint Low) Low) Low ⟧ ξ.
   Proof.
     iApply logrel_lam. iAlways. iIntros (i1 i2) "#Hi". iSimpl.
     dwp_bind (ref _)%E (ref _)%E. iApply dwp_wand.
@@ -70,5 +71,74 @@ Section awk_proof.
     { iApply "Hf". rewrite (interp_eq tunit). eauto with iFrame. }
     iApply logrel_deref. rewrite !left_id.
     iApply (dwp_value with "Hr").
+  Qed.
+
+  Definition oneshotR := csumR (exclR unitR) (agreeR unitR).
+  Class oneshotG Σ := { oneshot_inG :> inG Σ oneshotR }.
+  Definition oneshotΣ : gFunctors := #[GFunctor oneshotR].
+  Instance subG_oneshotΣ {Σ} : subG oneshotΣ Σ → oneshotG Σ.
+  Proof. solve_inG. Qed.
+
+  Definition pending γ `{oneshotG Σ} := own γ (Cinl (Excl ())).
+  Definition shot γ `{oneshotG Σ} := own γ (Cinr (to_agree ())).
+  Lemma new_pending `{oneshotG Σ} : (|==> ∃ γ, pending γ)%I.
+  Proof. by apply own_alloc. Qed.
+  Lemma shoot γ `{oneshotG Σ} : pending γ ==∗ shot γ.
+  Proof.
+    apply own_update.
+    intros n [f |]; simpl; eauto.
+    destruct f; simpl; try by inversion 1.
+  Qed.
+  Definition shootN := nroot .@ "shootN".
+  Lemma shot_not_pending γ `{oneshotG Σ} :
+    shot γ -∗ pending γ -∗ False.
+  Proof.
+    iIntros "Hs Hp".
+    iPoseProof (own_valid_2 with "Hs Hp") as "H".
+    iDestruct "H" as %[].
+  Qed.
+
+  Lemma awk_typing2 l τ l2 ξ `{oneshotG Σ} :
+    DWP awk & awk : ⟦ tarrow (tint l)
+                       (tarrow (f_ty τ l2) (tint Low) Low) Low ⟧ ξ.
+  Proof.
+    iApply logrel_lam. iAlways. iIntros (i1 i2) "#Hi". iSimpl.
+    dwp_bind (ref _)%E (ref _)%E. iApply dwp_alloc.
+    iIntros (r1 r2) "Hr1 Hr2". iNext. dwp_pures.
+    iMod new_pending as (γ) "Hγ".
+    pose (N := nroot.@"hewwo").
+    iMod (inv_alloc N _ ((∃ v1 v2, pending γ ∗ r1 ↦ₗ v1 ∗ r2 ↦ᵣ v2)
+                           ∨ (shot γ ∗ r1 ↦ₗ #1 ∗ r2 ↦ᵣ #1))%I
+            with "[Hr1 Hr2 Hγ]") as "#Hinv".
+    { iNext. iLeft. iExists _,_. by iFrame. }
+    iApply logrel_lam. iAlways.
+    rewrite /f_ty (interp_eq (tarrow _ _ _)). iIntros (f1 f2) "#Hf". iSimpl.
+    dwp_bind (_ <- _)%E (_ <- _)%E.
+    iApply (dwp_wand _ _ _ (λ v1 v2, ⟦ tunit ⟧ ξ v1 v2 ∗ shot γ)%I).
+    { iApply dwp_atomic. iInv N as "HN" "Hcl". iModIntro.
+      iDestruct "HN" as "[HN|[#Hγ [>Hr1 >Hr2]]]";
+        first iDestruct "HN" as (v1 v2) "[>Hγ [>Hr1 >Hr2]]".
+      - iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2".
+        iNext. iMod (shoot with "Hγ") as "#Hγ".
+        iMod ("Hcl" with "[-]") as "_".
+        + iNext. iRight. by iFrame.
+        + iModIntro. rewrite (interp_eq tunit). eauto with iFrame.
+      - iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2".
+        iNext. iMod ("Hcl" with "[-]") as "_".
+        + iNext. iRight. by iFrame.
+        + iModIntro. rewrite (interp_eq tunit). eauto with iFrame. }
+    iIntros (? ?) "[H #Hγ]". iApply (logrel_seq with "[H]").
+    { by iApply dwp_value. }
+    iApply logrel_seq.
+    { iApply "Hf". rewrite (interp_eq tunit). eauto with iFrame. }
+    iApply dwp_atomic. iInv N as "HN" "Hcl". iModIntro.
+      iDestruct "HN" as "[HN|[_ [>Hr1 >Hr2]]]";
+        first iDestruct "HN" as (v1 v2) "[>Hγ' _]".
+    { iExFalso. iApply (shot_not_pending with "Hγ Hγ'"). }
+    iApply (dwp_load with "Hr1 Hr2"). iNext.
+    iIntros "Hr1 Hr2". iMod ("Hcl" with "[-]") as "_".
+    { iNext. iRight. by iFrame. }
+    iModIntro. rewrite !left_id (interp_eq (tint Low)).
+    iExists 1,1. by eauto.
   Qed.
 End awk_proof.
