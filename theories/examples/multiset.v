@@ -119,11 +119,11 @@ Section proof.
     dwp_pures. rewrite {1}/sec_list joint_list_unfold.
     dwp_bind (! _)%E (! _)%E.
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
-    - iApply (heap_lang_lifting.dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "[Hhd1 Hhd2]".
+    - iApply (dwp_load with "Hhd1 Hhd2").
+      iNext. iIntros "Hhd1 Hhd2".
 
       dwp_pures. dwp_bind (ref _)%E (ref _)%E.
-      iApply heap_lang_lifting.dwp_alloc.
+      iApply dwp_alloc.
       iIntros (nil1 nil2) "Hnil1 Hnil2". iNext.
 
       dwp_pures. iApply (heap_lang_lifting.dwp_store with "Hhd1 Hhd2").
@@ -135,8 +135,8 @@ Section proof.
       iNext. rewrite joint_list_unfold.
       iLeft; by iFrame.
     - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
-      iApply (heap_lang_lifting.dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "[Hhd1 Hhd2]".
+      iApply (dwp_load with "Hhd1 Hhd2").
+      iNext. iIntros "Hhd1 Hhd2".
 
       dwp_pures. dwp_bind (ref _)%E (ref _)%E.
       iApply heap_lang_lifting.dwp_alloc.
@@ -166,8 +166,8 @@ Section proof.
     dwp_bind (! _)%E (! _)%E.
     rewrite {1}/(sec_list hd1 hd2) joint_list_unfold.
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
-    - iApply (heap_lang_lifting.dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "[Hhd1 Hhd2]".
+    - iApply (dwp_load with "Hhd1 Hhd2").
+      iNext. iIntros "Hhd1 Hhd2".
 
       dwp_pures. dwp_bind (ref (InjLV #()))%E (ref (InjLV #()))%E.
       iApply heap_lang_lifting.dwp_alloc.
@@ -182,8 +182,8 @@ Section proof.
       iNext. rewrite joint_list_unfold.
       iLeft; by iFrame.
     - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
-      iApply (heap_lang_lifting.dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "[Hhd1 Hhd2]".
+      iApply (dwp_load with "Hhd1 Hhd2").
+      iNext. iIntros "Hhd1 Hhd2".
 
       dwp_pures.
 
@@ -235,7 +235,7 @@ Section proof.
 
     dwp_rec. dwp_pures.
     dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
-    iNext. iIntros "[Hl1 Hl2]".
+    iNext. iIntros "Hl1 Hl2".
 
     dwp_pures. destruct b; dwp_pures.
     - (* High-security *)
@@ -280,16 +280,16 @@ Section proof.
     dwp_bind (! _)%E (! _)%E.
     rewrite {1}/(sec_list hd1 hd2) (joint_list_unfold _ hd1 hd2).
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
-    - iApply (heap_lang_lifting.dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "[Hhd1 Hhd2]".
+    - iApply (dwp_load with "Hhd1 Hhd2").
+      iNext. iIntros "Hhd1 Hhd2".
 
       dwp_pures. iApply dwp_value.
       iModIntro. iApply ("HΦ" with "[-Hns] Hns").
       iClear "IH". rewrite /sec_list joint_list_unfold.
       iLeft. by iFrame.
     - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
-      iApply (heap_lang_lifting.dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "[Hhd1 Hhd2]".
+      iApply (dwp_load with "Hhd1 Hhd2").
+      iNext. iIntros "Hhd1 Hhd2".
       dwp_pures.
 
       dwp_bind (_ + _)%E (_ + _)%E.
@@ -314,7 +314,7 @@ Section proof.
     iIntros "HΦ".
     dwp_rec.
     dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
-    iNext. iIntros "[Hl1 Hl2]".
+    iNext. iIntros "Hl1 Hl2".
 
     dwp_pures. dwp_bind (size_loop _ _) (size_loop _ _).
     iApply (size_loop_spec with "[] Hhs").

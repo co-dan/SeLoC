@@ -76,7 +76,7 @@ Section proof.
       iIntros "Hlkd H". dwp_pures.
       iDestruct "H" as (b d1 d2) "(Hc1 & Hc2 & Hd1 & Hd2 & #H)".
       dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hc1 Hc2").
-      iNext. iIntros "[Hc1 Hc2]". destruct b; dwp_pures.
+      iNext. iIntros "Hc1 Hc2". destruct b; dwp_pures.
       + dwp_bind (release _) (release _).
         iApply (release_spec with "Hlk Hlkd [-]").
         { iExists _,_,_. by iFrame. }
@@ -84,7 +84,7 @@ Section proof.
         iApply "IH".
       + dwp_bind (!_)%E (!_)%E.
         iApply (dwp_load with "Hd1 Hd2").
-        iNext. iIntros "[Hd1 Hd2]".
+        iNext. iIntros "Hd1 Hd2".
 
         dwp_bind (_ <- _)%E (_ <- _)%E.
         iApply dwp_wand.
