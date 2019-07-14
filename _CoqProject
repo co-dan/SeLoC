@@ -9,7 +9,6 @@ theories/program_logic/heap_lang_lifting.v
 theories/program_logic/dwp_adequacy.v
 theories/proofmode/dwp_tactics.v
 theories/logrel/types.v
-theories/logrel/typemap.v
 theories/logrel/interp.v
 theories/examples/rand.v
 theories/examples/lock.v

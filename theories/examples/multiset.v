@@ -4,7 +4,7 @@ From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
-From iris_ni.logrel Require Import typemap interp.
+From iris_ni.logrel Require Import interp.
 From iris_ni.examples Require Import lock.
 
 (*
@@ -68,7 +68,7 @@ Definition new_ms : val := λ: <>,
   in ("insert", "size").
 
 Section proof.
-  Context `{!heapDG Σ, !typemapG (loc*loc) Σ, !lockG Σ}.
+  Context `{!heapDG Σ, !lockG Σ}.
 
   Program Definition joint_list_pre (P : val -> val -> iProp Σ) :
     (locO -n> locO -n> iProp Σ) -n> (locO -n> locO -n> iProp Σ)

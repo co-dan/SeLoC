@@ -12,7 +12,7 @@ Definition rand : val := λ: <>,
   !"x".
 
 Section proof.
-  Context `{!heapDG Σ, !typemap.typemapG (loc*loc) Σ}.
+  Context `{!heapDG Σ}.
 
   Lemma rand_sec ξ :
     DWP rand #() & rand #() : ⟦ tbool Low ⟧ ξ.
@@ -37,7 +37,7 @@ Section proof.
     iModIntro. iNext. dwp_pures=>/=.
     dwp_bind (Fork _) (Fork _).
     iApply (dwp_wand with "[-]").
-    { iApply (dwp_fork ξ).
+    { iApply (logrel_fork ξ).
       pose (Φ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ #false)%I).
       pose (Φ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ #false)%I).
       iApply (dwp_atomic_lift_wp Φ1 Φ2%I); try done.

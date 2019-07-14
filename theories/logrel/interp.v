@@ -2,7 +2,7 @@ From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 From iris.proofmode Require Import tactics.
-From iris_ni.logrel Require Import types typemap.
+From iris_ni.logrel Require Import types.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang proofmode.
 From Equations Require Import Equations.
@@ -60,7 +60,7 @@ End lrel_ofe.
 Arguments lrelC : clear implicits.
 
 Section semtypes.
-  Context `{!heapDG Σ, !typemapG (loc*loc) Σ}.
+  Context `{!heapDG Σ}.
 
   Implicit Types e : expr.
   Implicit Types E : coPset.
@@ -68,12 +68,7 @@ Section semtypes.
 
   Definition locsN := nroot.@"locsinv".
 
-  Definition locs_inv ξ (I : type → lrel Σ) :=
-    (∃ (f : gmap (loc*loc) (type*slevel)), typemap_ctx f ∗
-       [∗ map] ll ↦ τl ∈ f, ∃ v1 v2, ll.1 ↦ₗ v1 ∗ ll.2 ↦ᵣ v2 ∗
-                                      I (curry stamp τl) ξ v1 v2)%I.
-
-  Definition lrel_unit : lrel Σ := LRel (λ _ w1 w2, ⌜ w1 = #() ∧ w2 = #() ⌝%I).
+    Definition lrel_unit : lrel Σ := LRel (λ _ w1 w2, ⌜ w1 = #() ∧ w2 = #() ⌝%I).
   Definition lrel_int (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
       ∃ n1 n2 : Z, ⌜w1 = #n1⌝ ∧ ⌜w2 = #n2⌝ ∧ ⌜l ⊑ ξ → n1 = n2⌝)%I.
   Definition lrel_bool (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
@@ -90,16 +85,9 @@ Section semtypes.
     □ ∀ v1 v2, A1 ξ v1 v2 -∗ DWP (w1 v1) & (w2 v2) : A2 ξ)%I.
 
 
-  (* There might be tempation to define
-     ⟦ tref τ l ⟧ (v1,v2) as ∃ l1 l2, v1 = #l1 ∧ v2 = #l2 ∧
-                          inv N (∃ w1 w2, l1 ↦ₗ w1 ∗ l2 ↦ᵣ w2 ∗ ⟦ τ ⊔ l ⟧ (w1, w2)
-
-   but then we will not be able to prove that reference are monotone in the label
-   (because invariants are, well, invariant)
-   *)
-  Definition lrel_ref (τ : type) : lrel Σ := LRel (λ ξ w1 w2,
+  Definition lrel_ref (A : lrel Σ) : lrel Σ := LRel (λ ξ w1 w2,
     ∃ l1 l2: loc, ⌜w1 = #l1⌝ ∧ ⌜w2 = #l2⌝ ∧
-      has_type (l1,l2) τ Low)%I.
+      inv (locsN.@(l1,l2)) (∃ v1 v2, l1 ↦ₗ v1 ∗ l2 ↦ᵣ v2 ∗ A ξ v1 v2))%I.
 
   Equations interp (τ : type) : lrel Σ
     by wf (type_measure τ) :=
@@ -110,12 +98,12 @@ Section semtypes.
     lrel_arr (interp s) (interp (stamp t l)) l;
   (* TODO: is this stamp needed here? *)
   interp (tprod τ1 τ2) := lrel_prod (interp τ1) (interp τ2);
-  interp (tref τ) := lrel_ref τ.
+  interp (tref τ) := lrel_ref (interp τ).
   Next Obligation. lia. Qed.
   Next Obligation. rewrite -stamp_measure. lia. Qed.
   Next Obligation. lia. Qed.
   Next Obligation. lia. Qed.
-  (* Next Obligation. lia. Qed. *)
+  Next Obligation. lia. Qed.
 
   Lemma interp_eq τ :
     interp τ =
@@ -126,7 +114,7 @@ Section semtypes.
     | tarrow s t l =>
       lrel_arr (interp s) (interp (stamp t l)) l
     | tprod τ1 τ2 => lrel_prod (interp τ1) (interp τ2)
-    | tref τ => lrel_ref τ
+    | tref τ => lrel_ref (interp τ)
     end.
   Proof. by funelim (interp τ). Qed.
 
@@ -170,23 +158,21 @@ Section semtypes.
       rewrite IHHsub1 IHHsub2. iExists _,_,_,_. repeat iSplit; eauto.
   Admitted.
 
-  Definition locationsI ξ := inv locsN (locs_inv ξ interp).
-
 End semtypes.
 
 Notation "⟦ τ ⟧" := (interp τ).
 
 Section rules.
-  Context `{!heapDG Σ, !typemapG (loc*loc) Σ}.
+  Context `{!heapDG Σ}.
 
-  Lemma dwp_int ξ (i : Z) l :
+  Lemma logrel_int ξ (i : Z) l :
     DWP #i & #i : ⟦ tint l ⟧ ξ.
   Proof.
     iApply dwp_value. iModIntro.
     iExists i, i. iPureIntro. naive_solver.
   Qed.
 
-  Lemma dwp_int_high ξ (i1 i2 : Z) l :
+  Lemma logrel_int_high ξ (i1 i2 : Z) l :
     ¬ (l ⊑ ξ) →
     DWP (of_val #i1) & (of_val #i2) : ⟦ tint l ⟧ ξ.
   Proof.
@@ -194,21 +180,21 @@ Section rules.
     iExists i1, i2. iPureIntro. naive_solver.
   Qed.
 
-  Lemma dwp_unit ξ :
+  Lemma logrel_unit ξ :
     DWP (of_val #()) & (of_val #()) : ⟦ tunit ⟧ ξ.
   Proof.
     iApply dwp_value. iModIntro.
     iPureIntro. eauto.
   Qed.
 
-  Lemma dwp_bool ξ (b : bool) l :
+  Lemma logrel_bool ξ (b : bool) l :
     DWP #b & #b : ⟦ tbool l ⟧ ξ.
   Proof.
     iApply dwp_value. iModIntro.
     iExists b, b. iPureIntro. naive_solver.
   Qed.
 
-  Lemma dwp_bool_high ξ (b1 b2 : bool) l :
+  Lemma logrel_bool_high ξ (b1 b2 : bool) l :
     ¬ (l ⊑ ξ) →
     DWP (of_val #b1) & (of_val #b2) : ⟦ tbool l ⟧ ξ.
   Proof.
@@ -216,7 +202,7 @@ Section rules.
     iExists b1, b2. iPureIntro. naive_solver.
   Qed.
 
-  Lemma dwp_if ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
+  Lemma logrel_if ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
     (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
     ((DWP t1 & t2 : A ξ) ∧
         (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : A ξ)) -∗
@@ -239,7 +225,20 @@ Section rules.
       + by iDestruct "Hu" as "[$ _]".
   Qed.
 
-  Lemma dwp_lam ξ x e1 e2 τ1 τ2 l :
+  Lemma logrel_if_low ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
+    l ⊑ ξ →
+    (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
+    (DWP t1 & t2 : A ξ) -∗
+    (DWP u1 & u2 : A ξ) -∗
+    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A ξ.
+  Proof.
+    iIntros (Hl) "He Ht Hu".
+    iApply (logrel_if with  "He [Ht] [Hu]").
+    - iSplit; first done. iIntros (?). by exfalso.
+    - iSplit; first done. iIntros (?). by exfalso.
+  Qed.
+
+  Lemma logrel_lam ξ x e1 e2 τ1 τ2 l :
     □ (∀ v1 v2, ⟦ τ1 ⟧ ξ v1 v2 -∗
          DWP subst' x v1 e1 & subst' x v2 e2 : ⟦ stamp τ2 l ⟧ ξ) -∗
     DWP (λ: x, e1)%V & (λ: x, e2)%V : ⟦ tarrow τ1 τ2 l ⟧ ξ.
@@ -250,7 +249,7 @@ Section rules.
     by iApply "H".
   Qed.
 
-  Lemma dwp_app ξ e1 e2 e1' e2' τ1 τ2 l :
+  Lemma logrel_app ξ e1 e2 e1' e2' τ1 τ2 l :
     (DWP e1 & e2 : ⟦ tarrow τ1 τ2 l ⟧ ξ) -∗
     (DWP e1' & e2' : ⟦ τ1 ⟧ ξ) -∗
     DWP e1 e1' & e2 e2' : ⟦ stamp τ2 l ⟧ ξ.
@@ -264,7 +263,7 @@ Section rules.
     iDestruct "Hf" as "#Hf". iApply ("Hf" with "Hv").
   Qed.
 
-  Lemma dwp_seq ξ e1 e2 e1' e2' A τ2 :
+  Lemma logrel_seq ξ e1 e2 e1' e2' A τ2 :
     (DWP e1 & e2 : A) -∗
     (DWP e1' & e2' : ⟦ τ2 ⟧ ξ) -∗
     DWP (e1;; e1') & (e2;; e2') : ⟦ τ2 ⟧ ξ.
@@ -276,7 +275,7 @@ Section rules.
     iApply "H2".
   Qed.
 
-  Lemma dwp_fork ξ e1 e2 :
+  Lemma logrel_fork ξ e1 e2 :
     (DWP e1 & e2 : ⟦ tunit ⟧ ξ) -∗
     (DWP Fork e1 & Fork e2 : ⟦ tunit ⟧ ξ).
   Proof.
@@ -285,13 +284,11 @@ Section rules.
     - iNext. eauto.
   Qed.
 
-  (* DF: Equivalently do it for l = Low *)
-  Lemma dwp_alloc ξ e1 e2 τ :
-    locationsI ξ -∗
+  Lemma logrel_alloc ξ e1 e2 τ :
     (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
     DWP (ref e1) & (ref e2) : ⟦ tref τ ⟧ ξ.
   Proof.
-    iIntros "#Hinv He". rewrite /locationsI.
+    iIntros "He".
     dwp_bind e1 e2.
     iApply (dwp_wand with "He").
     iIntros (v1 v2) "#Hv".
@@ -303,25 +300,19 @@ Section rules.
     - rewrite /WP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame.
     - iIntros (? ?). iDestruct 1 as (l1 ->) "Hl1".
       iDestruct 1 as (l2 ->) "Hl2".
-      iInv locsN as (f) "[>Hf Hlocs]" "Hcl".
-      assert (f !! (l1, l2) = None).
-      { (* otherwise we can extract l1 ↦ .. from the Hlocs and get a
-      contradiction *) admit. }
-      iMod (typemap_alloc f (l1,l2) τ with "Hf") as "[Hf Hll]"; auto.
-      iMod ("Hcl" with "[-Hll]") as "_".
-      { iNext. iExists _. iFrame.
-        rewrite big_sepM_insert=>//. iFrame.
-        iExists _,_. simpl. iFrame.
-        iApply (interp_sub_mono with "Hv"). apply stamp_sub. }
-      iModIntro. iNext. iExists _,_. repeat iSplit; eauto.
-  Admitted.
+      iMod (inv_alloc (locsN.@(l1,l2)) _
+             (∃ v1 v2, l1 ↦ₗ v1 ∗ l2 ↦ᵣ v2 ∗ ⟦ τ ⟧ ξ v1 v2)%I with "[-]")
+        as "#Hinv".
+      { iNext. iExists _,_. eauto with iFrame. }
+      iModIntro. iNext. rewrite (interp_eq (tref τ)).
+      iExists _,_. repeat iSplit; eauto.
+  Qed.
 
-  Lemma dwp_deref ξ e1 e2 τ :
-    locationsI ξ -∗
+  Lemma logrel_deref ξ e1 e2 τ :
     (DWP e1 & e2 : ⟦ tref τ ⟧ ξ) -∗
     DWP !e1 & !e2 : ⟦ τ ⟧ ξ.
   Proof.
-    iIntros "#Hinv He". rewrite /locationsI.
+    iIntros "He".
     dwp_bind e1 e2.
     iApply (dwp_wand with "He").
     iIntros (v1 v2). rewrite interp_eq /lrel_car /=.
@@ -331,11 +322,7 @@ Section rules.
     pose (Φ2 := (λ v, l2 ↦ᵣ{1/2} v)%I).
 
     iApply (dwp_atomic_lift_wp Φ1 Φ2); try done.
-    iInv locsN as (f) "[>Hf Hlocs]" "Hcl".
-    iDestruct (typemap_lookup with "Hf Hll") as %[l' [Hf Hl']].
-    rewrite (big_sepM_lookup_acc _ f (l1,l2))=>//.
-    iDestruct "Hlocs" as "[Hl1l2 Hlocs]".
-    iDestruct "Hl1l2" as (v1 v2) "(>Hl1 & >Hl2 & #Hτ')".
+    iInv (locsN.@(l1,l2)) as (v1 v2) "(>Hl1 & >Hl2 & #Hv)" "Hcl".
     iModIntro. iSimpl in "Hl1". iSimpl in "Hl2".
     iDestruct "Hl1" as "[Hl1 Hl1']".
     iDestruct "Hl2" as "[Hl2 Hl2']".
@@ -348,44 +335,34 @@ Section rules.
       iDestruct (mapsto_agree with "Hl2 Hl2'") as %->.
       iCombine "Hl2 Hl2'" as "Hl2".
       iMod ("Hcl" with "[-]") as "_".
-      { iNext. iExists _. iFrame. iApply "Hlocs".
-        eauto with iFrame. }
-      iModIntro. iNext. simpl. iApply (interp_sub_mono with "Hτ'").
-      rewrite -{2}(stamp_low τ).
-      by apply stamp_mono_2.
+      { iNext. iExists _,_. by iFrame. }
+      iModIntro. iNext. simpl. iApply "Hv".
   Qed.
 
-  Lemma dwp_store ξ e1 e2 t1 t2 τ :
-    locationsI ξ -∗
+  Lemma logrel_store ξ e1 e2 t1 t2 τ :
     (DWP e1 & e2 : ⟦ tref τ ⟧ ξ) -∗
     (DWP t1 & t2 : ⟦ τ ⟧ ξ) -∗
     DWP (e1 <- t1) & (e2 <- t2) : ⟦ tunit ⟧ ξ.
   Proof.
-    iIntros "#Hinv He Ht". rewrite /locationsI.
+    iIntros "He Ht".
     dwp_bind t1 t2. iApply (dwp_wand with "Ht").
     iIntros (w1 w2) "Hw".
     dwp_bind e1 e2. iApply (dwp_wand with "He").
-    iIntros (? ?). iDestruct 1 as (r1 r2 -> ->) "Hr".
+    iIntros (? ?). rewrite (interp_eq (tref _)).
+    iDestruct 1 as (r1 r2 -> ->) "Hr".
 
     pose (Φ1 := (λ v, ⌜v = #()⌝ ∧ r1 ↦ₗ w1)%I).
     pose (Φ2 := (λ v, ⌜v = #()⌝ ∧ r2 ↦ᵣ w2)%I).
 
     iApply (dwp_atomic_lift_wp Φ1 Φ2); try done.
-    iInv locsN as (f) "[>Hf Hlocs]" "Hcl".
-    iDestruct (typemap_lookup with "Hf Hr") as %[l' [Hf Hl']].
-    rewrite (big_sepM_lookup_acc _ f (r1,r2))=>//.
-    iDestruct "Hlocs" as "[Hr1r2 Hlocs]".
-    iDestruct "Hr1r2" as (v1 v2) "(>Hr1 & >Hr2 & #Hτ')".
+    iInv (locsN.@(r1,r2)) as (v1 v2) "(>Hr1 & >Hr2 & #Hv)" "Hcl".
     iModIntro. iSimpl in "Hr1". iSimpl in "Hr2".
     iSplitL "Hr1"; [|iSplitL "Hr2"].
     - rewrite /WP1 /Φ1. wp_store. eauto.
     - rewrite /WP2 /Φ2. wp_store. eauto.
     - iIntros (? ?) "[-> Hr1] [-> Hr2]".
       iMod ("Hcl" with "[-]") as "_".
-      { iNext. iExists _. iFrame. iApply "Hlocs".
-        iExists _, _. iFrame.
-        iApply (interp_sub_mono with "Hw").
-        simpl. apply stamp_sub. }
+      { iNext. iExists _,_. by iFrame. }
       iModIntro. eauto.
   Qed.
 
@@ -403,25 +380,24 @@ Section rules.
     !#r'.
 
   Definition bad_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
-    locationsI Low -∗
     ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
     ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
     DWP (prog r1 r1' h1) & (prog r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
-    iIntros "#Hinv #Hr #Hr' #Hh".
-    iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+    iIntros "#Hr #Hr' #Hh".
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
       - iApply dwp_value. iModIntro. iApply "Hr".
-      - by iApply dwp_bool. }
-    iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - by iApply logrel_bool. }
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
       - iApply dwp_value. iModIntro. iApply "Hr'".
-      - by iApply dwp_bool. }
+      - by iApply logrel_bool. }
     (* Attempt by structural reasoning (will fail at `let x = ..`) *)
     dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
     iApply (dwp_wand with "[]").
-    { iApply dwp_if.
+    { iApply logrel_if.
       - iApply dwp_value. iApply "Hh".
       - iSplit.
         + iApply dwp_value. simpl.
@@ -429,7 +405,7 @@ Section rules.
         + iIntros (?).
     (* Attempt by symbolic execution (will fail at the store) *)
     (* destruct h1, h2. *)
-    (* { dwp_pures. simpl. admit. } *)
+    (* { logrel_pures. simpl. admit. } *)
   Abort.
 
   Definition prog_good (r r' : loc) (h : bool) : expr :=
@@ -439,36 +415,35 @@ Section rules.
     !#r'.
 
   Definition good_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
-    locationsI Low -∗
     ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
     ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
     DWP (prog_good r1 r1' h1) & (prog_good r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
-    iIntros "#Hinv #Hr #Hr' #Hh".
-    iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+    iIntros "#Hr #Hr' #Hh".
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
       - iApply dwp_value. iModIntro. iApply "Hr".
-      - by iApply dwp_bool. }
-    iApply dwp_seq.
-    { iApply (dwp_store Low _ _ _ _ (tbool Low)); auto.
+      - by iApply logrel_bool. }
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
       - iApply dwp_value. iModIntro. iApply "Hr'".
-      - by iApply dwp_bool. }
+      - by iApply logrel_bool. }
     destruct h1, h2.
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_deref; eauto. iApply dwp_value.
+      { iApply logrel_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_deref; eauto. iApply dwp_value.
+      { iApply logrel_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_deref; eauto. iApply dwp_value.
+      { iApply logrel_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
     { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
-      { iApply dwp_deref; eauto. iApply dwp_value.
+      { iApply logrel_deref; eauto. iApply dwp_value.
         iApply "Hr'". }
       simpl. eauto. }
   Qed.

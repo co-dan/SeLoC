@@ -5,7 +5,7 @@ From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
-From iris_ni.logrel Require Import typemap interp.
+From iris_ni.logrel Require Import interp.
 From iris_ni.examples Require Import lock par.
 
 Definition thread1 : val :=
@@ -34,7 +34,7 @@ Definition prog : val := λ: "data" "out",
   thread1 "lk" "out" "rec" ||| thread2 "lk" "rec".
 
 Section proof.
-  Context `{!heapDG Σ, !typemapG (loc*loc) Σ, !lockG Σ, !spawnG Σ}.
+  Context `{!heapDG Σ, !lockG Σ, !spawnG Σ}.
   Definition lockN := nroot.@"lock".
 
   Definition rec_inv is_classified1 is_classified2 rd1 rd2 ξ :=
@@ -46,12 +46,11 @@ Section proof.
   Definition N := nroot.@"rec_is_classified".
 
   Lemma proof out1 out2 dat1 dat2 ξ :
-    locationsI ξ -∗
     ⟦ tref (tint Low) ⟧ ξ out1 out2 -∗
     ⟦ tint High ⟧ ξ dat1 dat2 -∗
     DWP (prog dat1 out1) & (prog dat2 out2) : ⟦ tprod tunit tunit ⟧ ξ.
   Proof.
-    iIntros "#OwO #Hout #Hdat".
+    iIntros "#Hout #Hdat".
     dwp_rec. dwp_pures.
 
     dwp_bind (ref _)%E (ref _)%E.
@@ -88,8 +87,8 @@ Section proof.
         iNext. iIntros "[Hd1 Hd2]".
 
         dwp_bind (_ <- _)%E (_ <- _)%E.
-        iApply (dwp_wand with "[OwO]").
-        { iApply (interp.dwp_store with "OwO [] []").
+        iApply dwp_wand.
+        { iApply logrel_store.
           - by iApply dwp_value.
           - by iApply dwp_value. }
         iIntros (? ?) "Hunit".
