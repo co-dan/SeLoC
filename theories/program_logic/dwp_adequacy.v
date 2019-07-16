@@ -4,6 +4,7 @@ From iris.base_logic.lib Require Import wsat.
 From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang notation lifting proofmode. (* for the example *)
 From iris_ni.program_logic Require Export dwp lifting heap_lang_lifting.
+From iris_ni.logrel Require Export types interp.
 Import uPred.
 
 (** Now we define a simulation from a DWP *)
@@ -160,17 +161,52 @@ Qed.
 (** Now the relation *)
 Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
-  (σ1 σ2 : state) (Φ : val → val → iProp Σ) :=
+  (σ1 σ2 : state) (out1 out2 : loc) (Φ : val → val → iProp Σ) :=
   ∃ n, ∀ `{Hinv : !invG Σ},
       (Nat.iter n mega_future
          (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
                    (p1 p2 : proph_mapG proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
+            ⟦ tref (tint Low) ⟧ Low #out1 #out2 ∗
             [∗ list] e;s ∈ es;ss, dwp ⊤ e s Φ))%I.
 
 Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
+(** Lifting DWP proofs *)
+Lemma dwp_lift_bisim e1 e2 σ1 σ2 (out1 out2 : loc) (n : Z)Σ `{!invPreG Σ, !heapPreDG Σ} :
+  σ1.(heap) !! out1 = Some #n →
+  σ2.(heap) !! out2 = Some #n →
+  (∀ `{!heapDG Σ}, ⟦ tref (tint Low) ⟧ Low #out1 #out2 -∗ DWP e1 & e2 : I) →
+  dwp_rel Σ [e1] [e2] σ1 σ2 out1 out2 I.
+Proof.
+  intros Hσ1 Hσ2 Hdwp.
+  exists 0%nat. intros Hinv. simpl.
+  pose (σ1' := delete out1 (σ1.(heap))).
+  pose (σ2' := delete out2 (σ2.(heap))).
+  iMod (gen_heap_init σ1') as (hg1) "Hh1".
+  iMod (gen_heap_alloc σ1' out1 #n with "Hh1") as "(Hh1 & Hout1 & Htok1)".
+  { apply lookup_delete. }
+  iMod (gen_heap_init σ2') as (hg2) "Hh2".
+  iMod (gen_heap_alloc σ2' out2 #n with "Hh2") as "(Hh2 & Hout2 & Htok2)".
+  { apply lookup_delete. }
+
+  iMod (proph_map_init [] σ1.(used_proph_id)) as (pg1) "Hp1".
+  iMod (proph_map_init [] σ2.(used_proph_id)) as (pg2) "Hp2".
+
+  pose (Hdheap := (HeapDG Σ Hinv pg1 pg2 hg1 hg2)).
+
+  iMod
+    (interp_ref_alloc Low out1 out2 #n #n (tint Low)
+       with "Hout1 Hout2 []") as "#Hrf".
+  { rewrite interp_eq. iExists n,n; eauto. }
+
+  iModIntro. iExists hg1,hg2,pg1,pg2.
+  rewrite !insert_delete !insert_id //. 
+  iFrame "Hh1 Hh2 Hp1 Hp2 Hrf".
+  iSplit; last done.
+  iApply (Hdwp with "Hrf").
+Qed.
 
 (** Example program that satisfies the relation *)
 Definition e_test := (let: "x" := ref #0 in !"x")%E.
@@ -197,23 +233,20 @@ Proof.
 
   iApply (dwp_load with "Hl1 Hl2"). iNext. eauto.
 Qed.
-Lemma dwp_rel_e_test σ1 σ2 Σ `{!invPreG Σ, !heapPreDG Σ} :
-  dwp_rel Σ [e_test] [e_test] σ1 σ2 I.
+
+Lemma dwp_rel_e_test σ1 σ2 out1 out2 (n : Z) Σ `{!invPreG Σ, !heapPreDG Σ} :
+  σ1.(heap) !! out1 = Some #n →
+  σ2.(heap) !! out2 = Some #n →
+  dwp_rel Σ [e_test] [e_test] σ1 σ2 out1 out2 I.
 Proof.
-  exists 0%nat. intros Hinv. simpl.
-  iMod (gen_heap_init σ1.(heap)) as (hg1) "Hh1".
-  iMod (gen_heap_init σ2.(heap)) as (hg2) "Hh2".
-  iMod (proph_map_init [] σ1.(used_proph_id)) as (pg1) "Hp1".
-  iMod (proph_map_init [] σ2.(used_proph_id)) as (pg2) "Hp2".
-  iModIntro. iExists hg1,hg2,pg1,pg2. iFrame.
-  pose (Hdheap := (HeapDG Σ Hinv pg1 pg2 hg1 hg2)).
-  iSplit; last done.
-  iApply dwp_e_test.
+  intros Hσ1 Hσ2.
+  apply dwp_lift_bisim with (n:=n)=>//.
+  intros ?. iIntros "_". iApply dwp_e_test.
 Qed.
 
 (** The relation has good properties *)
-Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 :
-  dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 I →
+Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 out1 out2 :
+  dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 out1 out2 I →
   v1 = v2.
 Proof.
   intros [n HR].
@@ -222,15 +255,38 @@ Proof.
   iApply (mega_futureN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR H]".
-  rewrite big_sepL2_cons. iDestruct "H" as "[H _]".
+  rewrite big_sepL2_cons. iDestruct "H" as "(_ & H & _)".
   rewrite dwp_value_inv'. done.
 Qed.
 
-Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 Φ :
+Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 out1 out2 :
+  dwp_rel Σ e s σ1 σ2 out1 out2 I →
+  σ1.(heap) !! out1 = σ2.(heap) !! out2.
+Proof.
+  intros [n HR].
+  eapply (mega_futureN_soundness n)=>Hinv.
+  iPoseProof (HR Hinv) as "HR".
+  iApply (mega_futureN_mono with "HR").
+  iIntros "HR".
+  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv _]]".
+  iDestruct "HSR" as "(Hσ1 & _ & Hσ2 & _)".
+  rewrite interp_eq. iDestruct "Hinv" as (o1 o2 ? ?) "#Hinv".
+  simplify_eq/=.
+  iApply fupd_plain_mask.
+  iInv (locsN.@(o1, o2)) as (v1 v2) "(>Ho1 & >Ho2 & >Hv)" "_".
+  iModIntro.
+  iDestruct "Hv" as (i1 i2 -> ->) "%".
+  assert (i1 = i2) as -> by eauto.
+  iDestruct (gen_heap_valid with "Hσ1 Ho1") as %->.
+  iDestruct (gen_heap_valid with "Hσ2 Ho2") as %->.
+  done.
+Qed.
+
+Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 out1 out2 Φ :
   es !! i = Some e →
   ss !! i = Some s →
   language.to_val e = None →
-  dwp_rel Σ es ss σ1 σ2 Φ →
+  dwp_rel Σ es ss σ1 σ2 out1 out2 Φ →
   reducible_no_obs e σ1 ∧ reducible_no_obs s σ2.
 Proof.
   intros Hes Hss He [n HR].
@@ -238,17 +294,17 @@ Proof.
   iPoseProof (HR Hinv) as "HR".
   iApply (mega_futureN_mono with "HR").
   iIntros "HR". iApply fupd_plain_mask_empty.
-  iMod "HR" as (h1 h2 p1 p2) "[HSR H]".
+  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre He) in "H".
   iMod ("H" $! _ _ [] [] [] [] with "HSR") as (Hred1 Hred2) "H".
   iModIntro. done.
 Qed.
 
-Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 Φ :
+Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 out1 out2 Φ :
   es !! i = Some e →
   ss !! i = Some s →
-  dwp_rel Σ es ss σ1 σ2 Φ →
+  dwp_rel Σ es ss σ1 σ2 out1 out2 Φ →
   (prim_step e σ1 [] e' σ1' efs1) →
   (prim_step s σ2 [] s' σ2' efs2) →
   length efs1 = length efs2.
@@ -259,7 +315,7 @@ Proof.
   rewrite Nat_iter_S_r.
   iApply (mega_futureN_mono with "HR").
   iIntros "HR".
-  iMod "HR" as (h1 h2 p1 p2) "[HSR H]".
+  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre) in "H".
   assert (@language.to_val heap_lang e = None) as ->.
@@ -297,12 +353,12 @@ Section help.
   Qed.
 End help.
 
-Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' Φ :
+Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' out1 out2 Φ :
   length es = length ss →
-  dwp_rel Σ (es ++ e::es') (ss ++ s::ss') σ1 σ2 Φ →
+  dwp_rel Σ (es ++ e::es') (ss ++ s::ss') σ1 σ2 out1 out2 Φ →
   (prim_step e σ1 [] e' σ1' []) →
   (prim_step s σ2 [] s' σ2' []) →
-  dwp_rel Σ (es ++ e'::es') (ss ++ s'::ss') σ1' σ2' Φ.
+  dwp_rel Σ (es ++ e'::es') (ss ++ s'::ss') σ1' σ2' out1 out2 Φ.
 Proof.
   intros Hlen [n HR] Hstep1 Hstep2.
   rewrite /dwp_rel. exists (S n). move=>Hinv.
@@ -310,7 +366,7 @@ Proof.
   iPoseProof HR as "H".
   iApply (mega_futureN_mono with "H").
   rewrite /mega_future /=.
-  iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI HWP]".
+  iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI [Hinv HWP]]".
   iExists h1,h2,p1,p2.
 
   rewrite big_sepL2_app_inv=>//. rewrite big_sepL2_cons.
@@ -324,17 +380,17 @@ Proof.
   iSpecialize ("HWP" with "[//]").
   iMod "HWP" as "HWP". iModIntro. iNext.
   iMod "HWP" as "HWP". iModIntro. iNext.
-  iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. iFrame.
+  iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
 Qed.
 
 (** XXX TODO: the steps should produce forked off threads! *)
-Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' Φ :
+Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' out1 out2 Φ :
   length es = length ss →
-  dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 Φ →
+  dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 out1 out2 Φ →
   (prim_step e σ1 [] e' σ1' []) →
   ∃ s' σ2' κ2,
     prim_step s σ2 κ2 s' σ2' [] ∧
-    dwp_rel Σ (es++e'::es') (ss++s'::ss') σ1' σ2' Φ.
+    dwp_rel Σ (es++e'::es') (ss++s'::ss') σ1' σ2' out1 out2 Φ.
 Proof.
   intros Hlen HR Hstep1.
   assert (to_val e = None) as Hnon. { by eapply val_stuck. }
@@ -342,7 +398,7 @@ Proof.
   { by apply list_lookup_middle. }
   assert ((ss++s::ss') !! length es = Some s) as Hi2.
   { by apply list_lookup_middle. }
-  destruct (dwp_rel_reducible_no_obs Σ _ _ e s _ σ1 σ2 Φ Hi1 Hi2 Hnon HR) as [Hred1 Hred2].
+  destruct (dwp_rel_reducible_no_obs Σ _ _ e s _ σ1 σ2 out1 out2 Φ Hi1 Hi2 Hnon HR) as [Hred1 Hred2].
   destruct Hred2 as (s'&σ2'&efs2&Hstep2).
   assert (efs2 = []) as ->.
   { apply nil_length_inv. change 0%nat with (length (@nil expr)).
@@ -355,7 +411,7 @@ Proof.
   iPoseProof HR as "H".
   iApply (mega_futureN_mono with "H").
   rewrite /mega_future /=.
-  iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI HWP]".
+  iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI [Hinv HWP]]".
   iExists h1,h2,p1,p2.
 
   rewrite big_sepL2_app_inv=>//. rewrite big_sepL2_cons.
@@ -369,5 +425,5 @@ Proof.
   iSpecialize ("HWP" with "[//]").
   iMod "HWP" as "HWP". iModIntro. iNext.
   iMod "HWP" as "HWP". iModIntro. iNext.
-  iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. iFrame.
+  iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
 Qed.

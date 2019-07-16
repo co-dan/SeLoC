@@ -284,6 +284,21 @@ Section rules.
     - iNext. eauto.
   Qed.
 
+  Lemma interp_ref_alloc ξ (l1 l2 : loc) v1 v2 τ E :
+    l1 ↦ₗ v1 -∗
+    l2 ↦ᵣ v2 -∗
+    ⟦ τ ⟧ ξ v1 v2 ={E}=∗
+    ⟦ tref τ ⟧ ξ #l1 #l2.
+  Proof.
+    iIntros "Hl1 Hl2 Hv".
+    iMod (inv_alloc (locsN.@(l1,l2)) _
+         (∃ v1 v2, l1 ↦ₗ v1 ∗ l2 ↦ᵣ v2 ∗ ⟦ τ ⟧ ξ v1 v2)%I with "[-]")
+      as "#Hinv".
+    { iNext. iExists _,_. eauto with iFrame. }
+    iModIntro. rewrite (interp_eq (tref τ)).
+    iExists _,_. repeat iSplit; eauto.
+  Qed.
+
   Lemma logrel_alloc ξ e1 e2 τ :
     (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
     DWP (ref e1) & (ref e2) : ⟦ tref τ ⟧ ξ.
@@ -300,12 +315,7 @@ Section rules.
     - rewrite /WP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame.
     - iIntros (? ?). iDestruct 1 as (l1 ->) "Hl1".
       iDestruct 1 as (l2 ->) "Hl2".
-      iMod (inv_alloc (locsN.@(l1,l2)) _
-             (∃ v1 v2, l1 ↦ₗ v1 ∗ l2 ↦ᵣ v2 ∗ ⟦ τ ⟧ ξ v1 v2)%I with "[-]")
-        as "#Hinv".
-      { iNext. iExists _,_. eauto with iFrame. }
-      iModIntro. iNext. rewrite (interp_eq (tref τ)).
-      iExists _,_. repeat iSplit; eauto.
+      iMod (interp_ref_alloc with "Hl1 Hl2 Hv") as "$". done.
   Qed.
 
   Lemma logrel_deref ξ e1 e2 τ :
