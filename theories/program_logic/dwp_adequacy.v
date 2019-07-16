@@ -169,7 +169,8 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
             ⟦ tref (tint Low) ⟧ Low #out1 #out2 ∗
-            [∗ list] e;s ∈ es;ss, dwp ⊤ e s Φ))%I.
+            [∗ list] k↦e;s ∈ es;ss,
+                dwp ⊤ e s (if decide (k = O) then Φ else (λ _ _, True))))%I.
 
 Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
@@ -383,14 +384,13 @@ Proof.
   iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
 Qed.
 
-(** XXX TODO: the steps should produce forked off threads! *)
-Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' out1 out2 Φ :
+Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' efs out1 out2 Φ :
   length es = length ss →
   dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 out1 out2 Φ →
-  (prim_step e σ1 [] e' σ1' []) →
-  ∃ s' σ2' κ2,
-    prim_step s σ2 κ2 s' σ2' [] ∧
-    dwp_rel Σ (es++e'::es') (ss++s'::ss') σ1' σ2' out1 out2 Φ.
+  (prim_step e σ1 [] e' σ1' efs) →
+  ∃ s' σ2' κ2 sfs,
+    prim_step s σ2 κ2 s' σ2' sfs ∧
+    dwp_rel Σ (es++(e'::efs)++es') (ss++(s'::sfs)++ss') σ1' σ2' out1 out2 Φ.
 Proof.
   intros Hlen HR Hstep1.
   assert (to_val e = None) as Hnon. { by eapply val_stuck. }
@@ -400,12 +400,8 @@ Proof.
   { by apply list_lookup_middle. }
   destruct (dwp_rel_reducible_no_obs Σ _ _ e s _ σ1 σ2 out1 out2 Φ Hi1 Hi2 Hnon HR) as [Hred1 Hred2].
   destruct Hred2 as (s'&σ2'&efs2&Hstep2).
-  assert (efs2 = []) as ->.
-  { apply nil_length_inv. change 0%nat with (length (@nil expr)).
-    symmetry.
-    eapply (dwp_rel_efs_length Σ _ _ (length es) e s)=>//. }
   destruct HR as [n HR].
-  exists s', σ2', []. split; auto.
+  exists s', σ2', [], efs2. split; auto.
   rewrite /dwp_rel. exists (S n). move=>Hinv.
   rewrite Nat_iter_S_r.
   iPoseProof HR as "H".
@@ -425,5 +421,12 @@ Proof.
   iSpecialize ("HWP" with "[//]").
   iMod "HWP" as "HWP". iModIntro. iNext.
   iMod "HWP" as "HWP". iModIntro. iNext.
-  iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
+  iMod "HWP" as "(HI & HWP & Hefs)". iModIntro. iModIntro. iFrame.
+  iApply (big_sepL2_app with "[Hefs] [H2]").
+  - iApply (big_sepL2_mono with "Hefs").
+    intros; simpl. apply dwp_mono=> v1 v2.
+    rewrite -plus_n_Sm. naive_solver.
+  - iApply (big_sepL2_mono with "H2").
+    intros; simpl. apply dwp_mono=> v1 v2.
+    rewrite - !plus_n_Sm. naive_solver.
 Qed.
