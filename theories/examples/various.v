@@ -135,8 +135,8 @@ Section awk_proof.
       iDestruct "HN" as "[HN|[_ [>Hr1 >Hr2]]]";
         first iDestruct "HN" as (v1 v2) "[>Hγ' _]".
     { iExFalso. iApply (shot_not_pending with "Hγ Hγ'"). }
-    iApply (dwp_load with "Hr1 Hr2"). iNext.
-    iIntros "Hr1 Hr2". iMod ("Hcl" with "[-]") as "_".
+    iApply (dwp_load with "Hr1 Hr2").
+    iIntros "Hr1 Hr2". iNext. iMod ("Hcl" with "[-]") as "_".
     { iNext. iRight. by iFrame. }
     iModIntro. rewrite !left_id (interp_eq (tint Low)).
     iExists 1,1. by eauto.

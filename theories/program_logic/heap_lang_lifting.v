@@ -167,7 +167,7 @@ Qed.
 Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
   ▷l1 ↦ₗ v1 -∗
   ▷l2 ↦ᵣ v2 -∗
-  ▷ (l1 ↦ₗ v1 -∗ l2 ↦ᵣ v2 -∗ Φ v1 v2) -∗
+  (l1 ↦ₗ v1 -∗ l2 ↦ᵣ v2 -∗ ▷ Φ v1 v2) -∗
   dwp E (! #l1) (! #l2) Φ.
 Proof.
   iIntros "Hl1 Hl2 HΦ".
@@ -181,7 +181,7 @@ Proof.
   { iApply (wp_load  _ _ l2 1 v2 with "[Hl2]").
     iNext. done. eauto. }
   iIntros (? ?) "[% Hl1] [% Hl2]". simplify_eq.
-  iModIntro. iNext. iApply ("HΦ" with "Hl1 Hl2").
+  iModIntro. iApply ("HΦ" with "Hl1 Hl2").
 Qed.
 
 Lemma dwp_alloc E (v1 v2 : val) Φ :
@@ -215,7 +215,6 @@ Proof.
   iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
   iModIntro. iApply ("HΦ" with "Hl1 Hl2").
 Qed.
-
 
 Lemma dwp_atomic E1 E2 e1 e2 Φ
   `{Atomic _ StronglyAtomic e1}

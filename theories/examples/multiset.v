@@ -120,7 +120,7 @@ Section proof.
     dwp_bind (! _)%E (! _)%E.
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
     - iApply (dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "Hhd1 Hhd2".
+      iIntros "Hhd1 Hhd2". iNext. 
 
       dwp_pures. dwp_bind (ref _)%E (ref _)%E.
       iApply dwp_alloc.
@@ -136,7 +136,7 @@ Section proof.
       iLeft; by iFrame.
     - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
       iApply (dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "Hhd1 Hhd2".
+      iIntros "Hhd1 Hhd2". iNext.
 
       dwp_pures. dwp_bind (ref _)%E (ref _)%E.
       iApply heap_lang_lifting.dwp_alloc.
@@ -167,7 +167,7 @@ Section proof.
     rewrite {1}/(sec_list hd1 hd2) joint_list_unfold.
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
     - iApply (dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "Hhd1 Hhd2".
+      iIntros "Hhd1 Hhd2". iNext.
 
       dwp_pures. dwp_bind (ref (InjLV #()))%E (ref (InjLV #()))%E.
       iApply heap_lang_lifting.dwp_alloc.
@@ -183,7 +183,7 @@ Section proof.
       iLeft; by iFrame.
     - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
       iApply (dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "Hhd1 Hhd2".
+      iIntros "Hhd1 Hhd2". iNext.
 
       dwp_pures.
 
@@ -235,7 +235,7 @@ Section proof.
 
     dwp_rec. dwp_pures.
     dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
-    iNext. iIntros "Hl1 Hl2".
+    iIntros "Hl1 Hl2". iNext.
 
     dwp_pures. destruct b; dwp_pures.
     - (* High-security *)
@@ -281,7 +281,7 @@ Section proof.
     rewrite {1}/(sec_list hd1 hd2) (joint_list_unfold _ hd1 hd2).
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
     - iApply (dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "Hhd1 Hhd2".
+      iIntros "Hhd1 Hhd2". iNext.
 
       dwp_pures. iApply dwp_value.
       iModIntro. iApply ("HΦ" with "[-Hns] Hns").
@@ -289,7 +289,7 @@ Section proof.
       iLeft. by iFrame.
     - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
       iApply (dwp_load with "Hhd1 Hhd2").
-      iNext. iIntros "Hhd1 Hhd2".
+      iIntros "Hhd1 Hhd2". iNext.
       dwp_pures.
 
       dwp_bind (_ + _)%E (_ + _)%E.
@@ -314,7 +314,7 @@ Section proof.
     iIntros "HΦ".
     dwp_rec.
     dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
-    iNext. iIntros "Hl1 Hl2".
+    iIntros "Hl1 Hl2". iNext.
 
     dwp_pures. dwp_bind (size_loop _ _) (size_loop _ _).
     iApply (size_loop_spec with "[] Hhs").

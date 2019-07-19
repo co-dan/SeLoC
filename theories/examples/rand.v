@@ -53,7 +53,7 @@ Section proof.
     iApply dwp_atomic; try done.
     iInv N as (b) "[Hl1 Hl2]" "Hcl".
     iModIntro. iApply (dwp_load with "Hl1 Hl2").
-    iNext. iIntros "Hl1 Hl2".
+    iIntros "Hl1 Hl2". iNext.
     iMod ("Hcl" with "[-]") as "_".
     { iNext. eauto with iFrame. }
     iModIntro. iExists b,b. eauto.

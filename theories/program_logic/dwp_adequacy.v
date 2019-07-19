@@ -232,7 +232,7 @@ Proof.
   done. done. iNext.
   iApply dwp_pure_step_later=>// /=. iNext.
 
-  iApply (dwp_load with "Hl1 Hl2"). iNext. eauto.
+  iApply (dwp_load with "Hl1 Hl2"). eauto.
 Qed.
 
 Lemma dwp_rel_e_test σ1 σ2 out1 out2 (n : Z) Σ `{!invPreG Σ, !heapPreDG Σ} :
