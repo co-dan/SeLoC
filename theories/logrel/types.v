@@ -72,7 +72,15 @@ Lemma leq_meet_min_2 (l1 l2 : slevel) :
   l2 ⊑ l1 → l1 ⊓ l2 = l2.
 Proof. by destruct l1,l2; inversion 1. Qed.
 
+Lemma leq_join_max_2 (l1 l2 : slevel) :
+  l1 ⊑ l2 → l1 ⊔ l2 = l2.
+Proof. by destruct l1,l2; inversion 1. Qed.
+Lemma leq_join_max_1 (l1 l2 : slevel) :
+  l2 ⊑ l1 → l1 ⊔ l2 = l1.
+Proof. by destruct l1,l2; inversion 1. Qed.
+
 Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
+Hint Resolve leq_join_max_1 leq_join_max_2.
 Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
 
 Section slevelR_cmra.
@@ -111,6 +119,17 @@ Section slevelR_cmra.
 
   Global Instance slevelR_cmra_total : CmraTotal slevelR.
   Proof. intro x. compute. eauto. Qed.
+
+  Global Instance slevelO_unit : Unit slevelO := High.
+
+  Lemma slevelO_ucmra_mixin : UcmraMixin slevelO.
+  Proof.
+    split; try done.
+    intro x. destruct x; cbv; done.
+  Qed.
+
+  Canonical Structure slevelUR : ucmraT := UcmraT slevelO slevelO_ucmra_mixin.
+
 End slevelR_cmra.
 
 
