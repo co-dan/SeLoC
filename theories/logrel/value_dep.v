@@ -53,8 +53,10 @@ Inductive cl_state :=
 Canonical Structure cl_stateO := leibnizO cl_state.
 Instance cl_state_inhabited : Inhabited cl_state := populate Declassified.
 
-(* (* Definition valueDepG Σ := authG Σ (optionUR (prodR fracR slevelUR)). *) *)
-(* Definition valueDepG Σ := authG Σ slevelUR. *)
+Class valueDepG Σ := ValueDepG {
+   value_dep_stateG :> authG Σ (optionUR (exclR cl_stateO));
+   value_dep_slelveG :> authG Σ (optionUR (prodR fracR (agreeR slevelO)));
+}.
 
 Section value_dep.
   Implicit Types α : slevel.
@@ -62,10 +64,7 @@ Section value_dep.
   Implicit Types γ : gname.
   Implicit Types τ : type.
   Implicit Types b : bool.
-  (* Context `{!heapDG Σ, !valueDepG Σ}. *)
-  (* TODO: fails without this line *)
-  Context `{!heapDG Σ, !(authG Σ (optionUR (prodR fracR (agreeR slevelO))))}.
-  Context `{!(authG Σ (optionUR (exclR cl_stateO)))}.
+  Context `{!heapDG Σ, !valueDepG Σ}.
 
   (* XXX *)
   Hint Rewrite interp_eq.
