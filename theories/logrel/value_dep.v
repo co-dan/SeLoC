@@ -1,6 +1,14 @@
-(** Value-dependent classifications.
-TODO: use meta-tokens
- *)
+(** Value-dependent classifications. TODO: use meta-tokens
+
+This implements value-dependent classification for locations with the
+following protocol:
+- Multiple threads can read and write from the location
+- Only a single thread can classify/declassify the location.
+
+An alternative protocol could be:
+- Multiple threads can read the data and declassify the location
+- A single thread can write data classify the location
+*)
 From iris.base_logic Require Import invariants lib.auth.
 From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang proofmode.
@@ -33,6 +41,8 @@ Definition declassify : val := rec: "declassify" "rec" "dv" :=
 Definition read_dep : val := λ: "rec", ! (Snd "rec").
 
 Definition store_dep : val := λ: "rec" "v", Snd "rec" <- "v".
+
+Definition is_classified : val := λ: "rec", ! (Fst "rec").
 
 
 Inductive cl_state :=
@@ -173,6 +183,12 @@ Section value_dep.
     | Declassified => false
     end.
 
+  Definition bool_of_lvl (sl : slevel) :=
+    match sl with
+    | High => true
+    | Low => false
+    end.
+
   Definition lvl_of_state (st : cl_state) := lvl_of_bool (bool_of_state st).
 
   Definition cl_state_inv γ γst st b τ w1 w2 ξ :=
@@ -256,20 +272,6 @@ Section value_dep.
       iApply (interp_sub_mono with "Hw"). apply stamp_sub.
   Qed.
 
-  (* (* Low values can be stored irregardless of the state. *) *)
-  (* Lemma cl_state_low_values γ γst st b τ w1 w2 v1 v2 ξ : *)
-  (*   cl_state_inv γ γst st b τ w1 w2 ξ -∗ *)
-  (*   ⟦ τ ⟧ ξ v1 v2 -∗ *)
-  (*   cl_state_inv γ γst st b τ v1 v2 ξ. *)
-  (* Proof. *)
-  (*   iIntros "Hst #Hv". rewrite /cl_state_inv. *)
-  (*   destruct st; iDestruct "Hst" as "(Hw & $)"; *)
-  (*     simpl; rewrite ?stamp_low; eauto with iFrame. *)
-  (*   iApply (interp_sub_mono with "Hv"). apply stamp_sub. *)
-  (* Qed. *)
-
-
-
   Definition value_dependent_inv γ γst τ (cl1 cl2 r1 r2 : loc) ξ :=
     (∃ (w1 w2 : val) (b : bool) (st : cl_state),
        r1 ↦ₗ w1 ∗ r2 ↦ᵣ w2 ∗ cl1 ↦ₗ #b ∗ cl2 ↦ᵣ #b ∗
@@ -282,6 +284,7 @@ Section value_dep.
       ⌜v1 = (#cl1, #r1)%V⌝ ∗ ⌜v2 = (#cl2, #r2)%V⌝ ∗
       inv (nroot.@"vdep".@(r1,r2)) (value_dependent_inv γ γst τ cl1 cl2 r1 r2 ξ))%I.
 
+  (** ** A "constructor" *)
   Lemma make_value_dependent τ (cl1 cl2 r1 r2 : loc) w1 w2 b E ξ :
     r1 ↦ₗ w1 -∗
     r2 ↦ᵣ w2 -∗
@@ -302,6 +305,29 @@ Section value_dep.
       iFrame. destruct b; simpl; rewrite ?stamp_low; by eauto with iFrame. }
     iModIntro. iExists γ,γst. iFrame.
     iExists _,_,_,_. by eauto.
+  Qed.
+
+  (** ** Specifications for the functions *)
+
+  Lemma is_classified_spec γ γst τ β rec1 rec2 q ξ :
+    value_dependent γ γst τ ξ  rec1 rec2 -∗
+    classification γ β q -∗
+    DWP is_classified rec1 & is_classified rec2 : λ v1 v2, ⌜v1 = #(bool_of_lvl β)⌝ ∗ ⌜v1 = v2⌝ ∗ classification γ β q.
+  Proof.
+    iIntros "Hdep Hf".
+    iDestruct "Hdep" as (cl1 cl2 r1 r2 -> ->) "#Hinv".
+    dwp_rec. dwp_pures.
+    iApply dwp_atomic.
+    iInv (nroot.@"vdep".@(r1, r2)) as (w1 w2 b st)
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
+    iModIntro. iApply (dwp_load with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
+
+    (** Read the ghost classification *)
+    iDestruct (classification_auth_agree with "[$Ha $Hf]") as %<-.
+
+    iMod ("Hcl" with "[- Hf]") as "_".
+    { iNext. iExists _,_,_,_. by iFrame. }
+    iModIntro. iFrame. iSplit; eauto. by destruct b; eauto.
   Qed.
 
   Lemma classify_spec γ γst τ β rec1 rec2 ξ :
