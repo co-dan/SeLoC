@@ -84,7 +84,9 @@ Section value_dep.
     - iDestruct 1 as "[H1 H2]". by iCombine "H1 H2" as "H".
   Qed.
 
-  (* TODO: Global Instance classification_asfractional : *)
+  Global Instance classification_as_fractional γ α q :
+    AsFractional (classification γ α q) (classification γ α) q.
+  Proof. split. done. apply _. Qed.
 
   Lemma classification_new α :
     (|==> ∃ γ, classification_auth γ α ∗ classification γ α 1)%I.
