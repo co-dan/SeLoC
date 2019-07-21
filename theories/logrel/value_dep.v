@@ -4,7 +4,7 @@ This implements value-dependent classification for locations with the
 following protocol:
 
 - Multiple threads can do reads, and look at the classification
-  levels, permitting arbitrary intreference. (No additional resources
+  levels, permitting arbitrary interference. (No additional resources
   are required beyond a view shift).
 
 - Only one thread can perform declassification, but it can it do
@@ -33,7 +33,7 @@ There are other variations that can be implemented:
   access the resource.
 
 What is the "best" the most general specification? It's hard to tell,
-because those resource with value-depenednt classification are
+because those resource with value-dependent classification are
 basically like references, and references are invariant in their type.
 This imposes a severe restriction on what kind of interference each
 operation can tolerate, and a lot of combinations just do not make
