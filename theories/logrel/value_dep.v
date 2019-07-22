@@ -1,4 +1,4 @@
-(** Value-dependent classifications.
+(** * Value-dependent classifications.
 
 This implements value-dependent classification for locations with the
 following protocol:
@@ -47,8 +47,6 @@ examples/value_sensitivity_2.v
 
 - use meta-tokens
 
-- saner (curried) lemmas
-
 *)
 From iris.base_logic Require Import invariants lib.auth.
 From iris.proofmode Require Import tactics.
@@ -60,7 +58,9 @@ From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp.
 
-(** We model value-dependent classified variables as records:
+(** ** Implementation
+
+We model value-dependent classified variables as records:
 
    { is_classified: ref bool;
      data : ref τ }
@@ -86,6 +86,42 @@ Definition store_dep : val := λ: "rec" "v", Snd "rec" <- "v".
 Definition is_classified : val := λ: "rec", ! (Fst "rec").
 
 
+(** ** The invariant guarding the records:
+
+There are always the following propositions together with the current
+state of the reference:
+
+- is_classified ↦ (b : bool)
+- data is related at ⟦ τ ⊔ α ⟧
+
+
+There are three possible states:
+
+
+                                +--------------+
+                                |              |
+          +-------------------->| Intermediate +-----------------+
+          |                     |              |                 v
+   +------+-------+             +--------------+          +--------------+
+   |              |             | b ∈ {true,   |          |              |
+   |  Classified  |             |       false} |          | Declassified |
+   |              |             | α = Low      |          |              |
+   +--------------+             +--------------+          +--------------+
+   |  b = false   |                                       | b = true     |
+   |  α = High    |                                       | α = Low      |
+   +--------------+                                       +------+-------+
+          ^                                                      |
+          |                                                      |
+          +------------------------------------------------------+
+
+
+The transition from [Classified] to [Intermediate] consumes
+the [classification γ β (3/4)] and produces an intermediate unique token.
+
+
+The transition from [Intermediate] to [Declassified] consumes
+that intermediate token and gives back the [classification γ β (3/4)] token. *)
+
 Inductive cl_state :=
 | Classified
 | Declassified
@@ -110,6 +146,7 @@ Section value_dep.
   (* XXX *)
   Hint Rewrite interp_eq.
 
+  (** ** Definitions and properties of tokens *)
   Definition classification γ (α : slevel) (q : frac) : iProp Σ :=
     (own γ (◯ (Some (q, to_agree α))))%I.
 
@@ -146,7 +183,7 @@ Section value_dep.
   Proof. apply _. Qed.
 
   Lemma classification_new α :
-    (|==> ∃ γ, classification_auth γ α ∗ classification γ α 1)%I.
+    (|==> ∃ γ, classification_auth γ α ∗classification γ α 1)%I.
   Proof.
     (* Why all the type annotations? *)
     rewrite /classification_auth /classification.
@@ -157,20 +194,20 @@ Section value_dep.
   Qed.
 
   Lemma classification_update μ γ α β :
-    classification_auth γ α ∗ classification γ β 1
+    classification_auth γ α -∗ classification γ β 1
     ==∗
     classification_auth γ μ ∗ classification γ μ 1.
   Proof.
-    rewrite /classification /classification_auth - !own_op. apply own_update.
-    apply auth_update.
-    apply option_local_update.
+    apply bi.wand_intro_r.
+    rewrite /classification /classification_auth - !own_op.
+    apply own_update. apply auth_update, option_local_update.
     by apply exclusive_local_update.
   Qed.
 
   Lemma classification_auth_agree γ α β q :
-    classification_auth γ α ∗ classification γ β q -∗ ⌜α = β⌝.
+    classification_auth γ α -∗ classification γ β q -∗ ⌜α = β⌝.
   Proof.
-    rewrite /classification /classification_auth - !own_op.
+    apply bi.wand_intro_r. rewrite /classification /classification_auth - !own_op.
     iIntros "H". iDestruct (own_valid with "H") as %Hfoo.
     iPureIntro; revert Hfoo.
     rewrite auth_both_valid.
@@ -202,10 +239,11 @@ Section value_dep.
   Qed.
 
   Lemma cl_state_update (new_st : cl_state) γst (st : cl_state) :
-    own γst (● Excl' st) ∗ own γst (◯ Excl' st)
+    own γst (● Excl' st) -∗ own γst (◯ Excl' st)
     ==∗
     own γst (● Excl' new_st) ∗ own γst (◯ Excl' new_st).
   Proof.
+    apply bi.wand_intro_r.
     rewrite - !own_op. apply own_update.
     apply auth_update.
     apply option_local_update.
@@ -213,9 +251,9 @@ Section value_dep.
   Qed.
 
   Lemma cl_state_agree γst (st st' : cl_state) :
-    own γst (● Excl' st) ∗ own γst (◯ Excl' st') -∗ ⌜st = st'⌝.
+    own γst (● Excl' st) -∗ own γst (◯ Excl' st') -∗ ⌜st = st'⌝.
   Proof.
-    rewrite -own_op.
+    apply bi.wand_intro_r. rewrite -own_op.
     iIntros "H". iDestruct (own_valid with "H") as %Hfoo.
     iPureIntro; revert Hfoo.
     rewrite auth_both_valid. intros [foo _].
@@ -223,6 +261,7 @@ Section value_dep.
     apply _.
   Qed.
 
+  (** Functions converting between security levels, states, and booleans *)
   Definition lvl_of_bool (b : bool) :=
     match b with
     | true => High
@@ -250,6 +289,7 @@ Section value_dep.
 
   Definition lvl_of_state (st : cl_state) := lvl_of_bool (bool_of_state st).
 
+  (** ** The invariant and transitions *)
   Definition cl_state_inv γ γst st b τ w1 w2 ξ :=
     match st with
     | Classified =>
@@ -260,6 +300,19 @@ Section value_dep.
       ⟦ τ ⟧ ξ w1 w2 ∗ classification γ (lvl_of_bool b) (3/4)
     end%I.
 
+  (** The Boolean flag always determines the "visible" classification
+  level of the reference. Whereas the actual data can be related at a
+  lower reference. This basically enables concurrent/non-blocking
+  declassification. *)
+  Definition value_dependent_inv γ γst τ (cl1 cl2 r1 r2 : loc) ξ :=
+    (∃ (w1 w2 : val) (b : bool) (st : cl_state),
+       r1 ↦ₗ w1 ∗ r2 ↦ᵣ w2 ∗ cl1 ↦ₗ #b ∗ cl2 ↦ᵣ #b ∗
+       own γst (● Excl' st) ∗
+       classification_auth γ (lvl_of_bool b) ∗
+       cl_state_inv γ γst st b τ w1 w2 ξ)%I.
+
+
+  (** Transitions as lemmas *)
   Lemma cl_state_not_intermediate γ γst st b τ w1 w2 β ξ :
     cl_state_inv γ γst st b τ w1 w2 ξ -∗
     classification γ β 1 -∗ ⌜st ≠ Intermediate⌝.
@@ -269,6 +322,7 @@ Section value_dep.
     iDestruct "Hst" as "(_ & Hc2)".
     iExFalso. iApply (classification_1_exclusive with "Hc Hc2").
   Qed.
+
 
   Lemma cl_state_not_intermediate_2 γ γst st b τ w1 w2 β ξ :
     cl_state_inv γ γst st b τ w1 w2 ξ -∗
@@ -307,7 +361,7 @@ Section value_dep.
     destruct st; try by iFrame; simplify_eq/=.
     - iDestruct "Hw" as "(-> & Hw & Hstf)". eauto with iFrame.
     - iDestruct "Hw" as "(-> & Hw & Hstf)".
-      iMod (cl_state_update Classified with "[$Hst $Hstf]") as "[$ $]".
+      iMod (cl_state_update Classified with "Hst Hstf") as "[$ $]".
       iModIntro. iSplit; eauto.
       iApply (interp_sub_mono with "Hw"). by apply stamp_sub.
   Qed.
@@ -325,10 +379,10 @@ Section value_dep.
     iIntros (?) "#Hv Hcl Hst Hw". rewrite /cl_state_inv.
     destruct st; try by iFrame; simplify_eq/=.
     - iDestruct "Hw" as "(-> & Hw & Hstf)".
-      iMod (cl_state_update Intermediate with "[$Hst $Hstf]") as "[$ $]".
+      iMod (cl_state_update Intermediate with "Hst Hstf") as "[$ $]".
       by iFrame.
     - iDestruct "Hw" as "(-> & Hw & Hstf)".
-      iMod (cl_state_update Intermediate with "[$Hst $Hstf]") as "[$ $]".
+      iMod (cl_state_update Intermediate with "Hst Hstf") as "[$ $]".
       by iFrame.
   Qed.
 
@@ -344,13 +398,6 @@ Section value_dep.
     - iDestruct "Hw" as "(Hw & Hstf)".
       iApply (interp_sub_mono with "Hw"). apply stamp_sub.
   Qed.
-
-  Definition value_dependent_inv γ γst τ (cl1 cl2 r1 r2 : loc) ξ :=
-    (∃ (w1 w2 : val) (b : bool) (st : cl_state),
-       r1 ↦ₗ w1 ∗ r2 ↦ᵣ w2 ∗ cl1 ↦ₗ #b ∗ cl2 ↦ᵣ #b ∗
-       own γst (● Excl' st) ∗
-       classification_auth γ (lvl_of_bool b) ∗
-       cl_state_inv γ γst st b τ w1 w2 ξ)%I.
 
   Definition value_dependent γ γst τ : lrel Σ := LRel (λ ξ v1 v2,
     ∃ (cl1 cl2 r1 r2: loc),
@@ -428,7 +475,7 @@ Section value_dep.
     iDestruct (cl_state_not_intermediate_2 with "Hw Hf") as %?.
 
     (** Notice that we know the exact classification of the values *)
-    iDestruct (classification_auth_agree with "[$Ha $Hf]") as %<-.
+    iDestruct (classification_auth_agree with "Ha Hf") as %<-.
 
     (** Actually update the state.. *)
     iMod (cl_state_make_intermediate with "Hv Hf Hst Hw") as "(Hst&Htok&Hw)";
@@ -447,13 +494,13 @@ Section value_dep.
     iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
 
     (** Notice that we are still in the intermediate step *)
-    iDestruct (cl_state_agree with "[$Hst $Htok]") as %->.
+    iDestruct (cl_state_agree with "Hst Htok") as %->.
     iSimpl in "Hw". iDestruct "Hw" as "[#Hw Hc]".
 
     iMod ("Hvs" with "Ha Hc") as "[Ha HQ]".
 
     (** Update the ghost state *)
-    iMod (cl_state_update Declassified with "[$Hst $Htok]") as "[Hst Hstf]".
+    iMod (cl_state_update Declassified with "Hst Htok") as "[Hst Hstf]".
 
     iMod ("Hcl" with "[-HQ]") as "_".
     { iNext. iExists _,_,false,Declassified.
@@ -503,7 +550,7 @@ Section value_dep.
                    "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
     iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
 
-    iDestruct (classification_auth_agree with "[$Ha $Hf]") as %<-.
+    iDestruct (classification_auth_agree with "Ha Hf") as %<-.
     (** Notice that we cannot be in the intermediate state *)
     iDestruct (cl_state_not_intermediate with "Hw Hf") as %?.
 
@@ -533,7 +580,7 @@ Section value_dep.
                    "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
     iModIntro. iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
 
-    iDestruct (classification_auth_agree with "[$Ha $Hf]") as %<-.
+    iDestruct (classification_auth_agree with "Ha Hf") as %<-.
 
     (** Notice that we cannot be in the intermediate state *)
     iDestruct (cl_state_not_intermediate_2 with "Hw Hf") as %?.

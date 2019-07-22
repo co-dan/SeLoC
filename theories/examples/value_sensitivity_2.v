@@ -46,7 +46,7 @@ Section proof.
     iApply (is_classified_spec with "Hvd").
     iIntros (α) "Ha".
     iInv N as "[[Htok >Hc]|[#Htok >Hc]]" "Hcl";
-      iDestruct (classification_auth_agree with "[$Ha $Hc]") as %->;
+      iDestruct (classification_auth_agree with "Ha Hc") as %->;
       iFrame "Ha".
     + iMod ("Hcl" with "[Htok Hc]") as "_".
       { iNext. iLeft. iFrame. }
@@ -60,7 +60,7 @@ Section proof.
       iIntros (α v1 v2) "Ha #Hv".
       iInv N as "[[>Htok2 >Hc]|[_ >Hc]]" "Hcl".
       { iExFalso. iApply (shot_not_pending with "Htok Htok2"). }
-      iDestruct (classification_auth_agree with "[$Ha $Hc]") as %->.
+      iDestruct (classification_auth_agree with "Ha Hc") as %->.
       iFrame "Ha".
       iMod ("Hcl" with "[Htok Hc]") as "_".
       { iNext. iRight. by iFrame. }
@@ -104,9 +104,9 @@ Section proof.
       assert (Heq : ((3/4)%Qp + (1/4)%Qp)%Qp = 1%Qp).
       { by apply (bool_decide_unpack _). }
       iInv N as "[[>Htok >Hc]|[#Htok >Hc]]" "Hcl";
-        iDestruct (classification_auth_agree with "[$Ha $Hc]") as %->;
+        iDestruct (classification_auth_agree with "Ha Hc") as %->;
         iCombine "Hf Hc" as "Hc"; rewrite Heq;
-        iMod (classification_update Low with "[$Ha $Hc]") as "[$ Hc]";
+        iMod (classification_update Low with "Ha Hc") as "[$ Hc]";
         rewrite classification_quarter;
         iDestruct "Hc" as "[Hc1 Hc]".
       + iMod (shoot with "Htok") as "Htok".
