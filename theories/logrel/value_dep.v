@@ -280,7 +280,9 @@ Section value_dep.
     iExFalso. iDestruct (own_valid_2 with "Hc Hc2") as %Hfoo.
     iPureIntro. revert Hfoo.
     rewrite -auth_frag_op auth_frag_valid -Some_op Some_valid.
-    rewrite pair_op frac_op'. Admitted.
+    rewrite pair_op frac_op'.
+    intros [foo%frac_valid' _]; eauto.
+  Qed.
 
   (* We can change the values unless we are in the intermediate step *)
   Lemma cl_state_change_values γ γst st b τ w1 w2 v1 v2 ξ :
