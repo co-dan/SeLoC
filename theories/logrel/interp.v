@@ -118,45 +118,81 @@ Section semtypes.
     end.
   Proof. by funelim (interp τ). Qed.
 
+  Lemma interp_label_mono τ l1 l2 ξ v1 v2 :
+    l1 ⊑ l2 →
+    interp (stamp τ l1) ξ v1 v2 -∗ interp (stamp τ l2) ξ v1 v2.
+  Proof.
+    revert v1 v2 l1 l2. induction τ=>v1 v2 l1 l2 Hlab; rewrite !interp_eq /=.
+    - reflexivity.
+    - iDestruct 1 as (i1 i2 -> ->) "H". iDestruct "H" as %HH.
+      iExists i1,i2.
+      repeat iSplit; eauto with iFrame. iPureIntro.
+      intros ?. apply HH. transitivity (l ⊔ l2); auto.
+    - iDestruct 1 as (i1 i2 -> ->) "H". iDestruct "H" as %HH.
+      iExists i1,i2.
+      repeat iSplit; eauto with iFrame. iPureIntro.
+      intros ?. apply HH. transitivity (l ⊔ l2); auto.
+    - iIntros "#H". iAlways. iIntros (w1 w2) "Hw".
+      iSpecialize ("H" with "Hw").
+      iApply (dwp_wand with "H").
+      iIntros (x1 x2) "H". iApply (IHτ2 with "H").
+      eauto.
+    - iDestruct 1 as (x1 x2 y1 y2 -> ->) "[H1 H2]".
+      iExists _,_,_,_.
+      repeat iSplit; eauto with iFrame.
+      + iApply IHτ1; eauto.
+      + iApply IHτ2; eauto.
+    - reflexivity.
+  Qed.
+
+  Lemma interp_sub_mono_general τ1 τ2 l1 l2 ξ v1 v2 :
+    τ1 <: τ2 →
+    l1 ⊑ l2 →
+    interp (stamp τ1 l1) ξ v1 v2 -∗ interp (stamp τ2 l2) ξ v1 v2.
+  Proof.
+    intros Hsub. revert l1 l2 v1 v2. induction Hsub=>l1' l2' v1 v2 Hlab.
+    - (* Reflexivity *) by apply interp_label_mono.
+    - (* Transitivity *) rewrite -IHHsub2; eauto.
+    - (* Int *)
+      replace (stamp (tint l1) l1') with (stamp (tint Low) (l1 ⊔ l1'))
+        by (simpl; by rewrite left_id).
+      replace (stamp (tint l2) l2') with (stamp (tint Low) (l2 ⊔ l2'))
+        by (simpl; by rewrite left_id).
+      apply interp_label_mono.
+      etrans; [ by apply join_mono_l | by apply join_mono_r ].
+    - (* Bool *)
+      replace (stamp (tbool l1) l1') with (stamp (tbool Low) (l1 ⊔ l1'))
+        by (simpl; by rewrite left_id).
+      replace (stamp (tbool l2) l2') with (stamp (tbool Low) (l2 ⊔ l2'))
+        by (simpl; by rewrite left_id).
+      apply interp_label_mono.
+      etrans; [ by apply join_mono_l | by apply join_mono_r ].
+    - (* Arrow *)
+      rewrite !interp_eq /=. iIntros "#IH". iAlways.
+      iIntros (w1 w2) "Hw".
+      replace ((interp τ'₁) ξ w1 w2) with ((interp (stamp τ'₁ Low)) ξ w1 w2)
+        by by rewrite stamp_low.
+      rewrite (IHHsub1 Low Low); eauto.
+      rewrite stamp_low.
+      iSpecialize ("IH" with "Hw").
+      iApply (dwp_wand with "IH"). iIntros (x1 x2).
+      iIntros "H". iApply (IHHsub2 with "H").
+      etrans; [ by apply join_mono_l | by apply join_mono_r ].
+    - (* Product *)
+      rewrite !interp_eq /=.
+      iDestruct 1 as (x1 x2 y1 y2 -> ->) "[Hv Hw]".
+      rewrite IHHsub1; eauto.
+      rewrite IHHsub2; eauto.
+      iExists _,_,_,_. repeat iSplit; eauto.
+  Qed.
+
   Lemma interp_sub_mono τ1 τ2 ξ v1 v2 :
     τ1 <: τ2 →
     interp τ1 ξ v1 v2 -∗ interp τ2 ξ v1 v2.
   Proof.
-    intros Hsub. revert v1 v2. induction Hsub.
-    - (* Reflexivity *) done.
-    - (* Transitivity *) intros v1 v2. by rewrite -IHHsub2.
-    - (* Int *) intros v1 v2.
-      rewrite !interp_eq.
-      iDestruct 1 as (i1 i2 -> ->) "H".
-      iExists i1,i2.
-      lazymatch goal with
-      | [H: _ ⊑ _ |- _ ] => rewrite H
-      end.
-      eauto with iFrame.
-    - (* Bool *) intros v1 v2.
-      rewrite !interp_eq.
-      iDestruct 1 as (i1 i2 -> ->) "H".
-      iExists i1,i2.
-      lazymatch goal with
-      | [H: _ ⊑ _ |- _ ] => rewrite H
-      end.
-      eauto with iFrame.
-    - (* Arrow *)
-      iIntros (f1 f2). rewrite !(interp_eq (tarrow _ _ _)).
-      iIntros "#IH". iModIntro. iIntros (v1 v2) "H".
-      rewrite IHHsub1. iSpecialize ("IH" with "H").
-      iApply (dwp_wand with "IH"). iIntros (w1 w2).
-      (* Here we should be using the types_measure function
-         somehow that ignores all the levels *)
-      (* Or separately prove that monotonicity of interp
-         is preserved by stamping. But morally this is "correct" *)
-      (* rewrite IHHsub2. *)
-      admit.
-    - (* Product *)
-      iIntros (uwu owo). rewrite !(interp_eq (tprod _ _)).
-      iDestruct 1 as (v1 v2 w1 w2 -> ->) "[Hv Hw]".
-      rewrite IHHsub1 IHHsub2. iExists _,_,_,_. repeat iSplit; eauto.
-  Admitted.
+    intros Hsub. rewrite -(stamp_low τ1) -(stamp_low τ2).
+    by apply interp_sub_mono_general; eauto.
+  Qed.
 
 End semtypes.
 
