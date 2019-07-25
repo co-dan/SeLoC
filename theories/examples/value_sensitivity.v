@@ -84,11 +84,11 @@ Section proof.
         iApply "IH".
       + dwp_bind (!_)%E (!_)%E.
         iApply (dwp_load with "Hd1 Hd2").
-        iIntros "Hd1 Hd2". iNext. 
+        iIntros "Hd1 Hd2". iNext.
 
         dwp_bind (_ <- _)%E (_ <- _)%E.
         iApply dwp_wand.
-        { iApply logrel_store.
+        { iApply logrel_store; first by solve_ndisj.
           - by iApply dwp_value.
           - by iApply dwp_value. }
         iIntros (? ?) "Hunit".

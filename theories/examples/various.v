@@ -29,7 +29,7 @@ Section t4_proof.
   Proof.
     iIntros "#Hl". dwp_rec. dwp_pures.
     iApply (dwp_par (⟦tunit⟧ ξ) (⟦tunit⟧ ξ)).
-    - iApply (logrel_store with "[Hl]").
+    - iApply (logrel_store with "[Hl]"); first solve_ndisj.
       + by iApply dwp_value.
       + iApply dwp_value. iModIntro. iExists _,_. eauto with iFrame.
     - iLöb as "IH". dwp_rec.
@@ -42,7 +42,7 @@ End t4_proof.
 
 (** Awkward examples *)
 
-(* awk : tint^l → (tunit → τ) → tint^Low *)
+(* awk : tint^h → (tunit → τ) → tint^Low *)
 Definition awk : val :=
   λ: "v", let: "x" := ref "v" in
           λ: "f", "x" <- #1;; "f" #();; !"x".
@@ -63,8 +63,9 @@ Section awk_proof.
     iApply logrel_lam. iAlways.
     rewrite /f_ty (interp_eq (tarrow _ _ _)). iIntros (f1 f2) "#Hf". iSimpl.
     dwp_bind (_ <- _)%E (_ <- _)%E. iApply dwp_wand.
-    { iApply logrel_store; first by iApply dwp_value.
-      iApply logrel_int. }
+    { iApply logrel_store; first solve_ndisj.
+      + by iApply dwp_value.
+      + iApply logrel_int. }
     iIntros (? ?) "H". iApply (logrel_seq with "[H]").
     { by iApply dwp_value. }
     iApply logrel_seq.
@@ -142,3 +143,18 @@ Section awk_proof.
     iExists 1,1. by eauto.
   Qed.
 End awk_proof.
+
+(* awk : tint^h → (tunit → τ) → (tref tint^Low) *)
+Definition awk2 : val :=
+  λ: "v", let: "x" := ref "v" in
+          λ: "f", "x" <- #1;; "f" #();; "x".
+
+(* What would be a good way of verifying this?
+If we make an invariant
+
+    ((∃ v1 v2, pending γ ∗ r1 ↦ₗ v1 ∗ r2 ↦ᵣ v2)
+        ∨ (shot γ ∗ ⟦tref (tint Low)⟧ ξ #r1 #r2))
+
+Then we wouldn't be able to use the `shot` case: after
+opening the invariant we will get `▷ ⟦tref (tint Low)⟧ ξ #r1 #r2`.
+ *)

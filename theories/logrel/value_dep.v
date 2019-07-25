@@ -46,6 +46,7 @@ examples/value_sensitivity_2.v
 ** TODO:
 
 - use meta-tokens
+- use the frac_auth library
 
 *)
 From iris.base_logic Require Import invariants lib.auth.

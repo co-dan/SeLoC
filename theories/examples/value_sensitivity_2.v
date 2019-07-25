@@ -64,7 +64,8 @@ Section proof.
       iFrame "Ha".
       iMod ("Hcl" with "[Htok Hc]") as "_".
       { iNext. iRight. by iFrame. }
-      iModIntro. iApply logrel_store; iApply dwp_value; eauto with iFrame.
+      iModIntro.
+      iApply logrel_store; first (by solve_ndisj); iApply dwp_value; eauto with iFrame.
   Qed.
 
   Lemma proof out1 out2 dat1 dat2 ξ :

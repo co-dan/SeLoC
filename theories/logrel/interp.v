@@ -385,12 +385,13 @@ Section rules.
       iModIntro. iNext. simpl. iApply "Hv".
   Qed.
 
-  Lemma logrel_store ξ e1 e2 t1 t2 τ :
-    (DWP e1 & e2 : ⟦ tref τ ⟧ ξ) -∗
-    (DWP t1 & t2 : ⟦ τ ⟧ ξ) -∗
-    DWP (e1 <- t1) & (e2 <- t2) : ⟦ tunit ⟧ ξ.
+  Lemma logrel_store ξ e1 e2 t1 t2 τ E :
+    ↑locsN ⊆ E →
+    (DWP e1 & e2 @ E : ⟦ tref τ ⟧ ξ) -∗
+    (DWP t1 & t2 @ E : ⟦ τ ⟧ ξ) -∗
+    DWP (e1 <- t1) & (e2 <- t2) @ E : ⟦ tunit ⟧ ξ.
   Proof.
-    iIntros "He Ht".
+    iIntros (?) "He Ht".
     dwp_bind t1 t2. iApply (dwp_wand with "Ht").
     iIntros (w1 w2) "Hw".
     dwp_bind e1 e2. iApply (dwp_wand with "He").
