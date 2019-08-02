@@ -225,6 +225,11 @@ Section ectx_language.
     head_reducible e σ →
     reducible (ectx_language.fill K e) σ.
   Proof. intros (?&?&?&?&Hhred). by repeat econstructor. Qed.
+
+  Lemma head_prim_fill_reducible_no_obs e  K σ :
+    head_reducible_no_obs e σ →
+    reducible_no_obs (ectx_language.fill K e) σ.
+  Proof. intros (?&?&?&Hhred). by repeat econstructor. Qed.
 End ectx_language.
 
 Lemma reducible_nondet_det e σ :
@@ -235,6 +240,42 @@ Proof.
   inversion H. simpl in *. subst e e'.
   apply (@head_prim_fill_reducible heap_ectxi_lang_det).
   apply head_reducible_nondet_det.
+  by repeat eexists.
+Qed.
+
+Lemma head_step_nondet_det_obs e1 σ1 e2 σ2 efs e2' σ2' efs' κ :
+  heap_lang.head_step e1 σ1 [] e2 σ2 efs →
+  head_step e1 σ1 κ e2' σ2' efs' →
+  κ = [].
+Proof.
+  intros Hst1 Hst2.
+  inversion Hst2; try by eauto.
+  simpl in * ; subst.
+  inversion Hst1. exfalso.
+  by eapply app_cons_not_nil.
+Qed.
+
+Lemma head_reducible_no_obs_nondet_det e σ :
+  head_reducible_no_obs (Λ := heap_ectx_lang) e σ →
+  head_reducible_no_obs (Λ := heap_ectx_lang_det) e σ.
+Proof.
+  destruct 1 as (e'&σ'&efs&Hst).
+  assert (head_reducible (Λ := heap_ectx_lang_det) e σ) as Hred2.
+  { apply head_reducible_nondet_det. eauto. }
+  destruct Hred2 as (κ&e''&σ''&efs''&Hst2).
+  assert (κ = []) as ->.
+  { eapply head_step_nondet_det_obs; eauto. }
+  eauto.
+Qed.
+
+Lemma reducible_no_obs_nondet_det e σ :
+  reducible_no_obs (Λ := heap_lang) e σ →
+  reducible_no_obs (Λ := heap_lang_det) e σ.
+Proof.
+  destruct 1 as (e' & σ' & efs & H).
+  inversion H. simpl in *. subst e e'.
+  apply (@head_prim_fill_reducible_no_obs heap_ectxi_lang_det).
+  apply head_reducible_no_obs_nondet_det.
   by repeat eexists.
 Qed.
 
@@ -275,4 +316,48 @@ Proof.
 Qed.
 End lifting.
 
+Section dwp_lifting.
+From iris_ni Require Import program_logic.dwp program_logic.heap_lang_lifting.
+From iris.proofmode Require Import base tactics classes.
+
+Instance heapDG_irisDG_det `{heapDG Σ} : irisDG heap_lang_det Σ := {
+  state_rel := (λ σ1 σ2 κs1 κs2,
+      @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
+    ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)
+    ∗ @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG2 σ2.(heap)
+    ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG2 κs2 σ2.(used_proph_id))%I
+}.
+
+Context `{!heapDG Σ}.
+
+Lemma dwp_simul e1 e2 E Φ :
+  (dwp (Λ := heap_lang) E e1 e2 Φ) -∗
+  (dwp (Λ := heap_lang_det) E e1 e2 Φ).
+Proof.
+  iLöb as "IH" forall (e1 e2 E Φ).
+  rewrite !dwp_unfold /dwp_pre /=.
+  destruct (to_val e1) as [v1|]; first by eauto.
+  iIntros "H". iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "(Hσ1 & Hp1 & Hσ2 & Hp2)".
+  iMod ("H" with "[$Hσ1 $Hp1 $Hσ2 $Hp2]") as "[% [% H]]".
+  iModIntro. iSplitR.
+  { iPureIntro. by apply reducible_no_obs_nondet_det. }
+  iSplitR.
+  { iPureIntro. by apply reducible_no_obs_nondet_det. }
+  iIntros (e1' σ1' efs1 e2' σ2' efs2 Hst_det1 Hst_det2).
+  iSpecialize ("H" $! e1' σ1' efs1 e2' σ2' efs2 with "[%] [%]").
+  { by apply prim_step_det_nondet. }
+  { by apply prim_step_det_nondet. }
+  iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "($&HWP&Hefs)". iModIntro.
+  iSplitL "HWP".
+  - by iApply "IH".
+  - iApply (big_sepL2_impl with "Hefs []").
+    iAlways. iIntros (?????). iApply "IH".
+Qed.
+
+End dwp_lifting.
+
+
 End heap_lang_det.
+
