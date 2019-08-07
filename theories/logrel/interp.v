@@ -284,15 +284,27 @@ Section rules.
     - iSplit; first done. iIntros (?). by exfalso.
   Qed.
 
+  Lemma logrel_rec ξ f x e1 e2 τ1 τ2 l :
+    □ (∀ f1 f2 v1 v2, ⟦ tarrow τ1 τ2 l ⟧ ξ f1 f2 -∗
+         ⟦ τ1 ⟧ ξ v1 v2 -∗
+         DWP subst' x v1 (subst' f f1 e1)
+           & subst' x v2 (subst' f f2 e2) : ⟦ stamp τ2 l ⟧ ξ) -∗
+    DWP (rec: f x := e1)%V & (rec: f x := e2)%V : ⟦ tarrow τ1 τ2 l ⟧ ξ.
+  Proof.
+    iIntros "#H".
+    iApply dwp_value. iModIntro. iLöb as "IH".
+    rewrite {3}(interp_eq (tarrow _ _ _)).
+    iModIntro. iIntros (v1 v2) "Hτ1". dwp_pures. simpl.
+    by iApply "H".
+  Qed.
+
   Lemma logrel_lam ξ x e1 e2 τ1 τ2 l :
     □ (∀ v1 v2, ⟦ τ1 ⟧ ξ v1 v2 -∗
          DWP subst' x v1 e1 & subst' x v2 e2 : ⟦ stamp τ2 l ⟧ ξ) -∗
     DWP (λ: x, e1)%V & (λ: x, e2)%V : ⟦ tarrow τ1 τ2 l ⟧ ξ.
   Proof.
-    iIntros "#H".
-    iApply dwp_value. rewrite (interp_eq (tarrow _ _ _)). iModIntro.
-    iModIntro. iIntros (v1 v2) "Hτ1". dwp_pures. simpl.
-    by iApply "H".
+    iIntros "#H". iApply logrel_rec. iModIntro.
+    iIntros (? ? v1 v2) "_ Hτ". by iApply "H".
   Qed.
 
   Lemma logrel_app ξ e1 e2 e1' e2' τ1 τ2 l :
