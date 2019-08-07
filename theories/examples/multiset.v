@@ -120,7 +120,7 @@ Section proof.
     dwp_bind (! _)%E (! _)%E.
     iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
     - iApply (dwp_load with "Hhd1 Hhd2").
-      iIntros "Hhd1 Hhd2". iNext. 
+      iIntros "Hhd1 Hhd2". iNext.
 
       dwp_pures. dwp_bind (ref _)%E (ref _)%E.
       iApply dwp_alloc.

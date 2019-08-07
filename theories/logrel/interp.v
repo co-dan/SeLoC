@@ -201,6 +201,16 @@ Notation "⟦ τ ⟧" := (interp τ).
 Section rules.
   Context `{!heapDG Σ}.
 
+  Lemma logrel_sub ξ e1 e2 τ τ' :
+    τ <: τ' →
+    (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
+    DWP e1 & e2 : ⟦ τ' ⟧ ξ.
+  Proof.
+    iIntros (Hsub) "He".
+    iApply (dwp_wand with "He").
+    iIntros (??). by iApply interp_sub_mono.
+  Qed.
+
   Lemma logrel_int ξ (i : Z) l :
     DWP #i & #i : ⟦ tint l ⟧ ξ.
   Proof.
