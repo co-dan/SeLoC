@@ -158,6 +158,41 @@ Proof.
       by iApply "IH".
 Qed.
 
+(* TODO: move to iris *)
+Section help.
+  Context {A : Type} {Σ : gFunctors}.
+  Implicit Types l : list A.
+  Implicit Types Φ Ψ : nat → A → A → iProp Σ.
+
+  (* DF: 09/08/2019: this has been merged upstream *)
+  Lemma big_sepL2_app_inv Φ l1 l2 l1' l2' :
+    length l1 = length l1' →
+    ([∗ list] k↦y1;y2 ∈ l1 ++ l2; l1' ++ l2', Φ k y1 y2) -∗
+    ([∗ list] k↦y1;y2 ∈ l1; l1', Φ k y1 y2) ∗
+    ([∗ list] k↦y1;y2 ∈ l2; l2', Φ (length l1 + k)%nat y1 y2).
+  Proof.
+    intros Hlen. rewrite !big_sepL2_alt.
+    iIntros "[Hfoo H]". iDestruct "Hfoo" as %Hfoo.
+    rewrite zip_with_app=>//.
+    rewrite big_sepL_app. iDestruct "H" as "[H1 H2]".
+    rewrite zip_with_length.
+    assert ((length l1 `min` length l1')%nat = length l1) as ->.
+    { lia. }
+    iFrame. iSplit; iPureIntro; eauto.
+    revert Hfoo. rewrite !app_length. lia.
+  Qed.
+
+  Lemma big_sepL2_swap Φ l1 l2 :
+    ([∗ list] k↦y1;y2 ∈ l1; l2, Φ k y1 y2)
+    ⊣⊢
+    ([∗ list] k↦y1;y2 ∈ l2; l1, Φ k y2 y1).
+  Proof.
+    revert Φ l2. induction l1 as [|x1 l1 IH]=> Φ -[|x2 l2]//=; simplify_eq.
+    by rewrite IH.
+  Qed.
+
+End help.
+
 (** Now the relation *)
 Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
@@ -203,7 +238,7 @@ Proof.
   { rewrite interp_eq. iExists n,n; eauto. }
 
   iModIntro. iExists hg1,hg2,pg1,pg2.
-  rewrite !insert_delete !insert_id //. 
+  rewrite !insert_delete !insert_id //.
   iFrame "Hh1 Hh2 Hp1 Hp2 Hrf".
   iSplit; last done.
   iApply (Hdwp with "Hrf").
@@ -246,6 +281,64 @@ Proof.
 Qed.
 
 (** The relation has good properties *)
+(* NB: the out channel has to be the same location! *)
+Lemma dwp_rel_sym `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 out Φ :
+  (∀ v1 v2, Φ v1 v2 ⊢ Φ v2 v1) →
+  dwp_rel Σ es ss σ1 σ2 out out Φ →
+  dwp_rel Σ ss es σ2 σ1 out out Φ.
+Proof.
+  intros HΦ [n HR].
+  exists n. intros Hinv.
+  iPoseProof (HR Hinv) as "H".
+  iApply (mega_futureN_mono with "H").
+  iIntros "H". iMod "H". iModIntro.
+  iDestruct "H" as (h1 h2 p1 p2) "[Hσ [Hout HDWP]]".
+  iExists h2, h1, p2, p1.
+  rewrite /state_rel /=.
+  iDestruct "Hσ" as "($&$&$&$)". clear HR.
+  (* first we prove that we can get the symmetric version of the invariant *)
+  iSplitL "Hout".
+  { rewrite !interp_eq /=.
+    iDestruct "Hout" as (l1 l2 Hl1 Hl2) "H". simplify_eq/=.
+    iExists l1, l1. repeat iSplit; eauto.
+    iApply (invariants.inv_iff with "[] H").
+    iNext. iAlways. iSplit.
+    - iDestruct 1 as (v1 v2) "(Hl1 & Hl2 & Hv)".
+      iExists v2, v1. iFrame. iDestruct "Hv" as (i1 i2 -> ->) "%".
+      iExists i2, i1. repeat iSplit; eauto with iFrame.
+      iPureIntro. naive_solver.
+    - iDestruct 1 as (v1 v2) "(Hl1 & Hl2 & Hv)".
+      iExists v2, v1. iFrame. iDestruct "Hv" as (i1 i2 -> ->) "%".
+      iExists i2, i1. repeat iSplit; eauto with iFrame.
+      iPureIntro. naive_solver. }
+  rewrite big_sepL2_swap.
+  iApply (big_sepL2_impl with "HDWP []").
+  iAlways. iIntros (k s e Hs He) "HDWP".
+  (* now we do Löb induction *)
+  (* ugly context manipulations incoming *)
+  iAssert (□ ∀ v1 v2 : val, Φ v1 v2 -∗ Φ v2 v1)%I as "#HΦ".
+  { iAlways. iIntros (v1 v2). by iApply HΦ. }
+  clear HΦ. iRevert "HΦ". clear Hs He.
+  iLöb as "IH" forall (e s k Φ). iIntros "#HΦ".
+  rewrite !dwp_unfold /dwp_pre /=.
+  destruct (to_val e) as [ev|] eqn:Hev;
+    destruct (to_val s) as [sv|] eqn:Hsv; [|done..|].
+  { iMod "HDWP" as "H". iModIntro.
+    case_match; eauto; by iApply "HΦ". }
+  clear σ1 σ2. iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "(Hσ1 & Hp1 & Hσ2 & Hp2)".
+  iMod ("HDWP" with "[$Hσ1 $Hp1 $Hσ2 $Hp2]") as "($ & $ & HDWP)".
+  iModIntro. iIntros (s' σ1' efs1 e' σ2' efs2 Hst_s Hst_e).
+  iMod ("HDWP" with "[//] [//]") as "HDWP". iModIntro. iNext.
+  iMod "HDWP" as "HDWP". iModIntro. iNext.
+  iMod "HDWP" as "(($ & $ & $ & $) & Hdwp & Hefs)". iModIntro.
+  iSplitL "Hdwp".
+  - by iApply ("IH" with "Hdwp HΦ").
+  - rewrite big_sepL2_swap.
+    iApply (big_sepL2_impl with "Hefs").
+    iAlways. iIntros (m e1 e2 ??) "Hdwp".
+    iApply ("IH" $! _ _ 1%nat Φ with "Hdwp HΦ").
+Qed.
+
 Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 out1 out2 :
   dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 out1 out2 I →
   v1 = v2.
@@ -298,6 +391,8 @@ Proof.
   iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre He) in "H".
+  simpl. destruct (to_val s) as [vs|] eqn:Hs.
+  { by iMod "H". }
   iMod ("H" $! _ _ [] [] [] [] with "HSR") as (Hred1 Hred2) "H".
   iModIntro. done.
 Qed.
@@ -319,8 +414,10 @@ Proof.
   iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre) in "H".
-  assert (@language.to_val heap_lang e = None) as ->.
-  (* TODO: why do I have to be explicit here? *)
+  simpl.
+  assert (to_val e = None) as ->.
+  { eapply val_stuck; eauto. }
+  assert (to_val s = None) as ->.
   { eapply val_stuck; eauto. }
   iMod ("H" $! _ _ [] [] [] [] with "HSR") as (Hred1 Hred2) "H".
   iSpecialize ("H" with "[//]").
@@ -329,30 +426,6 @@ Proof.
   iModIntro. iNext. iMod "H" as "[_ [_ Hefs]]".
   iModIntro. iModIntro. iApply (big_sepL2_length with "Hefs").
 Qed.
-
-(* TODO: move to iris *)
-Section help.
-  Context {A : Type} {Σ : gFunctors}.
-  Implicit Types l : list A.
-  Implicit Types Φ Ψ : nat → A → A → iProp Σ.
-
-  Lemma big_sepL2_app_inv Φ l1 l2 l1' l2' :
-    length l1 = length l1' →
-    ([∗ list] k↦y1;y2 ∈ l1 ++ l2; l1' ++ l2', Φ k y1 y2) -∗
-    ([∗ list] k↦y1;y2 ∈ l1; l1', Φ k y1 y2) ∗
-    ([∗ list] k↦y1;y2 ∈ l2; l2', Φ (length l1 + k)%nat y1 y2).
-  Proof.
-    intros Hlen. rewrite !big_sepL2_alt.
-    iIntros "[Hfoo H]". iDestruct "Hfoo" as %Hfoo.
-    rewrite zip_with_app=>//.
-    rewrite big_sepL_app. iDestruct "H" as "[H1 H2]".
-    rewrite zip_with_length.
-    assert ((length l1 `min` length l1')%nat = length l1) as ->.
-    { lia. }
-    iFrame. iSplit; iPureIntro; eauto.
-    revert Hfoo. rewrite !app_length. lia.
-  Qed.
-End help.
 
 Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' out1 out2 Φ :
   length es = length ss →
@@ -374,6 +447,8 @@ Proof.
   iDestruct "HWP" as "[H1 [HWP H2]]".
   iEval (rewrite dwp_unfold /dwp_pre) in "HWP".
   assert (language.to_val e = None) as ->.
+  { eapply val_stuck. eauto. }
+  assert (language.to_val s = None) as ->.
   { eapply val_stuck. eauto. }
   iSpecialize ("HWP" $! _ _ [] [] [] [] with "HI").
   iMod "HWP" as (_ _) "HWP". iModIntro.
@@ -415,6 +490,8 @@ Proof.
   rewrite (dwp_unfold _ e s) /dwp_pre.
   assert (language.to_val e = None) as ->.
   { by simpl. }
+  destruct (language.to_val s) as [sv|] eqn:Hsv.
+  { by iMod "HWP". }
   iSpecialize ("HWP" $! _ _ [] [] [] [] with "HI").
   iMod "HWP" as (_ _) "HWP". iModIntro.
   iSpecialize ("HWP" with "[//]").

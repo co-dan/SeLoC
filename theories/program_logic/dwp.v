@@ -20,8 +20,9 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
     coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iProp Σ) -d> iProp Σ := λ E1 e1 e2 Φ,
  (match to_val e1,to_val e2 with
   | Some v1, Some v2 => |={E1}=> Φ v1 v2
-  | Some v1, None => |={E1}=> False
-  | None,x => ∀ σ1 σ2 κ1 κs1 κ2 κs2,
+  | Some _, None => |={E1}=> False
+  | None, Some _ => |={E1}=> False
+  | _,_ => ∀ σ1 σ2 κ1 κs1 κ2 κs2,
      state_rel σ1 σ2 (κ1 ++ κs1) (κ2 ++ κs2) -∗
      |={E1,∅}=> ⌜reducible_no_obs e1 σ1⌝ ∗ ⌜reducible_no_obs e2 σ2⌝ ∗
      ∀ e1' σ1' efs1 e2' σ2' efs2, ⌜prim_step e1 σ1 [] e1' σ1' efs1⌝ -∗
@@ -34,7 +35,7 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
 Local Instance dwp_pre_contractive `{invG Σ, irisDG Λ Σ} : Contractive dwp_pre.
 Proof.
   rewrite /dwp_pre=> n dwp dwp' Hwp E1 e1 e2 Φ.
-  repeat case_match. f_equiv. f_equiv.
+  repeat case_match; [ reflexivity.. | ]. 
   apply bi.forall_ne. intros σ1.
   apply bi.forall_ne. intros σ2.
   apply bi.forall_ne=>κ1.
@@ -42,7 +43,7 @@ Proof.
   apply bi.forall_ne=>κ2.
   apply bi.forall_ne=>κs2.
   repeat (f_contractive || f_equiv); apply dist_S, Hwp.
-  (* TODO: this is so slow ugu *)
+  (* TODO: this is so slow *)
 Qed.
 
 Definition dwp_def `{irisDG Λ Σ, invG Σ} :
@@ -110,9 +111,9 @@ Proof.
   (* FIXME: reflexivity, as being called many times by f_equiv and f_contractive
   is very slow here *)
   do 33 (f_contractive || f_equiv).
-  do 5 (f_contractive || f_equiv).
+  do 6 (f_contractive || f_equiv).
   apply IH; first lia.
-  intros v v'. eapply (dist_le (S (S n))); eauto with lia.
+  intros ??. eapply (dist_le (S (S n))); eauto with lia.
   apply HΦ.
 Qed.
 
@@ -144,11 +145,9 @@ Lemma dwp_strong_mono E1 E1' e1 e2 Φ Ψ :
 Proof.
   iIntros (HE) "H HΦ". iLöb as "IH" forall (e1 e2 E1 HE Φ Ψ).
   rewrite !dwp_unfold /dwp_pre.
-  destruct (to_val e1) as [v1|] eqn:?.
-  { destruct (to_val e2) as [v2|] eqn:?.
-    - rewrite (fupd_mask_mono E1 E1'); last assumption.
-      iMod "H" as "H". by iApply ("HΦ" with "[> -]").
-    - by rewrite (fupd_mask_mono E1 E1'). }
+  repeat case_match; try by (rewrite (fupd_mask_mono E1 E1'); last assumption).
+  { rewrite (fupd_mask_mono E1 E1'); last assumption.
+    iMod "H". by iApply "HΦ". }
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iMod (fupd_intro_mask' E1' E1) as "Hclose"; first done.
   iMod ("H" with "Hσ") as "[% [% H]]".
@@ -166,11 +165,7 @@ Lemma fupd_dwp E1 e1 e2 Φ :
   dwp E1 e1 e2 Φ.
 Proof.
   rewrite dwp_unfold /dwp_pre. iIntros "H".
-  destruct (to_val e1) as [v1|] eqn:?.
-  { destruct (to_val e2) as [v2|] eqn:?; first rewrite fupd_trans //.
-    iMod "H". by iApply "H". }
-  iMod "H". iIntros (σ1 σ' ????) "Hσ".
-  by iMod ("H" with "Hσ").
+  repeat case_match; by iMod "H".
 Qed.
 
 Lemma dwp_fupd E1 e1 e2 Φ :
@@ -188,14 +183,13 @@ Lemma dwp_bind K1 K2 `{!LanguageCtx K1, !LanguageCtx K2} E1 e1 e2 Φ :
 Proof.
   iIntros "H". iLöb as "IH" forall (E1 e1 e2 Φ).
   rewrite dwp_unfold /dwp_pre.
-  destruct (to_val e1) as [v1|] eqn:He1.
-  { destruct (to_val e2) as [v2|] eqn:He2.
-    - apply of_to_val in He1 as <-.
-      apply of_to_val in He2 as <-. by iApply fupd_dwp.
-    - rewrite dwp_unfold /dwp_pre (fill_not_val e2) //.
-      destruct (to_val (K1 e1)) as [w|] eqn:?; eauto.
-      iIntros (??????) "Hσ". by iMod "H". }
-  rewrite dwp_unfold /dwp_pre !fill_not_val //.
+  destruct (to_val e1) as [v1|] eqn:He1;
+    destruct (to_val e2) as [v2|] eqn:He2;
+    try by (iApply fupd_dwp; iMod "H").
+  { iApply fupd_dwp. rewrite (of_to_val e1) // (of_to_val e2) //. }
+  rewrite dwp_unfold /dwp_pre.
+  rewrite (fill_not_val e1) //.
+  rewrite (fill_not_val e2); last done. (* rewrite .. // hangs coq *)
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iMod ("H" with "Hσ") as "[Hstep1 [Hstep2 H]]".
   iDestruct "Hstep1" as %Hstep1.
@@ -210,8 +204,6 @@ Proof.
     unfold reducible in *.
     destruct Hstep2 as (e' & σ' & efs & Hstep2).
     apply (fill_step (K:=K2)) in Hstep2. eexists. eauto. }
-  assert (to_val e2 = None) as He2.
-  { eapply reducible_not_val. eexists. eauto. }
   clear Hstep1 Hstep2.
   iIntros (e1' σ1' efs1 e2' σ2' efs2 Hstep1 Hstep2).
   destruct (fill_step_inv e1 σ1 [] e1' σ1' efs1 He1 Hstep1) as (e1''&->&?) .
@@ -242,12 +234,14 @@ Lemma dwp_bind_inv K1 K2 `{!LanguageCtx K1, !LanguageCtx K2} E1 e1 e2 Φ :
 Proof. Abort.
 
 Lemma dwp_step_fupd E1 E1' e1 e2 P Φ :
-  to_val e1 = None → E1' ⊆ E1 →
+  to_val e1 = None →
+  to_val e2 = None → 
+  E1' ⊆ E1 →
   (|={E1,E1'}▷=> P) -∗
   dwp E1' e1 e2 (λ v1 v2, P ={E1}=∗ Φ v1 v2) -∗
   dwp E1 e1 e2 Φ.
 Proof.
-  rewrite !dwp_unfold /dwp_pre. iIntros (-> ?) "HR H".
+  rewrite !dwp_unfold /dwp_pre. iIntros (-> -> ?) "HR H".
   iIntros (σ1 σ2 ? ? ? ?) "Hσ". iMod "HR".
   iMod ("H" with "Hσ") as "[$ [$ H]]".
   iIntros "!>" (e1' σ1' efs Hstep1 e2' σ2' efs2 Hstep2).

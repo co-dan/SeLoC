@@ -336,7 +336,7 @@ Lemma dwp_simul e1 e2 E Φ :
 Proof.
   iLöb as "IH" forall (e1 e2 E Φ).
   rewrite !dwp_unfold /dwp_pre /=.
-  destruct (to_val e1) as [v1|]; first by eauto.
+  repeat case_match; [by eauto with iFrame..|].
   iIntros "H". iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "(Hσ1 & Hp1 & Hσ2 & Hp2)".
   iMod ("H" with "[$Hσ1 $Hp1 $Hσ2 $Hp2]") as "[% [% H]]".
   iModIntro. iSplitR.

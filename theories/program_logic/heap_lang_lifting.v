@@ -104,7 +104,7 @@ Lemma dwp_atomic_lift_wp_strong E1 E2 e1 e2 Φ
 Proof.
   intros He1 He2.
   iIntros "H".
-  rewrite dwp_unfold /dwp_pre /= He1.
+  rewrite dwp_unfold /dwp_pre /= He1 He2.
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
   iMod "H" as (Ψ1 Ψ2) "(HWP1 & HWP2 & H)".
@@ -224,15 +224,13 @@ Lemma dwp_atomic E1 E2 e1 e2 Φ
 Proof.
   iIntros "H".
   rewrite (dwp_unfold E1) /dwp_pre /=.
-  destruct (to_val e1) as [v1|] eqn:He1.
-  { rewrite dwp_unfold /dwp_pre /= He1.
-    destruct (to_val e2) as [v2|] eqn:He2.
-    - iMod "H" as "H". by iMod "H" as "H".
-    - iMod "H" as "H". by iMod "H". }
+  rewrite (dwp_unfold E2) /dwp_pre /=.
+  destruct (to_val e1) as [v1|] eqn:He1;
+    destruct (to_val e2) as [v2|] eqn:He2;
+    try by (iMod "H" as "H"; iMod "H").
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
   iMod "H" as "H".
-  rewrite dwp_unfold /dwp_pre /= He1.
   iSpecialize ("H" $! σ1 σ2 κ1 κs1 κ2 κs2 with "[$Hσ1 $Hκs1 $Hσ2 $Hκs2]").
   iMod "H" as (??) "H". iModIntro.
   do 2 (iSplit; first done).

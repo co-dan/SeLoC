@@ -27,6 +27,9 @@ Proof.
   assert (language.to_val e1 = None) as ->.
   { destruct (Hsafe1 inhabitant) as (?&?&?&?&?).
     eapply val_stuck; eauto. }
+  assert (language.to_val e2 = None) as ->.
+  { destruct (Hsafe2 inhabitant) as (?&?&?&?&?).
+    eapply val_stuck; eauto. }
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hrel".
   iMod "H" as "H".
   iMod fupd_intro_mask' as "Hclose"; last iModIntro; first by set_solver.
