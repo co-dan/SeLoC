@@ -193,6 +193,8 @@ Section help.
 
 End help.
 
+Local Open Scope nat.
+
 (** Now the relation *)
 Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
@@ -217,7 +219,7 @@ Lemma dwp_lift_bisim e1 e2 σ1 σ2 (out1 out2 : loc) (n : Z)Σ `{!invPreG Σ, !h
   dwp_rel Σ [e1] [e2] σ1 σ2 out1 out2 I.
 Proof.
   intros Hσ1 Hσ2 Hdwp.
-  exists 0%nat. intros Hinv. simpl.
+  exists 0. intros Hinv. simpl.
   pose (σ1' := delete out1 (σ1.(heap))).
   pose (σ2' := delete out2 (σ2.(heap))).
   iMod (gen_heap_init σ1') as (hg1) "Hh1".
@@ -336,8 +338,10 @@ Proof.
   - rewrite big_sepL2_swap.
     iApply (big_sepL2_impl with "Hefs").
     iAlways. iIntros (m e1 e2 ??) "Hdwp".
-    iApply ("IH" $! _ _ 1%nat Φ with "Hdwp HΦ").
+    iApply ("IH" $! _ _ 1 Φ with "Hdwp HΦ").
 Qed.
+
+(* Transitivity is still infeasible! *)
 
 Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 out1 out2 :
   dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 out1 out2 I →
