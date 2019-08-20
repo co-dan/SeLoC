@@ -1,4 +1,5 @@
-(** Example from Ernst-Murray CAV 2019, done without locks. *)
+(** Example from Ernst-Murray CAV 2019, done without locks, using
+value-dependent classifications libary. *)
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
