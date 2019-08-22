@@ -79,6 +79,10 @@ Lemma leq_join_max_1 (l1 l2 : slevel) :
   l2 ⊑ l1 → l1 ⊔ l2 = l1.
 Proof. by destruct l1,l2; inversion 1. Qed.
 
+Lemma join_leq (l1 l2 l3 : slevel) :
+  l1 ⊔ l2 ⊑ l3 → l1 ⊑ l3 ∧ l2 ⊑ l3.
+Proof. by destruct l1,l2,l3; inversion 1. Qed.
+
 Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
 Hint Resolve leq_join_max_1 leq_join_max_2.
 Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.

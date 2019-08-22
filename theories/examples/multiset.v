@@ -248,26 +248,6 @@ Section proof.
       iExists _,_,_,_. iFrame.
   Qed.
 
-  (* TODO: move to logrel/interp.v *)
-  Lemma dwp_binop e1 e2 t1 t2 l ξ :
-    (DWP e1 & e2 : ⟦ tint l ⟧ ξ) -∗
-    (DWP t1 & t2 : ⟦ tint l ⟧ ξ) -∗
-    DWP e1 + t1 & e2 + t2 : ⟦ tint l ⟧ ξ.
-  Proof.
-    iIntros "He Ht".
-    dwp_bind t1 t2. iApply (dwp_wand with "Ht").
-    iIntros (w1 w2) "Hw".
-
-    dwp_bind e1 e2. iApply (dwp_wand with "He").
-    iIntros (v1 v2) "Hv".
-
-    iDestruct "Hw" as (m1 m2 -> ->) "%".
-    iDestruct "Hv" as (n1 n2 -> ->) "%".
-    dwp_pures.
-    iApply dwp_value. iModIntro.
-    iExists _,_. iPureIntro. naive_solver.
-  Qed.
-
   Lemma size_loop_spec (hd1 hd2 : loc) n1 n2 l ξ Φ :
     ⟦ tint Low ⟧ ξ n1 n2 -∗
     sec_list hd1 hd2 l ξ -∗
@@ -294,10 +274,11 @@ Section proof.
 
       dwp_bind (_ + _)%E (_ + _)%E.
       iApply dwp_wand.
-      { iApply dwp_binop; iApply dwp_value; first by iFrame.
+      { iApply logrel_binop; iApply dwp_value; first by iFrame.
         iModIntro. iExists _; eauto with iFrame. }
 
       iIntros (z1 z2) "Hz".
+      rewrite (left_id Low).
       iApply ("IH" with "Hz Hls [-]").
       iClear "IH". iIntros (v1 v2) "Hls Hvv".
       iApply ("HΦ" with "[-Hvv] Hvv").
@@ -327,9 +308,10 @@ Section proof.
     iIntros (m1 m2) "Hls #Hm".
 
     iApply dwp_wand.
-    { iApply dwp_binop; iApply dwp_value; eauto with iFrame. }
+    { iApply logrel_binop; iApply dwp_value; eauto with iFrame. }
 
     iIntros (z1 z2) "Hz".
+    rewrite (left_id Low).
     iApply ("HΦ" with "Hz [-]").
     iExists _,_,_,_. by iFrame "Hl1 Hl2 Hhs Hls".
   Qed.

@@ -248,6 +248,26 @@ Section rules.
     iExists b1, b2. iPureIntro. naive_solver.
   Qed.
 
+  Lemma logrel_binop e1 e2 t1 t2 l1 l2 ξ :
+    (DWP e1 & e2 : ⟦ tint l1 ⟧ ξ) -∗
+    (DWP t1 & t2 : ⟦ tint l2 ⟧ ξ) -∗
+    DWP e1 + t1 & e2 + t2 : ⟦ tint (l1 ⊔ l2) ⟧ ξ.
+  Proof.
+    iIntros "He Ht".
+    dwp_bind t1 t2. iApply (dwp_wand with "Ht").
+    iIntros (w1 w2) "Hw".
+
+    dwp_bind e1 e2. iApply (dwp_wand with "He").
+    iIntros (v1 v2) "Hv".
+
+    iDestruct "Hw" as (m1 m2 -> ->) "%".
+    iDestruct "Hv" as (n1 n2 -> ->) "%".
+    dwp_pures.
+    iApply dwp_value. iModIntro.
+    iExists _,_. iPureIntro. repeat split; eauto.
+    intros ?%join_leq. naive_solver.
+  Qed.
+
   Lemma logrel_if ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
     (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
     ((DWP t1 & t2 : A ξ) ∧

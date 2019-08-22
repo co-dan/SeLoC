@@ -1,3 +1,6 @@
-non-interference
+Relational separation logic for non-interference.
 
-Required Iris version: 31bf88ff46fd89815e49dd22dbc5fea4a77fb62e
+Dependencies:
+- Iris (hopefully the latest stable version)
+- std++ (hopefully the latest stable version)
+- Equations (hopefully the latest stable opam `coq-equations` version)

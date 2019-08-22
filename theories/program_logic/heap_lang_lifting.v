@@ -83,7 +83,7 @@ Proof.
   by iApply dwp_value.
 Qed.
 
-(* TODO:
+(* TODO: Conditions
    - all these `to_val ei = None` and "no forks" conditions
      should be dischargeable automatically
    - better positioning of laters (if it is possible?)

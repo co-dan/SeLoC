@@ -11,7 +11,7 @@ Axiom oracle_fresh : ∀ σ n i, 0 ≤ i → i < n → (heap σ) !! (oracle σ n
 End Allocator.
 
 Module SimpleAllocator : Allocator.
-  Definition oracle σ n := fresh_locs (dom (gset loc) σ.(heap)) n.
+  Definition oracle σ (n : Z) := fresh_locs (dom (gset loc) σ.(heap)).
   Lemma oracle_fresh : ∀ σ n (i : Z), 0 ≤ i → i < n → (heap σ) !! (oracle σ n +ₗ i) = None.
   Proof.
     intros σ n i Hi Hn. eapply (not_elem_of_dom (D:=gset loc)).
@@ -220,11 +220,6 @@ Section ectx_language.
   Implicit Types v : ectx_language.val Λ.
   Implicit Types e : ectx_language.expr Λ.
   Implicit Types K : ectx_language.ectx Λ.
-
-  Lemma head_prim_fill_reducible e  K σ :
-    head_reducible e σ →
-    reducible (ectx_language.fill K e) σ.
-  Proof. intros (?&?&?&?&Hhred). by repeat econstructor. Qed.
 
   Lemma head_prim_fill_reducible_no_obs e  K σ :
     head_reducible_no_obs e σ →

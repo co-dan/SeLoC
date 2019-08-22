@@ -164,24 +164,6 @@ Section help.
   Implicit Types l : list A.
   Implicit Types Φ Ψ : nat → A → A → iProp Σ.
 
-  (* DF: 09/08/2019: this has been merged upstream *)
-  Lemma big_sepL2_app_inv Φ l1 l2 l1' l2' :
-    length l1 = length l1' →
-    ([∗ list] k↦y1;y2 ∈ l1 ++ l2; l1' ++ l2', Φ k y1 y2) -∗
-    ([∗ list] k↦y1;y2 ∈ l1; l1', Φ k y1 y2) ∗
-    ([∗ list] k↦y1;y2 ∈ l2; l2', Φ (length l1 + k)%nat y1 y2).
-  Proof.
-    intros Hlen. rewrite !big_sepL2_alt.
-    iIntros "[Hfoo H]". iDestruct "Hfoo" as %Hfoo.
-    rewrite zip_with_app=>//.
-    rewrite big_sepL_app. iDestruct "H" as "[H1 H2]".
-    rewrite zip_with_length.
-    assert ((length l1 `min` length l1')%nat = length l1) as ->.
-    { lia. }
-    iFrame. iSplit; iPureIntro; eauto.
-    revert Hfoo. rewrite !app_length. lia.
-  Qed.
-
   Lemma big_sepL2_swap Φ l1 l2 :
     ([∗ list] k↦y1;y2 ∈ l1; l2, Φ k y1 y2)
     ⊣⊢
