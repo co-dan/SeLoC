@@ -59,31 +59,8 @@ Definition classified := Excl' Classified.
 Definition intermediate := Excl' Intermediate.
 Definition declassified := Excl' Declassified.
 
-Section ghost_state.
+Section helper_lemmas.
   Context `{!stateG Σ, !oneshotG Σ}.
-
-  (* Preorder on states *)
-  Definition state_leq (s1 s2 : state) :=
-    match s1, s2 with
-    | Classified,   _            => true
-    | _,            Declassified => true
-    | Intermediate, Intermediate => true
-    | _,            _            => false
-    end.
-
-  Definition in_state γ (s : state) :=
-    match s with
-    | Classified   => own γ.1 (● classified)   ∗ pending γ.2
-    | Intermediate => own γ.1 (● intermediate) ∗ pending γ.2
-    | Declassifed  => own γ.1 (● declassified) ∗ shot γ.2
-    end%I.
-
-  Definition state_token γ (s : state) :=
-    match s with
-    | Classified   => own γ.1 (◯ classified)
-    | Intermediate => own γ.1 (◯ intermediate)
-    | Declassifed  => shot γ.2
-    end%I.
 
   (* TODO: move *)
   Lemma Some_None_not_included {A : cmraT} (x : A) :
@@ -115,7 +92,35 @@ Section ghost_state.
     apply exclusive_local_update. done.
   Qed.
 
-  (** Ghost state theorey *)
+End helper_lemmas.
+
+(** * Ghost state theory *)
+Section ghost_state.
+  Context `{!stateG Σ, !oneshotG Σ}.
+
+  (* Preorder on states *)
+  Definition state_leq (s1 s2 : state) :=
+    match s1, s2 with
+    | Classified,   _            => true
+    | _,            Declassified => true
+    | Intermediate, Intermediate => true
+    | _,            _            => false
+    end.
+
+  Definition in_state γ (s : state) :=
+    match s with
+    | Classified   => own γ.1 (● classified)   ∗ pending γ.2
+    | Intermediate => own γ.1 (● intermediate) ∗ pending γ.2
+    | Declassifed  => own γ.1 (● declassified) ∗ shot γ.2
+    end%I.
+
+  Definition state_token γ (s : state) :=
+    match s with
+    | Classified   => own γ.1 (◯ classified)
+    | Intermediate => own γ.1 (◯ intermediate)
+    | Declassifed  => shot γ.2
+    end%I.
+
   Lemma in_state_agree γ s1 s2 :
     in_state γ s1 -∗ state_token γ s2 -∗ ⌜s1 = s2⌝.
   Proof.
@@ -129,20 +134,16 @@ Section ghost_state.
          iApply (shot_not_pending with "H2 H1") ].
   Qed.
 
-  Lemma declassified_get_token γ :
-    in_state γ Declassified -∗ in_state γ Declassified ∗ state_token γ Declassified.
-  Proof. simpl. iIntros "[$ #$]". Qed.
-
   Global Instance declassified_token_persistent γ :
     Persistent (state_token γ Declassified).
   Proof. apply _. Qed.
 
-  Lemma state_change γ s2 s3 :
-    state_leq s2 s3 →
-    in_state γ s2 -∗ state_token γ s2 ==∗ in_state γ s3 ∗ state_token γ s3.
+  Lemma state_change γ s1 s2 :
+    state_leq s1 s2 →
+    in_state γ s1 -∗ state_token γ s1 ==∗ in_state γ s2 ∗ state_token γ s2.
   Proof.
     rewrite /in_state /state_token. iIntros (Hleq).
-    destruct s2, s3; first
+    destruct s1, s2; first
       [ by iIntros "[$ $] $"
       | iIntros "[Ha $] Hf"; iApply (excl_change_state with "Ha Hf")
       | exfalso; by simplify_eq/=
@@ -169,7 +170,7 @@ Section proof.
      (∃ v, in_state (γ, γs) Intermediate ∗ r1.1 ↦ₗ #true ∗ r2.1 ↦ #true
                ∗ r1.2 ↦ₗ v ∗ r2.2 ↦ᵣ v ∗ ⟦ tint Low ⟧ ξ v v)
    ∨ (* in the state DECLASSIFIED *)
-     (∃ v, in_state (γ, γs) Declassified ∗ r1.1 ↦ₗ #false ∗ r2.1 ↦ #false
+     (∃ v, in_state (γ, γs) Declassified ∗ state_token (γ, γs) Declassified ∗ r1.1 ↦ₗ #false ∗ r2.1 ↦ #false
                ∗ r1.2 ↦ₗ v ∗ r2.2 ↦ᵣ v ∗ ⟦ tint Low ⟧ ξ v v))%I.
 
   Definition N := nroot.@"example".
@@ -202,8 +203,7 @@ Section proof.
       { iNext. iRight. iLeft. eauto with iFrame. }
       iModIntro. dwp_pures. by iApply "IH".
     - (* We are in the DECLASSIFIED state *)
-      iDestruct "Hst" as (v) "(Hstate & Hi1 & Hi2 & Hd1 & Hd2 & Hv)".
-      iMod (declassified_get_token with "Hstate") as "[Hstate #Hdecl]".
+      iDestruct "Hst" as (v) "(Hstate & #Hdecl & Hi1 & Hi2 & Hd1 & Hd2 & Hv)".
       iApply (dwp_load with "Hi1 Hi2"). iIntros "Hi1 Hi2". iNext.
       iMod ("Hcl" with "[-]") as "_".
       { iNext. iRight. iRight. eauto with iFrame. }
@@ -224,7 +224,7 @@ Section proof.
         iExFalso. iDestruct (in_state_agree with "Hstate Hdecl") as %foo.
         simplify_eq/=.
       + (* Still in the DECLASSIFIED state *)
-        iDestruct "Hst" as (v) "(Hstate & Hi1 & Hi2 & Hd1 & Hd2 & #Hv)".
+        iDestruct "Hst" as (v) "(Hstate & _ & Hi1 & Hi2 & Hd1 & Hd2 & #Hv)".
         iApply (dwp_load with "Hd1 Hd2"). iIntros "Hd1 Hd2". iNext.
         iMod ("Hcl" with "[-]") as "_".
         { iNext. iRight. iRight. eauto with iFrame. }
@@ -261,15 +261,15 @@ Section proof.
         iApply (dwp_store with "Hi1 Hi2"). iIntros "Hi1 Hi2". iNext.
         iMod (state_change _ _ Declassified with "Hstate Hstt") as "[Hstate Hstt]";
           first done.
-        iMod ("Hcl" with "[-Hstt]") as "_".
+        iMod ("Hcl" with "[-]") as "_".
         { iNext. iRight. iRight. eauto with iFrame.  }
         iModIntro. eauto with iFrame.
       + (* DECLASSIFIED state. In this case it is actually impossible
            in the program, but we don't account for that in the proof.
            Instead we can just keep calm and carry on. *)
-        iDestruct "Hst" as (v) "(>Hstate & Hi1 & Hi2 & Hd1 & Hd2 & Hv)".
+        iDestruct "Hst" as (v) "(>Hstate & Hdecl & Hi1 & Hi2 & Hd1 & Hd2 & Hv)".
         iApply (dwp_store with "Hi1 Hi2"). iIntros "Hi1 Hi2". iNext.
-        iMod ("Hcl" with "[-Hstt]") as "_".
+        iMod ("Hcl" with "[-]") as "_".
         { iNext. iRight. iRight. eauto with iFrame.  }
         iModIntro. eauto with iFrame.
     - (* INTERMEDIATE state --> impossible *)
@@ -278,7 +278,7 @@ Section proof.
       iDestruct (in_state_agree with "Hstate Hstt") as %Hfoo.
       exfalso. naive_solver.
     - (* DECLASSIFIED state --> impossible *)
-      iDestruct "Hst" as (v) "(>Hstate & Hi1 & Hi2 & Hd1 & Hd2 & Hv)".
+      iDestruct "Hst" as (v) "(>Hstate & _ & Hi1 & Hi2 & Hd1 & Hd2 & Hv)".
       destruct γ as [γ γs].
       iDestruct (in_state_agree with "Hstate Hstt") as %Hfoo.
       exfalso. naive_solver.
