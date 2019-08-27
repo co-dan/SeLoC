@@ -74,7 +74,7 @@ We model value-dependent classified variables as records:
 Definition classify : val := λ: "rec",
   Fst "rec" <- #true.
 
-Definition declassify : val := rec: "declassify" "rec" "dv" :=
+Definition declassify : val := λ: "rec" "dv",
   let: "is_classified" := Fst "rec" in
   let: "data" := Snd "rec" in
   "data" <- "dv";;
