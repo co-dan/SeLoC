@@ -5,50 +5,24 @@ following protocol:
 
 - Multiple threads can do reads, and look at the classification
   levels, permitting arbitrary interference. (No additional resources
-  are required beyond a view shift).
+  are required beyond a view shift). Althought you do need a token if
+  you want to verify that what you read is indeed low-security.
+  Similarly for write: you can always write stuff, but you need a
+  token if you want to store high-security data.
 
-- Only one thread can perform declassification, but it can it do
-  concurrently with reads. Cannot be done concurrently with writes.
-  (Requires a token [classification γ (3/4)])
+- Only one thread can perform declassification or classification, but
+  it can it do concurrently with reads or writes.
 
-- The same condition holds for writes. (Requires a token
-  [classification γ (3/4)])
+- As per the first point, if you do declassification concurrently with
+  writes, then writes have to provide low security data. Similarly, if
+  you do classification concurrently with reads, you can only assume
+  that the read operation returns high-security data.
 
-- Only a single thread can perform classification. No interference
-  from any other operations is permitted. (Requires a full token
-  [classification γ 1]).
+- The [is_classified] operation returns an *upper bound* on the
+security level. That is, if it returns [false], then you know that the
+data is surely declassified. But if it returns [true] you cannot be
+certain. *)
 
-The restriction that only one thread can perform declassification is
-artificial, it should be completely safe to do that. But it is more
-annoying to prove.
-
-There are other variations that can be implemented:
-
-- Classification can be done concurrently with writes, but no
-  interference from reads is allowed.
-
-- Both reads and writes can be performed completely concurrently, but
-  no interference from declassification and classification is allowed.
-  Thus only one thread can declassify/classify and no other thread can
-  access the resource.
-
-What is the "best" the most general specification? It's hard to tell,
-because those resource with value-dependent classification are
-basically like references, and references are invariant in their type.
-This imposes a severe restriction on what kind of interference each
-operation can tolerate, and a lot of combinations just do not make
-sense.
-
-I choose this particular protocol, because it allowed me to verify the
-non-blocking declassification example in
-examples/value_sensitivity_2.v
-
-** TODO:
-
-- use meta-tokens
-- use the frac_auth library
-
-*)
 From iris.base_logic Require Import invariants lib.auth.
 From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang proofmode.
@@ -104,9 +78,9 @@ There are three possible states:
           +-------------------->| Intermediate +-----------------+
           |                     |              |                 v
    +------+-------+             +--------------+          +--------------+
-   |              |             | b ∈ {true,   |          |              |
-   |  Classified  |             |       false} |          | Declassified |
-   |              |             | α = Low      |          |              |
+   |              |             | b = false    |          |              |
+   |  Classified  |             | α = Low      |          | Declassified |
+   |              |             |              |          |              |
    +--------------+             +--------------+          +--------------+
    |  b = false   |                                       | b = true     |
    |  α = High    |                                       | α = Low      |
@@ -114,14 +88,7 @@ There are three possible states:
           ^                                                      |
           |                                                      |
           +------------------------------------------------------+
-
-
-The transition from [Classified] to [Intermediate] consumes
-the [classification γ β (3/4)] and produces an intermediate unique token.
-
-
-The transition from [Intermediate] to [Declassified] consumes
-that intermediate token and gives back the [classification γ β (3/4)] token. *)
+*)
 
 Class valueDepG Σ := ValueDepG {
    value_dep_slelveG :> authG Σ (optionUR (prodR fracR (agreeR slevelO)));
@@ -404,10 +371,10 @@ Section value_dep.
       iRight. iRight. eauto with iFrame.
   Qed.
 
-  Lemma classify_spec γ τ α rec1 rec2 ξ Q :
+  Lemma classify_spec γ τ α q rec1 rec2 ξ Q :
     value_dependent γ τ ξ rec1 rec2 -∗
-    classification γ α 1 -∗
-    (classification_auth γ α -∗ classification γ α 1
+    classification γ α q -∗
+    (classification_auth γ α -∗ classification γ α q
           ={⊤∖↑nroot.@"vdep".@(rec1,rec2)}=∗
       classification_auth γ High ∗ Q #() #()) -∗
     DWP classify rec1 & classify rec2 : Q.
