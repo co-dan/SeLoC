@@ -123,16 +123,7 @@ the [classification γ β (3/4)] and produces an intermediate unique token.
 The transition from [Intermediate] to [Declassified] consumes
 that intermediate token and gives back the [classification γ β (3/4)] token. *)
 
-Inductive cl_state :=
-| Classified
-| Declassified
-| Intermediate.
-
-Canonical Structure cl_stateO := leibnizO cl_state.
-Instance cl_state_inhabited : Inhabited cl_state := populate Declassified.
-
 Class valueDepG Σ := ValueDepG {
-   value_dep_stateG :> authG Σ (optionUR (exclR cl_stateO));
    value_dep_slelveG :> authG Σ (optionUR (prodR fracR (agreeR slevelO)));
 }.
 
@@ -166,15 +157,6 @@ Section value_dep.
     AsFractional (classification γ α q) (classification γ α) q.
   Proof. split. done. apply _. Qed.
 
-  Lemma classification_quarter γ α :
-    classification γ α 1 ⊣⊢ classification γ α (1/4) ∗ classification γ α (3/4).
-  Proof.
-    assert (1%Qp = (1/4)%Qp + (3/4)%Qp)%Qp as Heq.
-    { by apply (bool_decide_unpack _). }
-    rewrite {1}Heq.
-    apply fractional.
-  Qed.
-
   Global Instance classification_timeless γ α q :
     Timeless (classification γ α q).
   Proof. apply _. Qed.
@@ -184,7 +166,7 @@ Section value_dep.
   Proof. apply _. Qed.
 
   Lemma classification_new α :
-    (|==> ∃ γ, classification_auth γ α ∗classification γ α 1)%I.
+    (|==> ∃ γ, classification_auth γ α ∗ classification γ α 1)%I.
   Proof.
     (* Why all the type annotations? *)
     rewrite /classification_auth /classification.
@@ -239,29 +221,6 @@ Section value_dep.
     apply exclusive_l. apply _.
   Qed.
 
-  Lemma cl_state_update (new_st : cl_state) γst (st : cl_state) :
-    own γst (● Excl' st) -∗ own γst (◯ Excl' st)
-    ==∗
-    own γst (● Excl' new_st) ∗ own γst (◯ Excl' new_st).
-  Proof.
-    apply bi.wand_intro_r.
-    rewrite - !own_op. apply own_update.
-    apply auth_update.
-    apply option_local_update.
-    by apply exclusive_local_update.
-  Qed.
-
-  Lemma cl_state_agree γst (st st' : cl_state) :
-    own γst (● Excl' st) -∗ own γst (◯ Excl' st') -∗ ⌜st = st'⌝.
-  Proof.
-    apply bi.wand_intro_r. rewrite -own_op.
-    iIntros "H". iDestruct (own_valid with "H") as %Hfoo.
-    iPureIntro; revert Hfoo.
-    rewrite auth_both_valid. intros [foo _].
-    apply Some_included_exclusive in foo; try (simplify_eq; done).
-    apply _.
-  Qed.
-
   (** Functions converting between security levels, states, and booleans *)
   Definition lvl_of_bool (b : bool) :=
     match b with
@@ -269,142 +228,31 @@ Section value_dep.
     | false => Low
     end.
 
-  Definition state_of_bool (b : bool) :=
-    match b with
-    | true => Classified
-    | false => Declassified
-    end.
-
-  Definition bool_of_state (st : cl_state) :=
-    match st with
-    | Classified => true
-    | Intermediate => true
-    | Declassified => false
-    end.
-
-  Definition bool_of_lvl (sl : slevel) :=
-    match sl with
-    | High => true
-    | Low => false
-    end.
-
-  Definition lvl_of_state (st : cl_state) := lvl_of_bool (bool_of_state st).
-
   (** ** The invariant and transitions *)
-  Definition cl_state_inv γ γst st b τ w1 w2 ξ :=
-    match st with
-    | Classified =>
-      ⌜b = true⌝ ∗ ⟦ stamp τ High ⟧ ξ w1 w2 ∗ own γst (◯ Excl' Classified)
-    | Declassified =>
-      ⌜b = false⌝ ∗ ⟦ τ ⟧ ξ w1 w2 ∗ own γst (◯ Excl' Declassified)
-    | Intermediate =>
-      ⟦ τ ⟧ ξ w1 w2 ∗ classification γ (lvl_of_bool b) (3/4)
-    end%I.
+  Definition cl_state_inv b α τ w1 w2 ξ :=
+    (* classified *)
+   ((⌜b = true⌝ ∗ ⌜α = High⌝ ∗ ⟦ stamp τ High ⟧ ξ w1 w2) ∨
+    (* intermediate *)
+    (⌜b = true⌝ ∗ ⌜α = Low⌝ ∗ ⟦ τ ⟧ ξ w1 w2)   ∨
+    (* declassified *)
+    (⌜b = false⌝ ∗ ⌜α = Low⌝ ∗ ⟦ τ ⟧ ξ w1 w2))%I.
 
   (** The Boolean flag always determines the "visible" classification
   level of the reference. Whereas the actual data can be related at a
   lower reference. This basically enables concurrent/non-blocking
   declassification. *)
-  Definition value_dependent_inv γ γst τ (cl1 cl2 r1 r2 : loc) ξ :=
-    (∃ (w1 w2 : val) (b : bool) (st : cl_state),
+  Definition value_dependent_inv γ τ (cl1 cl2 r1 r2 : loc) ξ :=
+    (∃ (w1 w2 : val) (b : bool) (α : slevel),
        r1 ↦ₗ w1 ∗ r2 ↦ᵣ w2 ∗ cl1 ↦ₗ #b ∗ cl2 ↦ᵣ #b ∗
-       own γst (● Excl' st) ∗
-       classification_auth γ (lvl_of_bool b) ∗
-       cl_state_inv γ γst st b τ w1 w2 ξ)%I.
+       classification_auth γ α ∗
+       cl_state_inv b α τ w1 w2 ξ)%I.
 
 
-  (** Transitions as lemmas *)
-  Lemma cl_state_not_intermediate γ γst st b τ w1 w2 β ξ :
-    cl_state_inv γ γst st b τ w1 w2 ξ -∗
-    classification γ β 1 -∗ ⌜st ≠ Intermediate⌝.
-  Proof.
-    iIntros "Hst Hc". rewrite /cl_state_inv.
-    destruct st; eauto.
-    iDestruct "Hst" as "(_ & Hc2)".
-    iExFalso. iApply (classification_1_exclusive with "Hc Hc2").
-  Qed.
-
-
-  Lemma cl_state_not_intermediate_2 γ γst st b τ w1 w2 β ξ :
-    cl_state_inv γ γst st b τ w1 w2 ξ -∗
-    classification γ β (3/4) -∗ ⌜st ≠ Intermediate⌝.
-  Proof.
-    iIntros "Hst Hc". rewrite /cl_state_inv.
-    destruct st; eauto.
-    iDestruct "Hst" as "(_ & Hc2)".
-    iExFalso. iDestruct (own_valid_2 with "Hc Hc2") as %Hfoo.
-    iPureIntro. revert Hfoo.
-    rewrite -auth_frag_op auth_frag_valid -Some_op Some_valid.
-    rewrite -pair_op frac_op'.
-    intros [foo%frac_valid' _]; eauto.
-  Qed.
-
-  (* We can change the values unless we are in the intermediate step *)
-  Lemma cl_state_change_values γ γst st b τ w1 w2 v1 v2 ξ :
-    st ≠ Intermediate →
-    cl_state_inv γ γst st b τ w1 w2 ξ -∗
-    ⟦ stamp τ (lvl_of_bool b) ⟧ ξ v1 v2 -∗
-    cl_state_inv γ γst st b τ v1 v2 ξ.
-  Proof.
-    iIntros (?) "Hst #Hv". rewrite /cl_state_inv.
-    destruct st; simplify_eq/=; iDestruct "Hst" as "(-> & Hw & $)";
-      compute[lvl_of_state]; simplify_eq/=;
-      rewrite ?stamp_low; eauto with iFrame.
-  Qed.
-
-  Lemma cl_state_classify γ γst st b τ w1 w2 ξ :
-    st ≠ Intermediate → (* cannot go from intermediate to declassified *)
-    own γst (● Excl' st) -∗
-    cl_state_inv γ γst st b τ w1 w2 ξ ==∗
-    own γst (● Excl' Classified) ∗ cl_state_inv γ γst Classified true τ w1 w2 ξ.
-  Proof.
-    iIntros (?) "Hst Hw". rewrite /cl_state_inv.
-    destruct st; try by iFrame; simplify_eq/=.
-    - iDestruct "Hw" as "(-> & Hw & Hstf)". eauto with iFrame.
-    - iDestruct "Hw" as "(-> & Hw & Hstf)".
-      iMod (cl_state_update Classified with "Hst Hstf") as "[$ $]".
-      iModIntro. iSplit; eauto.
-      iApply (interp_sub_mono with "Hw"). by apply stamp_sub.
-  Qed.
-
-  Lemma cl_state_make_intermediate γ γst st b τ w1 w2 v1 v2 ξ :
-    st ≠ Intermediate →
-    ⟦ τ ⟧ ξ v1 v2 -∗
-    classification γ (lvl_of_bool b) (3/4) -∗
-    own γst (● Excl' st) -∗
-    cl_state_inv γ γst st b τ w1 w2 ξ ==∗
-    own γst (● Excl' Intermediate) ∗
-    own γst (◯ Excl' Intermediate) ∗ (* you also get a token *)
-    cl_state_inv γ γst Intermediate b τ v1 v2 ξ.
-  Proof.
-    iIntros (?) "#Hv Hcl Hst Hw". rewrite /cl_state_inv.
-    destruct st; try by iFrame; simplify_eq/=.
-    - iDestruct "Hw" as "(-> & Hw & Hstf)".
-      iMod (cl_state_update Intermediate with "Hst Hstf") as "[$ $]".
-      by iFrame.
-    - iDestruct "Hw" as "(-> & Hw & Hstf)".
-      iMod (cl_state_update Intermediate with "Hst Hstf") as "[$ $]".
-      by iFrame.
-  Qed.
-
-  Lemma cl_state_values γ γst st b τ w1 w2 ξ :
-    cl_state_inv γ γst st b τ w1 w2 ξ -∗
-    ⟦ stamp τ (lvl_of_bool b) ⟧ ξ w1 w2.
-  Proof.
-    iIntros "Hw". rewrite /cl_state_inv.
-    destruct st.
-    - iDestruct "Hw" as "(-> & Hw & Hstf)". simpl. by iFrame.
-    - iDestruct "Hw" as "(-> & Hw & Hstf)". simpl.
-      rewrite stamp_low. by iFrame.
-    - iDestruct "Hw" as "(Hw & Hstf)".
-      iApply (interp_sub_mono with "Hw"). apply stamp_sub.
-  Qed.
-
-  Definition value_dependent γ γst τ : lrel Σ := LRel (λ ξ v1 v2,
+  Definition value_dependent γ τ : lrel Σ := LRel (λ ξ v1 v2,
     ∃ (cl1 cl2 r1 r2: loc),
       ⌜v1 = (#cl1, #r1)%V⌝ ∗ ⌜v2 = (#cl2, #r2)%V⌝ ∗
       inv (nroot.@"vdep".@(v1,v2))
-        (value_dependent_inv γ γst τ cl1 cl2 r1 r2 ξ))%I.
+        (value_dependent_inv γ τ cl1 cl2 r1 r2 ξ))%I.
 
   (** ** A "constructor" *)
   Lemma make_value_dependent τ (cl1 cl2 r1 r2 : loc) w1 w2 b E ξ :
@@ -413,53 +261,56 @@ Section value_dep.
     cl1 ↦ₗ #b -∗
     cl2 ↦ᵣ #b -∗
     ⟦ stamp τ (lvl_of_bool b) ⟧ ξ w1 w2 ={E}=∗
-    ∃ γ γst, value_dependent γ γst τ ξ (#cl1, #r1)%V (#cl2, #r2)%V ∗
+    ∃ γ, value_dependent γ τ ξ (#cl1, #r1)%V (#cl2, #r2)%V ∗
       classification γ (lvl_of_bool b) 1.
   Proof.
     iIntros "Hr1 Hr2 Hcl1 Hcl2 #Hw".
     iMod (classification_new (lvl_of_bool b)) as (γ) "[Ha Hf]".
-    iMod (own_alloc (● Excl' (state_of_bool b) ⋅ ◯ Excl' (state_of_bool b)))
-      as (γst) "[Hst Hstf]".
-    { apply auth_both_valid. split; done. }
     iMod (inv_alloc (nroot.@"vdep".@((#cl1,#r1)%V,(#cl2,#r2)%V)) _
-       (value_dependent_inv γ γst τ cl1 cl2 r1 r2 ξ) with "[-Hf]") as "#Hinv".
-    { iNext. rewrite /value_dependent_inv. iExists _,_,_,(state_of_bool b).
-      iFrame. destruct b; simpl; rewrite ?stamp_low; by eauto with iFrame. }
-    iModIntro. iExists γ,γst. iFrame.
+       (value_dependent_inv γ τ cl1 cl2 r1 r2 ξ) with "[-Hf]") as "#Hinv".
+    { iNext. rewrite /value_dependent_inv. iExists _,_,_,(lvl_of_bool b).
+      iFrame. destruct b; simpl; rewrite ?stamp_low.
+      - iLeft. eauto with iFrame.
+      - iRight. iRight. eauto with iFrame. }
+    iModIntro. iExists γ. iFrame.
     iExists _,_,_,_. by eauto.
   Qed.
 
   (** ** Specifications for the functions *)
 
-  Lemma is_classified_spec γ γst τ rec1 rec2 ξ Q :
-    value_dependent γ γst τ ξ  rec1 rec2 -∗
-    (∀ α, classification_auth γ α
+  Lemma is_classified_spec γ τ rec1 rec2 ξ Q :
+    value_dependent γ τ ξ  rec1 rec2 -∗
+    (∀ α b, classification_auth γ α
           ={⊤∖↑nroot.@"vdep".@(rec1,rec2)}=∗
-      classification_auth γ α ∗ Q #(bool_of_lvl α) #(bool_of_lvl α)) -∗
+      classification_auth γ α ∗
+        (⌜b = false → α = Low⌝ -∗ Q #b #b)) -∗
     DWP is_classified rec1 & is_classified rec2 : Q.
   Proof.
     iIntros "Hdep Hvs".
     iDestruct "Hdep" as (cl1 cl2 r1 r2 -> ->) "#Hinv".
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
-    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b st)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
+    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α)
+        "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_load with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
 
     iMod ("Hvs" with "Ha") as "[Ha HQ]".
-
+    iAssert (⌜b = false → α = Low⌝)%I as %Hfoo.
+    { rewrite /cl_state_inv. destruct b; first by eauto.
+      iDestruct "Hi" as "[(% & _)|[(% & _) | (% & % & _)]]"; by simplify_eq/=. }
     iMod ("Hcl" with "[- HQ]") as "_".
     { iNext. iExists _,_,_,_. by iFrame. }
-    iModIntro. iFrame. by destruct b; eauto.
+    iModIntro. iFrame. by iApply "HQ".
   Qed.
 
-  Lemma declassify_spec γ γst τ β rec1 rec2 v1 v2 ξ Q :
-    value_dependent γ γst τ ξ rec1 rec2 -∗
+  Lemma declassify_spec γ τ q α rec1 rec2 v1 v2 ξ Q :
+    value_dependent γ τ ξ rec1 rec2 -∗
     ⟦ τ ⟧ ξ v1 v2 -∗
-    classification γ β (3/4) -∗
-    (∀ α, classification_auth γ α -∗ classification γ α (3/4)
+    classification γ α q -∗
+    (classification_auth γ α -∗ classification γ α q
           ={⊤∖↑nroot.@"vdep".@(rec1,rec2)}=∗
-      classification_auth γ Low ∗ Q #() #()) -∗
+      classification_auth γ Low ∗ classification γ Low q
+      ∗ (classification γ Low q -∗ Q #() #())) -∗
     DWP declassify rec1 v1 & declassify rec2 v2 : Q.
   Proof.
     iIntros "Hdep #Hv Hf Hvs".
@@ -468,50 +319,63 @@ Section value_dep.
 
     (** First we store the values and change the state to intermediate *)
     iApply dwp_atomic.
-    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b st)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
+    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α')
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
 
-    (** Notice that we cannot already be in the intermediate step *)
-    iDestruct (cl_state_not_intermediate_2 with "Hw Hf") as %?.
-
     (** Notice that we know the exact classification of the values *)
-    iDestruct (classification_auth_agree with "Ha Hf") as %<-.
+    iDestruct (classification_auth_agree with "Ha Hf") as %->.
 
-    (** Actually update the state.. *)
-    iMod (cl_state_make_intermediate with "Hv Hf Hst Hw") as "(Hst&Htok&Hw)";
-      first fast_done.
-
-    iMod ("Hcl" with "[-Htok Hvs]") as "_".
-    { iNext. iExists _,_,_,Intermediate. by iFrame. }
-
-    (** Now we finish up by physically declassifying the location and
-    updating the state to Declassified *)
-    iModIntro. dwp_pures.
-
-    iApply dwp_atomic.
-    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1' w2' b' st')
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
-    iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
-
-    (** Notice that we are still in the intermediate step *)
-    iDestruct (cl_state_agree with "Hst Htok") as %->.
-    iSimpl in "Hw". iDestruct "Hw" as "[#Hw Hc]".
-
-    iMod ("Hvs" with "Ha Hc") as "[Ha HQ]".
-
-    (** Update the ghost state *)
-    iMod (cl_state_update Declassified with "Hst Htok") as "[Hst Hstf]".
-
-    iMod ("Hcl" with "[-HQ]") as "_".
-    { iNext. iExists _,_,false,Declassified.
-      iFrame. iSplit; by eauto. }
-
-    by eauto.
+    (* Case analysis on the slevel bound *)
+    destruct α.
+    - rewrite /cl_state_inv.
+      iMod ("Hcl" with "[-Hf Hvs]") as "_".
+      { iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Ha Hr1 Hr2".
+        iDestruct "Hi" as "[  (% & % & #Hw)
+                           |[ (% & % & #Hw)
+                            | (% & % & #Hw) ]]"; simplify_eq/=.
+        - iRight. iLeft. eauto with iFrame.
+        - iRight. iRight. eauto with iFrame. }
+      clear b. iModIntro. dwp_pures.
+      iApply dwp_atomic.
+      iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1' w2' b α)
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+      iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
+      (* classification is still the same *)
+      iDestruct (classification_auth_agree with "Ha Hf") as %->.
+      iMod ("Hvs" with "Ha Hf") as "[Ha [Hf HQ]]".
+      iDestruct ("HQ" with "Hf") as "$".
+      iApply "Hcl". iNext. iExists _,_,_,_. iFrame "Hr1 Hr2 Hcl1 Hcl2 Ha".
+      iRight. iRight. repeat iSplit; eauto.
+      iDestruct "Hi" as "[  (% & % & #Hw')
+                         |[ (% & % & #Hw')
+                          | (% & % & #Hw') ]]"; by simplify_eq/=.
+    - (* it is in the classified state *)
+      iDestruct "Hi" as "[  (% & % & #Hw')
+                         |[ (% & % & #Hw')
+                          | (% & % & #Hw') ]]"; simplify_eq/=.
+      iMod ("Hvs" with "Ha Hf") as "[Ha [Hf HQ]]".
+      iMod ("Hcl" with "[-Hf HQ]") as "_".
+      { iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Ha Hr1 Hr2".
+        iRight. iLeft. eauto with iFrame. }
+      iModIntro. dwp_pures.
+      iApply dwp_atomic.
+      iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1' w2' b α)
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+      iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
+      (* classification is still the same *)
+      iDestruct (classification_auth_agree with "Ha Hf") as %->.
+      iMod ("Hcl" with "[-Hf HQ]") as "_".
+      { iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Ha Hr1 Hr2".
+        iRight. iRight. repeat iSplit; eauto.
+        iDestruct "Hi" as "[  (% & % & #Hw)
+                           |[ (% & % & #Hw)
+                            | (% & % & #Hw) ]]"; by simplify_eq/=. }
+      iModIntro. by iApply "HQ".
   Qed.
 
-  Lemma read_spec γ γst τ rec1 rec2 ξ Q :
-    value_dependent γ γst τ ξ rec1 rec2 -∗
+  Lemma read_spec γ τ rec1 rec2 ξ Q :
+    value_dependent γ τ ξ rec1 rec2 -∗
     (∀ α v1 v2, classification_auth γ α -∗ ⟦ stamp τ α ⟧ ξ v1 v2
           ={⊤∖↑nroot.@"vdep".@(rec1,rec2)}=∗
       classification_auth γ α ∗ Q v1 v2) -∗
@@ -521,24 +385,29 @@ Section value_dep.
     iDestruct "Hdep" as (cl1 cl2 r1 r2 -> ->) "#Hinv".
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
-    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b st)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
+    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α)
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_load with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
-
-    (** The values have to be related at the "actual" state
-    irregardless of the ghost state *)
-    iDestruct (cl_state_values with "Hw") as "#Hws".
-
-    iMod ("Hvs" with "Ha Hws") as "[Ha $]".
-
-    iApply ("Hcl" with "[-]").
-    iNext. iExists _,_,_,_. by iFrame.
+    iDestruct "Hi" as "[  (% & % & #Hw)
+                       |[ (% & % & #Hw)
+                        | (% & % & #Hw) ]]"; simplify_eq/=.
+    - iMod ("Hvs" with "Ha [//]") as "[Ha $]".
+      iApply "Hcl". iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Hr1 Hr2 Ha".
+      iLeft. eauto with iFrame.
+    - iMod ("Hvs" with "Ha []") as "[Ha $]".
+      { by rewrite stamp_low. }
+      iApply "Hcl". iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Hr1 Hr2 Ha".
+      iRight. iLeft. eauto with iFrame.
+    - iMod ("Hvs" with "Ha []") as "[Ha $]".
+      { by rewrite stamp_low. }
+      iApply "Hcl". iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Hr1 Hr2 Ha".
+      iRight. iRight. eauto with iFrame.
   Qed.
 
-  Lemma classify_spec γ γst τ β rec1 rec2 ξ Q :
-    value_dependent γ γst τ ξ rec1 rec2 -∗
-    classification γ β 1 -∗
-    (∀ α, classification_auth γ α -∗ classification γ α 1
+  Lemma classify_spec γ τ α rec1 rec2 ξ Q :
+    value_dependent γ τ ξ rec1 rec2 -∗
+    classification γ α 1 -∗
+    (classification_auth γ α -∗ classification γ α 1
           ={⊤∖↑nroot.@"vdep".@(rec1,rec2)}=∗
       classification_auth γ High ∗ Q #() #()) -∗
     DWP classify rec1 & classify rec2 : Q.
@@ -547,52 +416,50 @@ Section value_dep.
     iDestruct "Hdep" as (cl1 cl2 r1 r2 -> ->) "#Hinv".
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
-    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b st)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
+    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α')
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
 
-    iDestruct (classification_auth_agree with "Ha Hf") as %<-.
-    (** Notice that we cannot be in the intermediate state *)
-    iDestruct (cl_state_not_intermediate with "Hw Hf") as %?.
-
-    (** Change the state *)
-    iMod (cl_state_classify with "Hst Hw") as "[Hst Hw]"; try done.
-
+    iDestruct (classification_auth_agree with "Ha Hf") as %->.
     iMod ("Hvs" with "Ha Hf") as "[Ha $]".
 
     iApply ("Hcl" with "[-]").
-    iNext. iExists _,_,_,Classified. by iFrame.
+    iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Hr1 Hr2 Ha".
+    iDestruct "Hi" as "[  (% & % & #Hw)
+                       |[ (% & % & #Hw)
+                        | (% & % & #Hw) ]]"; simplify_eq/=.
+    - iLeft. eauto with iFrame.
+    - iLeft. repeat iSplit; eauto.
+      iApply (interp_sub_mono with "Hw"). apply stamp_sub.
+    - iLeft. repeat iSplit; eauto.
+      iApply (interp_sub_mono with "Hw"). apply stamp_sub.
   Qed.
 
-  Lemma store_spec γ γst τ β rec1 rec2 v1 v2 ξ Q :
-    value_dependent γ γst τ ξ rec1 rec2 -∗
-    ⟦ stamp τ β ⟧ ξ v1 v2 -∗
-    classification γ β (3/4) -∗
-    (∀ α, classification_auth γ α -∗ classification γ α (3/4)
+  Lemma store_spec γ τ rec1 rec2 v1 v2 ξ Q :
+    value_dependent γ τ ξ rec1 rec2 -∗
+    (∀ α, classification_auth γ α
           ={⊤∖↑nroot.@"vdep".@(rec1,rec2)}=∗
-      classification_auth γ α ∗ Q #() #()) -∗
+      classification_auth γ α ∗ ⟦ stamp τ α ⟧ ξ v1 v2 ∗ Q #() #()) -∗
     DWP store_dep rec1 v1 & store_dep rec2 v2 : Q.
   Proof.
-    iIntros "Hdep #Hv Hf Hvs".
+    iIntros "Hdep Hvs".
     iDestruct "Hdep" as (cl1 cl2 r1 r2 -> ->) "#Hinv".
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
-    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b st)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Hst & Ha & Hw)" "Hcl".
+    iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α)
+                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
 
-    iDestruct (classification_auth_agree with "Ha Hf") as %<-.
-
-    (** Notice that we cannot be in the intermediate state *)
-    iDestruct (cl_state_not_intermediate_2 with "Hw Hf") as %?.
-
-    (** Then we can change the values *)
-    iDestruct (cl_state_change_values with "Hw Hv") as "Hw"; first done.
-
-    iMod ("Hvs" with "Ha Hf") as "[Ha $]".
+    iMod ("Hvs" with "Ha") as "[Ha [#Hvs $]]".
 
     iApply ("Hcl" with "[-]").
-    iNext. iExists _,_,_,_. by iFrame.
+    iNext. iExists _,_,_,_. iFrame "Hcl1 Hcl2 Hr1 Hr2 Ha".
+    iDestruct "Hi" as "[  (% & % & #Hw)
+                       |[ (% & % & #Hw)
+                        | (% & % & #Hw) ]]"; simplify_eq/=.
+    - iLeft. eauto with iFrame.
+    - iRight. iLeft. rewrite stamp_low. eauto with iFrame.
+    - iRight. iRight. rewrite stamp_low. eauto with iFrame.
   Qed.
 
 End value_dep.

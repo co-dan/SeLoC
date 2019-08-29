@@ -4,6 +4,7 @@ From iris.algebra Require Import cmra.
 Inductive slevel := Low | High.
 Instance slevel_eqdec : EqDecision slevel.
 Proof. solve_decision. Qed.
+Instance slevel_inhabited: Inhabited slevel := populate Low.
 Canonical Structure slevelO := leibnizO slevel.
 
 Instance slevel_join : Join slevel := λ lv1 lv2,
