@@ -68,9 +68,11 @@ Section semtypes.
 
   Definition locsN := nroot.@"locsinv".
 
-    Definition lrel_unit : lrel Σ := LRel (λ _ w1 w2, ⌜ w1 = #() ∧ w2 = #() ⌝%I).
+  Definition lrel_unit : lrel Σ := LRel (λ _ w1 w2, ⌜ w1 = #() ∧ w2 = #() ⌝%I).
+
   Definition lrel_int (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
       ∃ n1 n2 : Z, ⌜w1 = #n1⌝ ∧ ⌜w2 = #n2⌝ ∧ ⌜l ⊑ ξ → n1 = n2⌝)%I.
+
   Definition lrel_bool (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
       ∃ b1 b2 : bool, ⌜w1 = #b1⌝ ∧ ⌜w2 = #b2⌝ ∧ ⌜l ⊑ ξ → b1 = b2⌝)%I.
 
@@ -78,12 +80,10 @@ Section semtypes.
     ∃ v1 v2 v1' v2', ⌜w1 = (v1,v1')%V⌝ ∧ ⌜w2 = (v2,v2')%V⌝ ∧
         A ξ v1 v2 ∗ B ξ v1' v2')%I.
 
-
   (* TODO: use the level `l`?
      DF: we use it in the actual interpretation of arrows *)
   Definition lrel_arr (A1 A2 : lrel Σ) (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
     □ ∀ v1 v2, A1 ξ v1 v2 -∗ DWP (w1 v1) & (w2 v2) : A2 ξ)%I.
-
 
   Definition lrel_ref (A : lrel Σ) : lrel Σ := LRel (λ ξ w1 w2,
     ∃ l1 l2: loc, ⌜w1 = #l1⌝ ∧ ⌜w2 = #l2⌝ ∧
