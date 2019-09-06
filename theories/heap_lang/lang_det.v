@@ -214,19 +214,6 @@ Proof.
   by apply head_step_det_nondet.
 Qed.
 
-(* TODO: move? *)
-Section ectx_language.
-  Context {Λ : ectxLanguage}.
-  Implicit Types v : ectx_language.val Λ.
-  Implicit Types e : ectx_language.expr Λ.
-  Implicit Types K : ectx_language.ectx Λ.
-
-  Lemma head_prim_fill_reducible_no_obs e  K σ :
-    head_reducible_no_obs e σ →
-    reducible_no_obs (ectx_language.fill K e) σ.
-  Proof. intros (?&?&?&Hhred). by repeat econstructor. Qed.
-End ectx_language.
-
 Lemma reducible_nondet_det e σ :
   reducible (Λ := heap_lang) e σ →
   reducible (Λ := heap_lang_det) e σ.

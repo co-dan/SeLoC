@@ -9,11 +9,9 @@ weakest precondition calculus. This makes our lives easier in some
 places because we don't need to care about two different instances of
 `invG` whenever we have _both_ irisG and irisDG. *)
 Class irisDG' (Λstate Λobs : Type) (Σ : gFunctors) := IrisDG {
-  (* irisDG_irisG :> irisG' Λstate Σ; *)
   state_rel : Λstate → Λstate → list Λobs → list Λobs → iProp Σ;
 }.
 Notation irisDG Λ Σ := (irisDG' (state Λ) (observation Λ) Σ).
-(* Global Opaque irisDG_irisG. *)
 
 Definition dwp_pre `{invG Σ, irisDG Λ Σ}
     (dwp : coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iProp Σ) -d> iProp Σ) :
@@ -35,7 +33,7 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
 Local Instance dwp_pre_contractive `{invG Σ, irisDG Λ Σ} : Contractive dwp_pre.
 Proof.
   rewrite /dwp_pre=> n dwp dwp' Hwp E1 e1 e2 Φ.
-  repeat case_match; [ reflexivity.. | ]. 
+  repeat case_match; [ reflexivity.. | ].
   apply bi.forall_ne. intros σ1.
   apply bi.forall_ne. intros σ2.
   apply bi.forall_ne=>κ1.
@@ -53,17 +51,6 @@ Definition dwp_aux `{invG Σ, irisDG Λ Σ} : seal (@dwp_def Λ Σ _ _). by eexi
 Definition dwp `{irisDG Λ Σ, invG Σ} := dwp_aux.(unseal).
 Definition dwp_eq `{irisDG Λ Σ, invG Σ} : dwp = @dwp_def Λ Σ _ _ := dwp_aux.(seal_eq).
 
-(* Notation "'DWP' e '&' t @ E {{ Φ } }" := (dwp E e%E t%E Φ) *)
-(*   (at level 20, e, t, Φ at level 200, only parsing) : bi_scope. *)
-(* Notation "'DWP' e '&' t {{ Φ } }" := (dwp ⊤ e%E t%E Φ) *)
-(*   (at level 20, e, t, Φ at level 200, only parsing) : bi_scope. *)
-(* Notation "'DWP' e '&' t @ E {{ v1  v2 , Q } }" := (dwp E e%E t%E (λ v1 v2, Q)) *)
-(*   (at level 20, e, t, Q at level 200, *)
-(*    format "'[' 'DWP'  e  &  t  '/' '[       ' @  E  {{  v1  v2 ,  Q  } } ']' ']'") : bi_scope. *)
-(* Notation "'DWP' e '&' t {{ v1 v2 , Q } }" := (dwp ⊤ e%E t%E (λ v1 v2, Q)) *)
-(*   (at level 20, e, t, Q at level 200, *)
-(*    format "'[' 'DWP'  e  &  t  '/' '[   ' {{  v1  v2 ,  Q  } } ']' ']'") : bi_scope. *)
-
 Section dwp.
 Context `{irisDG Λ Σ, invG Σ}.
 Implicit Types P : iProp Σ.
@@ -73,34 +60,7 @@ Implicit Types e : expr Λ.
 
 Lemma dwp_unfold E1 e1 e2 Φ :
   dwp E1 e1 e2 Φ ⊣⊢ dwp_pre dwp E1 e1 e2 Φ.
-  (* DWP e1 & e2 @ E {{ Φ }} ⊣⊢ dwp_pre dwp E e1 e2 Φ. *)
 Proof. rewrite dwp_eq. apply (fixpoint_unfold dwp_pre). Qed.
-
-(* Lemma dwp_atomic E1 E2 E3 e1 e2 Φ `{Atomic _ StronglyAtomic e1} : *)
-(*   (|={E1,E2}=> dwp E2 E3 e1 e2 (λ v1 v2, |={E2,E1}=> Φ v1 v2)) ⊢ *)
-(*   dwp E1 E3 e1 e2 Φ. *)
-(* Proof. *)
-(*   iIntros "H". rewrite !dwp_unfold /dwp_pre. *)
-(*   destruct (to_val e1) as [v1|] eqn:He1. *)
-(*   { destruct (to_val e2) as [v2|] eqn:He2. *)
-(*     - repeat rewrite fupd_trans. done. *)
-(*     - repeat rewrite fupd_trans. *)
-(*       iIntros (σ1 σ2) "Hσ". iMod "H". iSpecialize ("H" with "Hσ"). *)
-(*       by iMod "H". } *)
-(*   iIntros (σ1 σ2) "Hσ". iMod "H". iMod ("H" with "Hσ") as "[$ H]". *)
-(*   iModIntro. iIntros (e1' σ1' efs1 Hstep1). *)
-(*   iMod ("H" with "[//]") as "H". iModIntro. iNext. *)
-(*   iMod "H" as "H". *)
-(*   iDestruct "H" as (e2' σ2' efs2 Hstep2) "(Hσ & H & Hefs)". *)
-(*   destruct (atomic _ _ _ _ Hstep1) as [v1 <-%of_to_val]. *)
-(*   iExists e2', σ2', efs2. iFrame "Hefs". *)
-(*   rewrite dwp_unfold /dwp_pre. rewrite to_of_val. *)
-(*   destruct (to_val e2') as [v2|] eqn:He2; simplify_eq/=. *)
-(*   - iMod "H". iMod "H". iModIntro. iFrame "Hσ". *)
-(*     iSplit; eauto.  rewrite dwp_unfold /dwp_pre. rewrite to_of_val. *)
-(*     rewrite He2. done. *)
-(*   - iMod ("H" with "Hσ") as "H". done. *)
-(* Qed. *)
 
 Global Instance dwp_ne E1 e1 e2 n :
   Proper (pointwise_relation _ (pointwise_relation _ (dist n)) ==> dist n) (dwp E1 e1 e2).
@@ -124,15 +84,14 @@ Proof.
 Qed.
 
 Lemma dwp_value' E1 Φ v v' :
-  (|={E1}=> Φ v v')%I ⊢ dwp E1 (of_val v) (of_val v') Φ.
+  (|={E1}=> Φ v v') ⊢ dwp E1 (of_val v) (of_val v') Φ.
 Proof.
   iIntros "HΦ". rewrite dwp_unfold /dwp_pre !to_of_val.
   eauto with iFrame.
 Qed.
 
 Lemma dwp_value_inv' E1 Φ v v' :
-  dwp E1 (of_val v) (of_val v') Φ
-  ={E1}=∗ Φ v v'.
+  dwp E1 (of_val v) (of_val v') Φ ={E1}=∗ Φ v v'.
 Proof.
   rewrite dwp_unfold /dwp_pre !to_of_val. done.
 Qed.
@@ -161,8 +120,7 @@ Proof.
 Qed.
 
 Lemma fupd_dwp E1 e1 e2 Φ :
-  (|={E1}=> dwp E1 e1 e2 Φ) ⊢
-  dwp E1 e1 e2 Φ.
+  (|={E1}=> dwp E1 e1 e2 Φ) ⊢ dwp E1 e1 e2 Φ.
 Proof.
   rewrite dwp_unfold /dwp_pre. iIntros "H".
   repeat case_match; by iMod "H".
@@ -235,7 +193,7 @@ Proof. Abort.
 
 Lemma dwp_step_fupd E1 E1' e1 e2 P Φ :
   to_val e1 = None →
-  to_val e2 = None → 
+  to_val e2 = None →
   E1' ⊆ E1 →
   (|={E1,E1'}▷=> P) -∗
   dwp E1' e1 e2 (λ v1 v2, P ={E1}=∗ Φ v1 v2) -∗
@@ -271,13 +229,16 @@ Proof.
   iIntros (HΦ) "H". iApply (dwp_strong_mono with "H"); auto.
   iIntros (??) "?". by iApply HΦ.
 Qed.
+
 Lemma dwp_mask_mono E1 E1' e1 e2 Φ :
   E1 ⊆ E1' →
   dwp E1 e1 e2 Φ ⊢ dwp E1' e1 e2 Φ.
 Proof. iIntros (?) "H"; iApply (dwp_strong_mono with "H"); auto. Qed.
-(* Global Instance dwp_mono' E1 e1 e2 : *)
-(*   Proper (pointwise_relation _ (⊢) ==> (⊢)) (dwp E1 e1 e2). *)
-(* Proof. by intros Φ Φ' ?; apply wp_mono. Qed. *)
+
+Global Instance dwp_mono' E1 e1 e2 :
+  Proper (pointwise_relation _ (pointwise_relation _ (⊢)) ==> (⊢))
+         (dwp E1 e1 e2).
+Proof. by intros Φ Φ' ?; apply dwp_mono. Qed.
 
 Lemma dwp_frame_l E1 e1 e2 Φ R :
   R ∗ dwp E1 e1 e2 Φ ⊢ dwp E1 e1 e2 (λ v1 v2, R ∗ Φ v1 v2).
@@ -285,27 +246,6 @@ Proof. iIntros "[? H]". iApply (dwp_strong_mono with "H"); auto with iFrame. Qed
 Lemma dwp_frame_r E1 e1 e2 Φ R :
   dwp E1 e1 e2 Φ ∗ R ⊢ dwp E1 e1 e2 (λ v1 v2, Φ v1 v2 ∗ R).
 Proof. iIntros "[H ?]". iApply (dwp_strong_mono with "H"); auto with iFrame. Qed.
-
-(* Lemma wp_frame_step_l s E1 E2 e Φ R : *)
-(*   to_val e = None → E2 ⊆ E1 → *)
-(*   (|={E1,E2}▷=> R) ∗ WP e @ s; E2 {{ Φ }} ⊢ WP e @ s; E1 {{ v, R ∗ Φ v }}. *)
-(* Proof. *)
-(*   iIntros (??) "[Hu Hwp]". iApply (wp_step_fupd with "Hu"); try done. *)
-(*   iApply (wp_mono with "Hwp"). by iIntros (?) "$$". *)
-(* Qed. *)
-(* Lemma wp_frame_step_r s E1 E2 e Φ R : *)
-(*   to_val e = None → E2 ⊆ E1 → *)
-(*   WP e @ s; E2 {{ Φ }} ∗ (|={E1,E2}▷=> R) ⊢ WP e @ s; E1 {{ v, Φ v ∗ R }}. *)
-(* Proof. *)
-(*   rewrite [(WP _ @ _; _ {{ _ }} ∗ _)%I]comm; setoid_rewrite (comm _ _ R). *)
-(*   apply wp_frame_step_l. *)
-(* Qed. *)
-(* Lemma wp_frame_step_l' s E e Φ R : *)
-(*   to_val e = None → ▷ R ∗ WP e @ s; E {{ Φ }} ⊢ WP e @ s; E {{ v, R ∗ Φ v }}. *)
-(* Proof. iIntros (?) "[??]". iApply (wp_frame_step_l s E E); try iFrame; eauto. Qed. *)
-(* Lemma wp_frame_step_r' s E e Φ R : *)
-(*   to_val e = None → WP e @ s; E {{ Φ }} ∗ ▷ R ⊢ WP e @ s; E {{ v, Φ v ∗ R }}. *)
-(* Proof. iIntros (?) "[??]". iApply (wp_frame_step_r s E E); try iFrame; eauto. Qed. *)
 
 Lemma dwp_wand E1 e1 e2 Φ Ψ :
   dwp E1 e1 e2 Φ -∗
@@ -315,6 +255,38 @@ Proof.
   iIntros "Hwp H". iApply (dwp_strong_mono with "Hwp"); auto.
   iIntros (??) "?". by iApply "H".
 Qed.
+
+Lemma dwp_atomic E1 E2 e1 e2 Φ
+  `{!Atomic StronglyAtomic e1}
+  `{!Atomic StronglyAtomic e2} :
+  (|={E1,E2}=> dwp E2 e1 e2 (λ v1 v2, |={E2,E1}=> Φ v1 v2)) -∗
+  dwp E1 e1 e2 Φ.
+Proof.
+  iIntros "H".
+  rewrite (dwp_unfold E1) /dwp_pre /=.
+  rewrite (dwp_unfold E2) /dwp_pre /=.
+  destruct (to_val e1) as [v1|] eqn:He1;
+    destruct (to_val e2) as [v2|] eqn:He2;
+    try by (iMod "H" as "H"; iMod "H").
+  iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
+  iMod "H" as "H".
+  iSpecialize ("H" $! σ1 σ2 κ1 κs1 κ2 κs2 with "Hσ").
+  iMod "H" as (??) "H". iModIntro.
+  do 2 (iSplit; first done).
+  iIntros (e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
+  iSpecialize ("H" $! e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
+  iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "[Hst [H $]]".
+  destruct (to_val e1') as [v1|] eqn:Hv1; last first.
+  { exfalso. destruct (atomic _ _ _ _ _ Hstep1). naive_solver. }
+  destruct (to_val e2') as [v2|] eqn:Hv2; last first.
+  { exfalso. destruct (atomic _ _ _ _ _ Hstep2). naive_solver. }
+  rewrite -(of_to_val _ _ Hv1) -(of_to_val _ _ Hv2).
+  rewrite dwp_value_inv' -dwp_value'. iMod "H". iMod "H" as "$".
+  iModIntro. iFrame. done.
+Qed.
+
 End dwp.
 
 (** Proofmode class instances *)
@@ -323,16 +295,16 @@ Section proofmode_classes.
   Implicit Types P Q : iProp Σ.
   Implicit Types Φ : val Λ → val Λ → iProp Σ.
 
-  Global Instance frame_wp p E1 e1 e2 R Φ Ψ :
+  Global Instance frame_dwp p E1 e1 e2 R Φ Ψ :
     (∀ v1 v2, Frame p R (Φ v1 v2) (Ψ v1 v2)) →
     Frame p R (dwp E1 e1 e2 Φ) (dwp E1 e1 e2 Ψ).
   Proof. rewrite /Frame=> HR. rewrite dwp_frame_l. apply dwp_mono, HR. Qed.
 
-  Global Instance is_except_0_wp E1 e1 e2 Φ :
+  Global Instance is_except_0_dwp E1 e1 e2 Φ :
     IsExcept0 (dwp E1 e1 e2 Φ).
   Proof. by rewrite /IsExcept0 -{2}fupd_dwp -except_0_fupd -fupd_intro. Qed.
 
-  Global Instance elim_modal_bupd_wp p E1 e1 e2 P Φ :
+  Global Instance elim_modal_bupd_dwp p E1 e1 e2 P Φ :
     ElimModal True p false (|==> P) P
               (dwp E1 e1 e2 Φ) (dwp E1 e1 e2 Φ).
   Proof.
@@ -340,7 +312,7 @@ Section proofmode_classes.
       (bupd_fupd E1) fupd_frame_r wand_elim_r fupd_dwp.
   Qed.
 
-  Global Instance elim_modal_fupd_wp p E1 e1 e2 P Φ :
+  Global Instance elim_modal_fupd_dwp p E1 e1 e2 P Φ :
     ElimModal True p false (|={E1}=> P) P
               (dwp E1 e1 e2 Φ) (dwp E1 e1 e2 Φ).
   Proof.
@@ -348,42 +320,33 @@ Section proofmode_classes.
       fupd_frame_r wand_elim_r fupd_dwp.
   Qed.
 
-  (* Global Instance elim_modal_fupd_wp_atomic p E1 E2 E3 e1 e2 P Φ : *)
-  (*   Atomic StronglyAtomic e1 → *)
-  (*   ElimModal True p false (|={E1,E2}=> P) P *)
-  (*           (dwp E1 E3 e1 e2 Φ) (dwp E2 E3 e1 e2 (λ v1 v2, |={E2,E1}=> Φ v1 v2)%I). *)
-  (* Proof. *)
-  (*   intros. by rewrite /ElimModal intuitionistically_if_elim *)
-  (*     fupd_frame_r wand_elim_r dwp_atomic. *)
-  (* Qed. *)
+  Global Instance elim_modal_fupd_dwp_atomic p E1 E2 e1 e2 P Φ :
+    Atomic StronglyAtomic e1 →
+    Atomic StronglyAtomic e2 →
+    ElimModal True p false (|={E1,E2}=> P) P
+            (dwp E1 e1 e2 Φ) (dwp E2 e1 e2 (λ v1 v2, |={E2,E1}=> Φ v1 v2)%I).
+  Proof.
+    intros. by rewrite /ElimModal intuitionistically_if_elim
+      fupd_frame_r wand_elim_r dwp_atomic.
+  Qed.
 
-  Global Instance add_modal_fupd_wp E1 e1 e2 P Φ :
+  Global Instance add_modal_fupd_dwp E1 e1 e2 P Φ :
     AddModal (|={E1}=> P) P (dwp E1 e1 e2 Φ).
   Proof. by rewrite /AddModal fupd_frame_r wand_elim_r fupd_dwp. Qed.
 
-  (* Global Instance elim_acc_wp {X} E1 E2 α β γ e s Φ : *)
-  (*   Atomic (stuckness_to_atomicity s) e → *)
-  (*   ElimAcc (X:=X) (fupd E1 E2) (fupd E2 E1) *)
-  (*           α β γ (WP e @ s; E1 {{ Φ }}) *)
-  (*           (λ x, WP e @ s; E2 {{ v, |={E2}=> β x ∗ (γ x -∗? Φ v) }})%I. *)
-  (* Proof. *)
-  (*   intros ?. rewrite /ElimAcc. *)
-  (*   iIntros "Hinner >Hacc". iDestruct "Hacc" as (x) "[Hα Hclose]". *)
-  (*   iApply (wp_wand with "[Hinner Hα]"); first by iApply "Hinner". *)
-  (*   iIntros (v) ">[Hβ HΦ]". iApply "HΦ". by iApply "Hclose". *)
-  (* Qed. *)
+  Global Instance elim_acc_wp {X} E1 E2 α β γ e1 e2 Φ :
+    Atomic StronglyAtomic e1 →
+    Atomic StronglyAtomic e2 →
+    ElimAcc (X:=X) (fupd E1 E2) (fupd E2 E1)
+            α β γ (dwp E1 e1 e2 Φ)
+            (λ x, dwp E2 e1 e2 (λ v1 v2, |={E2}=> β x ∗ (γ x -∗? Φ v1 v2)))%I.
+  Proof.
+    intros ??. rewrite /ElimAcc.
+    iIntros "Hinner >Hacc". iDestruct "Hacc" as (x) "[Hα Hclose]".
+    iApply (dwp_wand with "[Hinner Hα]"); first by iApply "Hinner".
+    iIntros (v1 v2) ">[Hβ HΦ]". iApply "HΦ". by iApply "Hclose".
+  Qed.
 
-  (* Global Instance elim_acc_wp_nonatomic {X} E α β γ e s Φ : *)
-  (*   ElimAcc (X:=X) (fupd E E) (fupd E E) *)
-  (*           α β γ (WP e @ s; E {{ Φ }}) *)
-  (*           (λ x, WP e @ s; E {{ v, |={E}=> β x ∗ (γ x -∗? Φ v) }})%I. *)
-  (* Proof. *)
-  (*   rewrite /ElimAcc. *)
-  (*   iIntros "Hinner >Hacc". iDestruct "Hacc" as (x) "[Hα Hclose]". *)
-  (*   iApply wp_fupd. *)
-  (*   iApply (wp_wand with "[Hinner Hα]"); first by iApply "Hinner". *)
-  (*   iIntros (v) ">[Hβ HΦ]". iApply "HΦ". by iApply "Hclose". *)
-  (* Qed. *)
 End proofmode_classes.
 
 Notation "'DWP' e1 '&' e2 '@' E ':' A" :=

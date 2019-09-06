@@ -89,8 +89,8 @@ Qed.
    - better positioning of laters (if it is possible?)
 *)
 Lemma dwp_atomic_lift_wp_strong E1 E2 e1 e2 Φ
-  `{Atomic _ StronglyAtomic e1}
-  `{Atomic _ StronglyAtomic e2}
+  `{!Atomic StronglyAtomic e1}
+  `{!Atomic StronglyAtomic e2}
   {NF1 : NoFork e1}
   {NF2 : NoFork e2}
   {NO1 : NoObs e1}
@@ -146,8 +146,8 @@ Proof.
 Qed.
 
 Lemma dwp_atomic_lift_wp Ψ1 Ψ2 E1 E2 e1 e2 Φ
-  `{Atomic _ StronglyAtomic e1}
-  `{Atomic _ StronglyAtomic e2}
+  `{!Atomic StronglyAtomic e1}
+  `{!Atomic StronglyAtomic e2}
   {NF1 : NoFork e1}
   {NF2 : NoFork e2}
   {NO1 : NoObs e1}
@@ -162,6 +162,29 @@ Proof.
   iIntros "H".
   iApply dwp_atomic_lift_wp_strong; auto.
   iMod "H" as "H". iModIntro. by iExists Ψ1, Ψ2.
+Qed.
+
+(* the simplest version *)
+Lemma dwp_atomic_lift_wp_simple Ψ1 Ψ2 E1 e1 e2 Φ
+  `{!Atomic StronglyAtomic e1}
+  `{!Atomic StronglyAtomic e2}
+  {NF1 : NoFork e1}
+  {NF2 : NoFork e2}
+  {NO1 : NoObs e1}
+  {NO2 : NoObs e2} :
+  to_val e1 = None →
+  to_val e2 = None →
+  ((WP1 e1 E1 Ψ1 ∗ WP2 e2 ∅ Ψ2 ∗
+     (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 -∗ ▷ Φ v1 v2)) -∗
+   dwp E1 e1 e2 Φ).
+Proof.
+  intros He1 He2.
+  iIntros "H".
+  iApply dwp_atomic_lift_wp; auto.
+  iModIntro. iDestruct "H" as "($ & H2 & H)".
+  iSplitL "H2".
+  { iApply (wp_wand with "H2"). iIntros (v). iApply fupd_intro. }
+  iIntros (v1 v2) "HΨ1 HΨ2". iModIntro. iApply ("H" with "HΨ1 HΨ2").
 Qed.
 
 Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
@@ -216,39 +239,4 @@ Proof.
   iModIntro. iApply ("HΦ" with "Hl1 Hl2").
 Qed.
 
-Lemma dwp_atomic E1 E2 e1 e2 Φ
-  `{Atomic _ StronglyAtomic e1}
-  `{Atomic _ StronglyAtomic e2} :
-  (|={E1,E2}=> dwp E2 e1 e2 (λ v1 v2, |={E2,E1}=> Φ v1 v2)) -∗
-  dwp E1 e1 e2 Φ.
-Proof.
-  iIntros "H".
-  rewrite (dwp_unfold E1) /dwp_pre /=.
-  rewrite (dwp_unfold E2) /dwp_pre /=.
-  destruct (to_val e1) as [v1|] eqn:He1;
-    destruct (to_val e2) as [v2|] eqn:He2;
-    try by (iMod "H" as "H"; iMod "H").
-  iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
-  iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
-  iMod "H" as "H".
-  iSpecialize ("H" $! σ1 σ2 κ1 κs1 κ2 κs2 with "[$Hσ1 $Hκs1 $Hσ2 $Hκs2]").
-  iMod "H" as (??) "H". iModIntro.
-  do 2 (iSplit; first done).
-  iIntros (e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
-  iSpecialize ("H" $! e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
-  iMod "H" as "H". iModIntro. iNext.
-  iMod "H" as "H". iModIntro. iNext.
-  iMod "H" as "[Hst [H $]]".
-  destruct (to_val e1') as [v1|] eqn:Hv1; last first.
-  { exfalso. destruct (atomic _ _ _ _ _ Hstep1). naive_solver. }
-  destruct (to_val e2') as [v2|] eqn:Hv2; last first.
-  { exfalso. destruct (atomic _ _ _ _ _ Hstep2). naive_solver. }
-  rewrite -(of_to_val _ _ Hv1) -(of_to_val _ _ Hv2).
-  rewrite dwp_value_inv' -dwp_value. iMod "H". iMod "H" as "$".
-  iModIntro. iFrame. done.
-Qed.
-
-
 End lifting.
-
-
