@@ -1,6 +1,11 @@
 From iris.program_logic Require Import language ectx_language.
 From iris.heap_lang Require Export lang lifting notation.
 
+Class NotVal (e : expr) :=
+  not_val : to_val e = None.
+
+Hint Extern 1 (NotVal _) => fast_done : typeclass_instances.
+
 Class NoFork (e1 : expr) :=
   nofork : (∀ σ1 κ σ1' e1' efs, prim_step e1 σ1 κ e1' σ1' efs → efs = []).
 

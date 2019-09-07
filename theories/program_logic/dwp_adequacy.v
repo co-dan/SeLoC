@@ -228,42 +228,6 @@ Proof.
   iApply (Hdwp with "Hrf").
 Qed.
 
-(** Example program that satisfies the relation *)
-Definition e_test := (let: "x" := ref #0 in !"x")%E.
-Lemma dwp_e_test `{heapDG Σ} :
-  dwp ⊤ e_test e_test I.
-Proof.
-  iApply (dwp_bind (fill [AppRCtx _]) (fill [AppRCtx _])). simpl.
-  pose (Ψ1 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∧ l ↦ₗ #0)%I).
-  pose (Ψ2 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∧ l ↦ᵣ #0)%I).
-  iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
-  iModIntro. repeat iSplitL.
-  { unfold WP1, Ψ1. wp_alloc l as "Hl". eauto with iFrame. }
-  { unfold WP2, Ψ2. wp_alloc l as "Hl". eauto with iFrame. }
-  iIntros (? ?) "H1 H2".
-  iDestruct "H1" as (l1 ->) "Hl1".
-  iDestruct "H2" as (l2 ->) "Hl2".
-  iModIntro. iNext.
-
-  iApply dwp_pure_step_later.
-  { eapply (pure_exec_ctx (fill [AppLCtx _])). apply _. }
-  { eapply (pure_exec_ctx (fill [AppLCtx _])). apply _. }
-  done. done. iNext.
-  iApply dwp_pure_step_later=>// /=. iNext.
-
-  iApply (dwp_load with "Hl1 Hl2"). eauto.
-Qed.
-
-Lemma dwp_rel_e_test σ1 σ2 out1 out2 (n : Z) Σ `{!invPreG Σ, !heapPreDG Σ} :
-  σ1.(heap) !! out1 = Some #n →
-  σ2.(heap) !! out2 = Some #n →
-  dwp_rel Σ [e_test] [e_test] σ1 σ2 out1 out2 I.
-Proof.
-  intros Hσ1 Hσ2.
-  apply dwp_lift_bisim with (n:=n)=>//.
-  intros ?. iIntros "_". iApply dwp_e_test.
-Qed.
-
 (** The relation has good properties *)
 (* NB: the out channel has to be the same location! *)
 Lemma dwp_rel_sym `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 out Φ :

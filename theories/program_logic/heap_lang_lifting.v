@@ -83,31 +83,24 @@ Proof.
   by iApply dwp_value.
 Qed.
 
-(* TODO: Conditions
-   - all these `to_val ei = None` and "no forks" conditions
-     should be dischargeable automatically
-   - better positioning of laters (if it is possible?)
-*)
-Lemma dwp_atomic_lift_wp_strong E1 E2 e1 e2 Φ
+Lemma dwp_atomic_lift_wp Ψ1 Ψ2 E2 e1 e2 Φ
   `{!Atomic StronglyAtomic e1}
   `{!Atomic StronglyAtomic e2}
   {NF1 : NoFork e1}
   {NF2 : NoFork e2}
   {NO1 : NoObs e1}
-  {NO2 : NoObs e2} :
-  to_val e1 = None →
-  to_val e2 = None →
-  ((|={E1,E2}=> ∃ Ψ1 Ψ2,
-      WP1 e1 E2 Ψ1 ∗ WP2 e2 ∅ (λ v, |={E2}=> Ψ2 v) ∗
-     (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 ={E2,E1}=∗ ▷ Φ v1 v2)) -∗
-  dwp E1 e1 e2 Φ).
+  {NO2 : NoObs e2}
+  {He1 : NotVal e1}
+  {He2 : NotVal e2}:
+  WP1 e1 E2 Ψ1 -∗
+  WP2 e2 ∅ Ψ2 -∗
+  (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 -∗ ▷ Φ v1 v2) -∗
+  dwp E2 e1 e2 Φ.
 Proof.
-  intros He1 He2.
-  iIntros "H".
+  iIntros "HWP1 HWP2 H".
   rewrite dwp_unfold /dwp_pre /= He1 He2.
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
-  iMod "H" as (Ψ1 Ψ2) "(HWP1 & HWP2 & H)".
   rewrite /WP1 /WP2 !wp_unfold /wp_pre /= !He1 !He2.
   iSpecialize ("HWP1" $! σ1 [] (κ1++κs1) 0%nat with "[$Hσ1 $Hκs1]").
   iSpecialize ("HWP2" $! σ2 [] (κ2++κs2) 0%nat with "[$Hσ2 $Hκs2]").
@@ -136,55 +129,13 @@ Proof.
   rewrite -(of_to_val _ _ Hv1) -(of_to_val _ _ Hv2).
   rewrite !wp_value_inv'. iMod "HWP1".
   rewrite (fupd_mask_mono ∅ E2); last by set_solver.
-  iMod "HWP2". iMod "HWP2".
-  iMod ("H" with "HWP1 HWP2") as "H".
-  iApply step_fupd_intro. set_solver.
+  iMod "HWP2". iFrame "Hh1 Hp1 Hh2 Hp2".
+  iSpecialize ("H" with "HWP1 HWP2").
+  iApply step_fupd_intro; first set_solver.
   iNext. rewrite -dwp_value. iFrame.
   rewrite (nofork _ _ _ _ _ Hstep1).
   rewrite (nofork _ _ _ _ _ Hstep2).
   simpl. eauto with iFrame.
-Qed.
-
-Lemma dwp_atomic_lift_wp Ψ1 Ψ2 E1 E2 e1 e2 Φ
-  `{!Atomic StronglyAtomic e1}
-  `{!Atomic StronglyAtomic e2}
-  {NF1 : NoFork e1}
-  {NF2 : NoFork e2}
-  {NO1 : NoObs e1}
-  {NO2 : NoObs e2} :
-  to_val e1 = None →
-  to_val e2 = None →
-  ((|={E1,E2}=> WP1 e1 E2 Ψ1 ∗ WP2 e2 ∅ (λ v, |={E2}=> Ψ2 v) ∗
-     (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 ={E2,E1}=∗ ▷ Φ v1 v2)) -∗
-  dwp E1 e1 e2 Φ).
-Proof.
-  intros He1 He2.
-  iIntros "H".
-  iApply dwp_atomic_lift_wp_strong; auto.
-  iMod "H" as "H". iModIntro. by iExists Ψ1, Ψ2.
-Qed.
-
-(* the simplest version *)
-Lemma dwp_atomic_lift_wp_simple Ψ1 Ψ2 E1 e1 e2 Φ
-  `{!Atomic StronglyAtomic e1}
-  `{!Atomic StronglyAtomic e2}
-  {NF1 : NoFork e1}
-  {NF2 : NoFork e2}
-  {NO1 : NoObs e1}
-  {NO2 : NoObs e2} :
-  to_val e1 = None →
-  to_val e2 = None →
-  ((WP1 e1 E1 Ψ1 ∗ WP2 e2 ∅ Ψ2 ∗
-     (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 -∗ ▷ Φ v1 v2)) -∗
-   dwp E1 e1 e2 Φ).
-Proof.
-  intros He1 He2.
-  iIntros "H".
-  iApply dwp_atomic_lift_wp; auto.
-  iModIntro. iDestruct "H" as "($ & H2 & H)".
-  iSplitL "H2".
-  { iApply (wp_wand with "H2"). iIntros (v). iApply fupd_intro. }
-  iIntros (v1 v2) "HΨ1 HΨ2". iModIntro. iApply ("H" with "HΨ1 HΨ2").
 Qed.
 
 Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
@@ -196,15 +147,14 @@ Proof.
   iIntros "Hl1 Hl2 HΦ".
   iApply (dwp_atomic_lift_wp
     (λ v, ⌜v = v1⌝ ∗ l1 ↦ₗ v1)%I
-    (λ v, ⌜v = v2⌝ ∗ l2 ↦ᵣ v2)%I)=>//.
-  iModIntro. iSplitL "Hl1".
+    (λ v, ⌜v = v2⌝ ∗ l2 ↦ᵣ v2)%I
+    with "[Hl1] [Hl2] [HΦ]").
   { iApply (wp_load  _ _ l1 1 v1 with "[Hl1]").
     iNext. iFrame "Hl1". eauto. }
-  iSplitL "Hl2".
   { iApply (wp_load  _ _ l2 1 v2 with "[Hl2]").
     iNext. done. eauto. }
   iIntros (? ?) "[% Hl1] [% Hl2]". simplify_eq.
-  iModIntro. iApply ("HΦ" with "Hl1 Hl2").
+  iApply ("HΦ" with "Hl1 Hl2").
 Qed.
 
 Lemma dwp_alloc E (v1 v2 : val) Φ :
@@ -214,12 +164,11 @@ Proof.
   iIntros "H".
   pose (Ψ1 := (λ v, ∃ r : loc, ⌜v = #r⌝ ∧ r ↦ₗ v1)%I).
   pose (Ψ2 := (λ v, ∃ r : loc, ⌜v = #r⌝ ∧ r ↦ᵣ v2)%I).
-  iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
-  iModIntro. repeat iSplitR.
+  iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[] [] [H]").
   { rewrite /WP1 /Ψ1. wp_alloc r as "Hr". eauto with iFrame. }
   { rewrite /WP2 /Ψ2. wp_alloc r as "Hr". eauto with iFrame. }
   iIntros (? ?). iDestruct 1 as (r1 ->) "Hr1". iDestruct 1 as (r2 ->) "Hr2".
-  iModIntro. by iApply ("H" with "Hr1 Hr2").
+  iApply ("H" with "Hr1 Hr2").
 Qed.
 
 Lemma dwp_store E (v1 v2 v1' v2' : val) (l1 l2 : loc) Φ :
@@ -231,12 +180,11 @@ Proof.
   iIntros "Hl1 Hl2 HΦ".
   pose (Ψ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ v1')%I).
   pose (Ψ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ v2')%I).
-  iApply (dwp_atomic_lift_wp Ψ1 Ψ2); try done.
-  iModIntro. iSplitL "Hl1"; [|iSplitL"Hl2"].
+  iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [HΦ]").
   { rewrite /WP1 /Ψ1. wp_store. eauto with iFrame. }
   { rewrite /WP2 /Ψ2. wp_store. eauto with iFrame. }
   iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
-  iModIntro. iApply ("HΦ" with "Hl1 Hl2").
+  iApply ("HΦ" with "Hl1 Hl2").
 Qed.
 
 End lifting.

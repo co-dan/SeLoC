@@ -387,13 +387,14 @@ Section rules.
     iIntros (v1 v2) "#Hv".
     pose (Φ1 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∗ l ↦ₗ v1)%I).
     pose (Φ2 := (λ v, ∃ (l : loc), ⌜v = #l⌝ ∗ l ↦ᵣ v2)%I).
+    iApply dwp_fupd.
     iApply (dwp_atomic_lift_wp Φ1 Φ2%I); try done.
-    iModIntro. repeat iSplitR.
+    repeat iSplitR.
     - rewrite /WP1 /Φ1. wp_alloc l1 as "Hl". eauto with iFrame.
     - rewrite /WP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame.
     - iIntros (? ?). iDestruct 1 as (l1 ->) "Hl1".
       iDestruct 1 as (l2 ->) "Hl2".
-      iMod (interp_ref_alloc with "Hl1 Hl2 Hv") as "$". done.
+      iNext. iMod (interp_ref_alloc with "Hl1 Hl2 Hv") as "$". done.
   Qed.
 
   Lemma logrel_deref ξ e1 e2 τ :
@@ -409,12 +410,11 @@ Section rules.
     pose (Φ1 := (λ v, l1 ↦ₗ{1/2} v)%I).
     pose (Φ2 := (λ v, l2 ↦ᵣ{1/2} v)%I).
 
-    iApply (dwp_atomic_lift_wp Φ1 Φ2); try done.
+    iApply dwp_atomic.
     iInv (locsN.@(l1,l2)) as (v1 v2) "(>Hl1 & >Hl2 & #Hv)" "Hcl".
-    iModIntro. iSimpl in "Hl1". iSimpl in "Hl2".
     iDestruct "Hl1" as "[Hl1 Hl1']".
     iDestruct "Hl2" as "[Hl2 Hl2']".
-    iSplitL "Hl1"; [|iSplitL "Hl2"].
+    iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hl1] [Hl2] [Hl1' Hl2' Hcl]").
     - rewrite /WP1. wp_load. done.
     - rewrite /WP2. wp_load. done.
     - iIntros (w1 w2) "Hl1 Hl2".
@@ -422,9 +422,9 @@ Section rules.
       iCombine "Hl1 Hl1'" as "Hl1".
       iDestruct (mapsto_agree with "Hl2 Hl2'") as %->.
       iCombine "Hl2 Hl2'" as "Hl2".
-      iMod ("Hcl" with "[-]") as "_".
+      iNext. iMod ("Hcl" with "[-]") as "_".
       { iNext. iExists _,_. by iFrame. }
-      iModIntro. iNext. simpl. iApply "Hv".
+      iModIntro. simpl. iApply "Hv".
   Qed.
 
   Lemma logrel_store ξ e1 e2 t1 t2 τ E :
@@ -443,14 +443,13 @@ Section rules.
     pose (Φ1 := (λ v, ⌜v = #()⌝ ∧ r1 ↦ₗ w1)%I).
     pose (Φ2 := (λ v, ⌜v = #()⌝ ∧ r2 ↦ᵣ w2)%I).
 
-    iApply (dwp_atomic_lift_wp Φ1 Φ2); try done.
+    iApply dwp_atomic.
     iInv (locsN.@(r1,r2)) as (v1 v2) "(>Hr1 & >Hr2 & #Hv)" "Hcl".
-    iModIntro. iSimpl in "Hr1". iSimpl in "Hr2".
-    iSplitL "Hr1"; [|iSplitL "Hr2"].
+    iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hr1] [Hr2] [-]").
     - rewrite /WP1 /Φ1. wp_store. eauto.
     - rewrite /WP2 /Φ2. wp_store. eauto.
     - iIntros (? ?) "[-> Hr1] [-> Hr2]".
-      iMod ("Hcl" with "[-]") as "_".
+      iNext. iMod ("Hcl" with "[-]") as "_".
       { iNext. iExists _,_. by iFrame. }
       iModIntro. eauto.
   Qed.

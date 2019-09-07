@@ -31,14 +31,13 @@ Section proof.
 
     pose (Ψ1 := (λ v, ∃ l : loc, ⌜v = #l⌝ ∗ l ↦ₗ NONEV)%I).
     pose (Ψ2 := (λ v, ∃ l : loc, ⌜v = #l⌝ ∗ l ↦ᵣ NONEV)%I).
-    iApply (dwp_atomic_lift_wp Ψ1 Ψ2); [done|done|].
-    iModIntro. repeat iSplitR.
+    iApply (dwp_atomic_lift_wp Ψ1 Ψ2).
     { rewrite /WP1. wp_alloc l as "Hl".
       iExists l. eauto with iFrame. }
     { rewrite /WP2. wp_alloc l as "Hl".
       iExists l. eauto with iFrame. }
     iIntros (??). iDestruct 1 as (l1 ->) "Hl1". iDestruct 1 as (l2 ->) "Hl2".
-    clear Ψ1 Ψ2. iModIntro. iNext. dwp_pures=>/=.
+    clear Ψ1 Ψ2. iModIntro. dwp_pures=>/=.
 
     iMod (own_alloc (Excl ())) as (γ) "Hγ"; first done.
     iMod (inv_alloc N _ (spawn_inv γ l1 l2 Ψ) with "[Hl1 Hl2]") as "#Hinv".
@@ -51,13 +50,13 @@ Section proof.
 
       pose (Ψ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ SOMEV w1)%I).
       pose (Ψ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ SOMEV w2)%I).
-      iApply (dwp_atomic_lift_wp Ψ1 Ψ2); [done|done|].
+      iApply dwp_atomic.
       iInv N as (v1 v2) "(Hl1 & Hl2 & _)" "Hcl".
-      iModIntro. iSplitL "Hl1";[|iSplitL "Hl2"].
+      iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
       { rewrite /WP1 /Ψ1. wp_store. eauto with iFrame. }
       { rewrite /WP2 /Ψ2. wp_store. eauto with iFrame. }
       iIntros (??). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
-      iMod ("Hcl" with "[-]") as "_"; last done.
+      iNext. iApply "Hcl".
       iNext. iExists (SOMEV w1), (SOMEV w2). iFrame.
       iRight. iExists _,_. eauto with iFrame. }
     iNext. dwp_pures=>/=. iApply dwp_value.
@@ -74,25 +73,24 @@ Section proof.
     iLöb as "IH". rewrite {3 4}/join. dwp_pures=>/=.
 
     dwp_bind (! _)%E (! _)%E.
-    pose (Ψ1 w := (λ v, ⌜v = w⌝ ∗ l1 ↦ₗ w)%I).
-    pose (Ψ2 w := (λ v, ⌜v = w⌝ ∗ l2 ↦ᵣ v)%I).
-    iApply dwp_atomic_lift_wp_strong; [done|done|].
+    iApply dwp_atomic.
     iInv N as (v1 v2) "(Hl1 & Hl2 & H)" "Hcl".
-    iModIntro. iExists (Ψ1 v1), (Ψ2 v2).
-    iSplitL "Hl1"; [|iSplitL "Hl2"].
+    pose (Ψ1 := (λ v, ⌜v = v1⌝ ∗ l1 ↦ₗ v)%I).
+    pose (Ψ2 := (λ v, ⌜v = v2⌝ ∗ l2 ↦ᵣ v)%I).
+    iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
     { rewrite /WP1 /Ψ1. wp_load. eauto with iFrame. }
     { rewrite /WP2 /Ψ2. wp_load. eauto with iFrame. }
     iIntros (??). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
     iDestruct "H" as "[>[%%]|H]"; simplify_eq/=.
-    - iMod ("Hcl" with "[Hl1 Hl2]").
+    - iNext. iMod ("Hcl" with "[Hl1 Hl2]").
       { iNext. iExists _,_. eauto with iFrame. }
-      iModIntro. iNext. do 3 dwp_pure _ _. simpl.
+      iModIntro. do 3 dwp_pure _ _. simpl.
       iApply ("IH" with "Hγ HΦ").
     - iDestruct "H" as (w1 w2) "(>% & >% & [H|H])"; simplify_eq/=.
-      + iMod ("Hcl" with "[Hl1 Hl2 Hγ]").
+      + iNext. iMod ("Hcl" with "[Hl1 Hl2 Hγ]").
         { iNext. iExists _,_. iFrame.
           iRight. iExists _,_. eauto with iFrame. }
-        iModIntro. iNext. dwp_pures=>/=.
+        iModIntro. dwp_pures=>/=.
         iApply dwp_value. iModIntro.
         by iApply ("HΦ" with "H").
       + iDestruct (own_valid_2 with "H [Hγ]") as ">Hfoo".
