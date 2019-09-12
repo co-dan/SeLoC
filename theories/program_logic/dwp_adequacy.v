@@ -158,7 +158,28 @@ Proof.
       by iApply "IH".
 Qed.
 
-(* TODO: move to iris *)
+(* TODO: move to std++ *)
+Section test.
+Context `{FinMap K M}.
+Context {A} `{Inhabited A}.
+Context {D} `{FinMapDom K M D}.
+
+Definition extract_fn (m : M A) : K → A := fun x =>
+  match m !! x with
+  | None => inhabitant
+  | Some v => v
+  end.
+Lemma extract_fn_spec' (m : M A) :
+  ∀ x, x ∈ dom D m → m !! x = Some (extract_fn m x).
+Proof. intros x. rewrite elem_of_dom /extract_fn. by intros [v ->]. Qed.
+Lemma extract_fn_spec (m : M A) (x : K) (v : A) :
+  m !! x = Some v → extract_fn m x = v.
+Proof.
+  intros Hx.
+  enough (m !! x = Some (extract_fn m x)); first by simplify_eq/=.
+  apply extract_fn_spec'. apply elem_of_dom. eauto.
+Qed.
+End test.
 
 Local Open Scope nat.
 
@@ -185,19 +206,21 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
 Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
 Lemma allocator_helper σ L `{!invG Σ, !gen_heapG loc val Σ} :
-  (∀ l, l ∈ L → σ !! l = Some #0) →
+  (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some #n) →
   let σ' := filter ((∉ L) ∘ fst) σ in
-  gen_heap_ctx σ' ==∗ gen_heap_ctx σ ∗ [∗ set] l ∈ L, l ↦ #0.
+  gen_heap_ctx σ' ==∗ gen_heap_ctx σ ∗ [∗ set] l ∈ L, l ↦ (extract_fn σ l).
 Proof.
   iIntros (HL) "Hσ'".
   iMod (gen_heap_alloc_gen with "Hσ'") as "(Hσ & HL)".
   { apply map_disjoint_filter. }
   iDestruct "HL" as "[HL _]".
   rewrite map_union_filter. iFrame "Hσ".
-  iAssert ([∗ map] l↦_ ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ #0)%I with "[HL]" as "HL".
+  iAssert ([∗ map] l↦_ ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ (extract_fn σ l))%I
+      with "[HL]" as "HL".
   { iApply (big_sepM_mono with "HL").
     intros l v. rewrite map_filter_lookup_Some=> [[Hlσ HlL]].
-    assert (v = #0) as -> by naive_solver. eauto. }
+    destruct (HL l HlL) as [n Hl]. simplify_eq/=.
+    by rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hlσ). }
   rewrite big_sepM_dom.
   rewrite (dom_map_filter_L (λ x, x.1 ∈ L) σ L); first done.
   intros i. naive_solver.
@@ -205,7 +228,7 @@ Qed.
 
 (** Lifting DWP proofs *)
 Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invPreG Σ, !heapPreDG Σ} :
-  (∀ l, l ∈ L → σ1.(heap) !! l = Some #0 ∧ σ2.(heap) !! l = Some #0) →
+  (∀ l, l ∈ L → ∃ n : Z, σ1.(heap) !! l = Some #n ∧ σ2.(heap) !! l = Some #n) →
   (∀ `{!heapDG Σ}, I_L L -∗ DWP e1 & e2 : I) →
   dwp_rel Σ [e1] [e2] σ1 σ2 L I.
 Proof.
@@ -232,8 +255,11 @@ Proof.
     rewrite -big_sepS_sep.
     iApply (big_sepS_mono with "HL").
     iIntros (x Hx) "[Hx1 Hx2]".
-    iApply (interp_ref_alloc Low x x #0 #0 (tint Low) with "Hx1 Hx2 []").
-    rewrite interp_eq. iExists 0,0; eauto. }
+    destruct (Hσ x Hx) as (n&Hn1&Hn2).
+    rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hn1).
+    rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hn2).
+    iApply (interp_ref_alloc Low x x #n #n (tint Low) with "Hx1 Hx2 []").
+    rewrite interp_eq. iExists n,n; eauto. }
   iMod "HI" as "#HI".
   iModIntro. iExists hg1,hg2,pg1,pg2.
   iFrame "Hh1 Hh2 Hp1 Hp2 HI".
@@ -241,9 +267,9 @@ Proof.
   iApply (Hdwp with "HI").
 Qed.
 
-Lemma dwp_lift_bisim_singleton e1 e2 σ1 σ2 (out : loc) Σ `{!invPreG Σ, !heapPreDG Σ} :
-  σ1.(heap) !! out = Some #0 →
-  σ2.(heap) !! out = Some #0 →
+Lemma dwp_lift_bisim_singleton e1 e2 σ1 σ2 (out : loc) (n : Z) Σ `{!invPreG Σ, !heapPreDG Σ} :
+  σ1.(heap) !! out = Some #n →
+  σ2.(heap) !! out = Some #n →
   (∀ `{!heapDG Σ}, ⟦ tref (tint Low) ⟧ Low #out #out -∗ DWP e1 & e2 : I) →
   dwp_rel Σ [e1] [e2] σ1 σ2 {[out]} I.
 Proof.
