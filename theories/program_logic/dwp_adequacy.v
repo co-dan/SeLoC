@@ -159,81 +159,105 @@ Proof.
 Qed.
 
 (* TODO: move to iris *)
-Section help.
-  Context {A : Type} {Σ : gFunctors}.
-  Implicit Types l : list A.
-  Implicit Types Φ Ψ : nat → A → A → iProp Σ.
-
-  Lemma big_sepL2_swap Φ l1 l2 :
-    ([∗ list] k↦y1;y2 ∈ l1; l2, Φ k y1 y2)
-    ⊣⊢
-    ([∗ list] k↦y1;y2 ∈ l2; l1, Φ k y2 y1).
-  Proof.
-    revert Φ l2. induction l1 as [|x1 l1 IH]=> Φ -[|x2 l2]//=; simplify_eq.
-    by rewrite IH.
-  Qed.
-
-End help.
 
 Local Open Scope nat.
+
+Implicit Types L : gset loc.
+Implicit Types l : loc.
+
+Definition I_L (L : gset loc) `{!heapDG Σ} :=
+  ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l)%I.
 
 (** Now the relation *)
 Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
-  (σ1 σ2 : state) (out1 out2 : loc) (Φ : val → val → iProp Σ) :=
+  (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
   ∃ n, ∀ `{Hinv : !invG Σ},
       (Nat.iter n mega_future
          (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
                    (p1 p2 : proph_mapG proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
-            ⟦ tref (tint Low) ⟧ Low #out1 #out2 ∗
+            I_L L ∗
             [∗ list] k↦e;s ∈ es;ss,
                 dwp ⊤ e s (if decide (k = O) then Φ else (λ _ _, True))))%I.
 
 Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
-(** Lifting DWP proofs *)
-Lemma dwp_lift_bisim e1 e2 σ1 σ2 (out1 out2 : loc) (n : Z)Σ `{!invPreG Σ, !heapPreDG Σ} :
-  σ1.(heap) !! out1 = Some #n →
-  σ2.(heap) !! out2 = Some #n →
-  (∀ `{!heapDG Σ}, ⟦ tref (tint Low) ⟧ Low #out1 #out2 -∗ DWP e1 & e2 : I) →
-  dwp_rel Σ [e1] [e2] σ1 σ2 out1 out2 I.
+Lemma allocator_helper σ L `{!invG Σ, !gen_heapG loc val Σ} :
+  (∀ l, l ∈ L → σ !! l = Some #0) →
+  let σ' := filter ((∉ L) ∘ fst) σ in
+  gen_heap_ctx σ' ==∗ gen_heap_ctx σ ∗ [∗ set] l ∈ L, l ↦ #0.
 Proof.
-  intros Hσ1 Hσ2 Hdwp.
+  iIntros (HL) "Hσ'".
+  iMod (gen_heap_alloc_gen with "Hσ'") as "(Hσ & HL)".
+  { apply map_disjoint_filter. }
+  iDestruct "HL" as "[HL _]".
+  rewrite map_union_filter. iFrame "Hσ".
+  iAssert ([∗ map] l↦_ ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ #0)%I with "[HL]" as "HL".
+  { iApply (big_sepM_mono with "HL").
+    intros l v. rewrite map_filter_lookup_Some=> [[Hlσ HlL]].
+    assert (v = #0) as -> by naive_solver. eauto. }
+  rewrite big_sepM_dom.
+  rewrite (dom_map_filter_L (λ x, x.1 ∈ L) σ L); first done.
+  intros i. naive_solver.
+Qed.
+
+(** Lifting DWP proofs *)
+Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invPreG Σ, !heapPreDG Σ} :
+  (∀ l, l ∈ L → σ1.(heap) !! l = Some #0 ∧ σ2.(heap) !! l = Some #0) →
+  (∀ `{!heapDG Σ}, I_L L -∗ DWP e1 & e2 : I) →
+  dwp_rel Σ [e1] [e2] σ1 σ2 L I.
+Proof.
+  intros Hσ Hdwp.
   exists 0. intros Hinv. simpl.
-  pose (σ1' := delete out1 (σ1.(heap))).
-  pose (σ2' := delete out2 (σ2.(heap))).
+  pose (σ1' := filter ((∉ L) ∘ fst) (σ1.(heap))).
+  pose (σ2' := filter ((∉ L) ∘ fst) (σ2.(heap))).
   iMod (gen_heap_init σ1') as (hg1) "Hh1".
-  iMod (gen_heap_alloc σ1' out1 #n with "Hh1") as "(Hh1 & Hout1 & Htok1)".
-  { apply lookup_delete. }
+  iMod (allocator_helper σ1.(heap) L with "Hh1") as "[Hh1 HL1]".
+  { naive_solver. }
   iMod (gen_heap_init σ2') as (hg2) "Hh2".
-  iMod (gen_heap_alloc σ2' out2 #n with "Hh2") as "(Hh2 & Hout2 & Htok2)".
-  { apply lookup_delete. }
+  iMod (allocator_helper σ2.(heap) L with "Hh2") as "[Hh2 HL2]".
+  { naive_solver. }
 
   iMod (proph_map_init [] σ1.(used_proph_id)) as (pg1) "Hp1".
   iMod (proph_map_init [] σ2.(used_proph_id)) as (pg2) "Hp2".
 
   pose (Hdheap := (HeapDG Σ Hinv pg1 pg2 hg1 hg2)).
 
-  iMod
-    (interp_ref_alloc Low out1 out2 #n #n (tint Low)
-       with "Hout1 Hout2 []") as "#Hrf".
-  { rewrite interp_eq. iExists n,n; eauto. }
-
+  iAssert (|={⊤}=> ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l))%I
+          with "[HL1 HL2]" as "HI".
+  { iApply big_sepS_fupd.
+    iCombine "HL1 HL2" as "HL".
+    rewrite -big_sepS_sep.
+    iApply (big_sepS_mono with "HL").
+    iIntros (x Hx) "[Hx1 Hx2]".
+    iApply (interp_ref_alloc Low x x #0 #0 (tint Low) with "Hx1 Hx2 []").
+    rewrite interp_eq. iExists 0,0; eauto. }
+  iMod "HI" as "#HI".
   iModIntro. iExists hg1,hg2,pg1,pg2.
-  rewrite !insert_delete !insert_id //.
-  iFrame "Hh1 Hh2 Hp1 Hp2 Hrf".
+  iFrame "Hh1 Hh2 Hp1 Hp2 HI".
   iSplit; last done.
-  iApply (Hdwp with "Hrf").
+  iApply (Hdwp with "HI").
+Qed.
+
+Lemma dwp_lift_bisim_singleton e1 e2 σ1 σ2 (out : loc) Σ `{!invPreG Σ, !heapPreDG Σ} :
+  σ1.(heap) !! out = Some #0 →
+  σ2.(heap) !! out = Some #0 →
+  (∀ `{!heapDG Σ}, ⟦ tref (tint Low) ⟧ Low #out #out -∗ DWP e1 & e2 : I) →
+  dwp_rel Σ [e1] [e2] σ1 σ2 {[out]} I.
+Proof.
+  intros Hσ1 Hσ2 He1e2. apply dwp_lift_bisim.
+  - intros l. rewrite elem_of_singleton. naive_solver.
+  - intros ?. rewrite /I_L big_sepS_singleton. done.
 Qed.
 
 (** The relation has good properties *)
 (* NB: the out channel has to be the same location! *)
-Lemma dwp_rel_sym `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 out Φ :
+Lemma dwp_rel_sym `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
   (∀ v1 v2, Φ v1 v2 ⊢ Φ v2 v1) →
-  dwp_rel Σ es ss σ1 σ2 out out Φ →
-  dwp_rel Σ ss es σ2 σ1 out out Φ.
+  dwp_rel Σ es ss σ1 σ2 L Φ →
+  dwp_rel Σ ss es σ2 σ1 L Φ.
 Proof.
   intros HΦ [n HR].
   exists n. intros Hinv.
@@ -246,8 +270,9 @@ Proof.
   iDestruct "Hσ" as "($&$&$&$)". clear HR.
   (* first we prove that we can get the symmetric version of the invariant *)
   iSplitL "Hout".
-  { rewrite !interp_eq /=.
-    iDestruct "Hout" as (l1 l2 Hl1 Hl2) "H". simplify_eq/=.
+  { rewrite /I_L. iApply (big_sepS_mono with "Hout").
+    intros x Hx. rewrite !interp_eq /=.
+    iDestruct 1 as (l1 l2 Hl1 Hl2) "H". simplify_eq/=.
     iExists l1, l1. repeat iSplit; eauto.
     iApply (invariants.inv_iff with "[] H").
     iNext. iAlways. iSplit.
@@ -259,7 +284,7 @@ Proof.
       iExists v2, v1. iFrame. iDestruct "Hv" as (i1 i2 -> ->) "%".
       iExists i2, i1. repeat iSplit; eauto with iFrame.
       iPureIntro. naive_solver. }
-  rewrite big_sepL2_swap.
+  rewrite big_sepL2_flip.
   iApply (big_sepL2_impl with "HDWP []").
   iAlways. iIntros (k s e Hs He) "HDWP".
   (* now we do Löb induction *)
@@ -281,7 +306,7 @@ Proof.
   iMod "HDWP" as "(($ & $ & $ & $) & Hdwp & Hefs)". iModIntro.
   iSplitL "Hdwp".
   - by iApply ("IH" with "Hdwp HΦ").
-  - rewrite big_sepL2_swap.
+  - rewrite big_sepL2_flip.
     iApply (big_sepL2_impl with "Hefs").
     iAlways. iIntros (m e1 e2 ??) "Hdwp".
     iApply ("IH" $! _ _ 1 Φ with "Hdwp HΦ").
@@ -289,8 +314,8 @@ Qed.
 
 (* Transitivity is still infeasible! *)
 
-Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 out1 out2 :
-  dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 out1 out2 I →
+Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
+  dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 L I →
   v1 = v2.
 Proof.
   intros [n HR].
@@ -303,21 +328,22 @@ Proof.
   rewrite dwp_value_inv'. done.
 Qed.
 
-Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 out1 out2 :
-  dwp_rel Σ e s σ1 σ2 out1 out2 I →
-  σ1.(heap) !! out1 = σ2.(heap) !! out2.
+Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
+  dwp_rel Σ e s σ1 σ2 L I →
+  ∀ l, l ∈ L → σ1.(heap) !! l = σ2.(heap) !! l.
 Proof.
-  intros [n HR].
+  intros [n HR] l Hl.
   eapply (mega_futureN_soundness n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
   iApply (mega_futureN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv _]]".
   iDestruct "HSR" as "(Hσ1 & _ & Hσ2 & _)".
+  rewrite /I_L. rewrite (big_sepS_elem_of _ _ l) //.
   rewrite interp_eq. iDestruct "Hinv" as (o1 o2 ? ?) "#Hinv".
   simplify_eq/=.
   iApply fupd_plain_mask.
-  iInv (locsN.@(o1, o2)) as (v1 v2) "(>Ho1 & >Ho2 & >Hv)" "_".
+  iInv (locsN.@(o1, o1)) as (v1 v2) "(>Ho1 & >Ho2 & >Hv)" "_".
   iModIntro.
   iDestruct "Hv" as (i1 i2 -> ->) "%".
   assert (i1 = i2) as -> by eauto.
@@ -326,11 +352,11 @@ Proof.
   done.
 Qed.
 
-Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 out1 out2 Φ :
+Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 L Φ :
   es !! i = Some e →
   ss !! i = Some s →
   language.to_val e = None →
-  dwp_rel Σ es ss σ1 σ2 out1 out2 Φ →
+  dwp_rel Σ es ss σ1 σ2 L Φ →
   reducible_no_obs e σ1 ∧ reducible_no_obs s σ2.
 Proof.
   intros Hes Hss He [n HR].
@@ -347,10 +373,10 @@ Proof.
   iModIntro. done.
 Qed.
 
-Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 out1 out2 Φ :
+Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 L Φ :
   es !! i = Some e →
   ss !! i = Some s →
-  dwp_rel Σ es ss σ1 σ2 out1 out2 Φ →
+  dwp_rel Σ es ss σ1 σ2 L Φ →
   (prim_step e σ1 [] e' σ1' efs1) →
   (prim_step s σ2 [] s' σ2' efs2) →
   length efs1 = length efs2.
@@ -377,12 +403,12 @@ Proof.
   iModIntro. iModIntro. iApply (big_sepL2_length with "Hefs").
 Qed.
 
-Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' out1 out2 Φ :
+Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' L Φ :
   length es = length ss →
-  dwp_rel Σ (es ++ e::es') (ss ++ s::ss') σ1 σ2 out1 out2 Φ →
+  dwp_rel Σ (es ++ e::es') (ss ++ s::ss') σ1 σ2 L Φ →
   (prim_step e σ1 [] e' σ1' []) →
   (prim_step s σ2 [] s' σ2' []) →
-  dwp_rel Σ (es ++ e'::es') (ss ++ s'::ss') σ1' σ2' out1 out2 Φ.
+  dwp_rel Σ (es ++ e'::es') (ss ++ s'::ss') σ1' σ2' L Φ.
 Proof.
   intros Hlen [n HR] Hstep1 Hstep2.
   rewrite /dwp_rel. exists (S n). move=>Hinv.
@@ -409,13 +435,13 @@ Proof.
   iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
 Qed.
 
-Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' efs out1 out2 Φ :
+Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' efs L Φ :
   length es = length ss →
-  dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 out1 out2 Φ →
+  dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 L Φ →
   (prim_step e σ1 [] e' σ1' efs) →
   ∃ s' σ2' κ2 sfs,
     prim_step s σ2 κ2 s' σ2' sfs ∧
-    dwp_rel Σ (es++(e'::efs)++es') (ss++(s'::sfs)++ss') σ1' σ2' out1 out2 Φ.
+    dwp_rel Σ (es++(e'::efs)++es') (ss++(s'::sfs)++ss') σ1' σ2' L Φ.
 Proof.
   intros Hlen HR Hstep1.
   assert (to_val e = None) as Hnon. { by eapply val_stuck. }
@@ -423,7 +449,7 @@ Proof.
   { by apply list_lookup_middle. }
   assert ((ss++s::ss') !! length es = Some s) as Hi2.
   { by apply list_lookup_middle. }
-  destruct (dwp_rel_reducible_no_obs Σ _ _ e s _ σ1 σ2 out1 out2 Φ Hi1 Hi2 Hnon HR) as [Hred1 Hred2].
+  destruct (dwp_rel_reducible_no_obs Σ _ _ e s _ σ1 σ2 _ Φ Hi1 Hi2 Hnon HR) as [Hred1 Hred2].
   destruct Hred2 as (s'&σ2'&efs2&Hstep2).
   destruct HR as [n HR].
   exists s', σ2', [], efs2. split; auto.
