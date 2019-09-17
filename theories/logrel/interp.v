@@ -454,6 +454,34 @@ Section rules.
       iModIntro. eauto.
   Qed.
 
+  Lemma logrel_faa e1 e2 t1 t2 α E ξ :
+    ↑locsN ⊆ E →
+    (DWP e1 & e2 @ E : ⟦ tref (tint α) ⟧ ξ) -∗
+    (DWP t1 & t2 @ E : ⟦ tint α ⟧ ξ) -∗
+    DWP FAA e1 t1 & FAA e2 t2 @ E : ⟦ tint α ⟧ ξ.
+  Proof.
+    iIntros (?) "He Ht".
+    dwp_bind t1 t2. iApply (dwp_wand with "Ht").
+    iIntros (v1 v2) "Hv".
+    dwp_bind e1 e2. iApply (dwp_wand with "He").
+    iIntros (? ?). rewrite (interp_eq (tref _)).
+    iDestruct 1 as (r1 r2 -> ->) "Hr".
+    iInv (locsN.@(r1, r2)) as (w1 w2) "(Hr1 & Hr2 & >Hw)".
+    iDestruct "Hw" as (n1 n2 -> ->) "%".
+    iDestruct "Hv" as (m1 m2 -> ->) "%".
+    pose (Φ1 := (λ v, ⌜v = #n1⌝ ∧ r1 ↦ₗ #(n1+m1))%I).
+    pose (Φ2 := (λ v, ⌜v = #n2⌝ ∧ r2 ↦ᵣ #(n2+m2))%I).
+    iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hr1] [Hr2] [-]").
+    - rewrite /WP1 /Φ1. wp_faa. eauto.
+    - rewrite /WP2 /Φ2. wp_faa. eauto.
+    - iIntros (? ?) "[-> Hr1] [-> Hr2]".
+      iNext. iModIntro. iSplitL.
+      + iNext. iExists _,_. iFrame "Hr1 Hr2".
+        iExists _,_. repeat iSplit; eauto. iPureIntro.
+        naive_solver.
+      + iExists _,_. repeat iSplit; eauto.
+  Qed.
+
   (*****************************************************************)
   Definition prog (r r' : loc) (h : bool) : expr :=
     #r <- #true;;   (* r : (ref bool^low)^low *)
