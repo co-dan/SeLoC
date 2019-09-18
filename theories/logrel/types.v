@@ -174,6 +174,17 @@ Lemma stamp_measure (τ : type) (l : slevel) :
   type_measure τ = type_measure (stamp τ l).
 Proof. induction τ; naive_solver. Qed.
 
+(* [lbl τ] is a "level approximation" of a type *)
+Fixpoint lbl (τ : type) : slevel :=
+  match τ with
+  | tunit => Low
+  | tint α => α
+  | tbool α => α
+  | tprod τ1 τ2 => lbl τ1 ⊔ lbl τ2
+  | tarrow s t β => lbl t ⊔ β
+  | tref τ => lbl τ
+  end.
+
 (** The subtyping relation <: *)
 Reserved Notation "τ '<:' σ" (at level 50).
 Inductive type_sub : type → type → Prop :=

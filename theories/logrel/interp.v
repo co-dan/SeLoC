@@ -483,6 +483,15 @@ Section rules.
       + iExists _,_. repeat iSplit; eauto.
   Qed.
 
+  (* TODO. Need: interpretation of locations is a partial bijection. *)
+  (* Lemma logrel_cas e1 e2 t1 t2 s1 s2 τ E ξ : *)
+  (*   ↑locsN ⊆ E → *)
+  (*   (DWP e1 & e2 @ E : ⟦ tref τ ⟧ ξ) -∗ *)
+  (*   (DWP t1 & t2 @ E : ⟦ τ ⟧ ξ) -∗ *)
+  (*   (DWP s1 & s2 @ E : ⟦ τ ⟧ ξ) -∗ *)
+  (*   DWP (CAS e1 t1 s1) & (CAS e2 t2 s2) @ E : ⟦ tbool (lbl τ) ⟧ ξ. *)
+  (* Proof. *)
+
   (*****************************************************************)
   Definition prog (r r' : loc) (h : bool) : expr :=
     #r <- #true;;   (* r : (ref bool^low)^low *)
