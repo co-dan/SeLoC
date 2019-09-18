@@ -270,25 +270,25 @@ Section rules.
 
   Lemma logrel_if ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
     (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
-    ((DWP t1 & t2 : A ξ) ∧
-        (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : A ξ)) -∗
-    ((DWP u1 & u2 : A ξ) ∧
-        (⌜¬ l ⊑ ξ⌝ → DWP t1 & u2 : A ξ)) -∗
+    ((DWP t1 & t2 : A ξ)
+     ∧ (DWP u1 & u2 : A ξ)
+     ∧ (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : A ξ)
+     ∧ (⌜¬ l ⊑ ξ⌝ → DWP t1 & u2 : A ξ)) -∗
     DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A ξ.
   Proof.
-    iIntros "He Ht Hu".
+    iIntros "He Htu".
     dwp_bind e1 e2.
     iApply (dwp_wand with "He"). iIntros (v1 v2 Hv).
     destruct Hv as (b1 & b2 & -> & -> & Hb1b2).
     destruct (decide (l ⊑ ξ)) as [Hlvl | Hlvl]; try specialize (Hb1b2 Hlvl); simplify_eq/=.
     - destruct b2; dwp_pures.
-      + by iDestruct "Ht" as "[$ _]".
-      + by iDestruct "Hu" as "[$ _]".
+      + by iDestruct "Htu" as "[$ _]".
+      + by iDestruct "Htu" as "[_ [$ _]]".
     - destruct b1, b2; dwp_pures.
-      + by iDestruct "Ht" as "[$ _]".
-      + iDestruct "Hu" as "[_ H]". by iApply "H".
-      + iDestruct "Ht" as "[_ H]". by iApply "H".
-      + by iDestruct "Hu" as "[$ _]".
+      + by iDestruct "Htu" as "[$ _]".
+      + iDestruct "Htu" as "[_ [_ [_ Htu]]]". by iApply "Htu".
+      + iDestruct "Htu" as "[_ [_ [Htu _]]]". by iApply "Htu".
+      + by iDestruct "Htu" as "[_ [$ _]]".
   Qed.
 
   Lemma logrel_if_low ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
@@ -299,9 +299,10 @@ Section rules.
     DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A ξ.
   Proof.
     iIntros (Hl) "He Ht Hu".
-    iApply (logrel_if with  "He [Ht] [Hu]").
-    - iSplit; first done. iIntros (?). by exfalso.
-    - iSplit; first done. iIntros (?). by exfalso.
+    iApply (logrel_if with  "He [Ht Hu]").
+    repeat iSplit; try done.
+    - iIntros (?). by exfalso.
+    - iIntros (?). by exfalso.
   Qed.
 
   Lemma logrel_rec ξ f x e1 e2 τ1 τ2 l :
@@ -513,12 +514,13 @@ Section rules.
     (* Attempt by structural reasoning (will fail at `let x = ..`) *)
     dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
     iApply (dwp_wand with "[]").
-    { iApply logrel_if.
+    { iApply logrel_if; repeat iSplit.
       - iApply dwp_value. iApply "Hh".
-      - iSplit.
-        + iApply dwp_value. simpl.
-          iApply "Hr".
-        + iIntros (?).
+      - iApply dwp_value. simpl.
+        iApply "Hr".
+      - iApply dwp_value. simpl.
+        iApply "Hr'".
+      - iIntros (?).
     (* Attempt by symbolic execution (will fail at the store) *)
     (* destruct h1, h2. *)
     (* { logrel_pures. simpl. admit. } *)
