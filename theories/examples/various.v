@@ -9,6 +9,22 @@ From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp.
 From iris_ni.examples Require Import par.
 
+Definition f : val := λ: "x", "x" * #0.
+Section f_proof.
+  Context `{!heapDG Σ}.
+
+  Lemma f_proof ξ :
+    DWP f & f : ⟦ tarrow (tint High) (tint Low) Low ⟧ ξ.
+  Proof.
+    iApply dwp_value.
+    iModIntro. rewrite interp_eq /=. iAlways.
+    iIntros (v1 v2). iDestruct 1 as (x1 x2 -> ->) "%".
+    dwp_rec. dwp_pures. rewrite !Z.mul_0_r. iApply dwp_value.
+    rewrite left_id. iModIntro. iExists 0,0. eauto with iFrame.
+  Qed.
+End f_proof.
+
+
 (** Examples from Huisman-Worah-Sunesen CSFW-06 *)
 
 Definition loop : val := rec: "loop" <> := "loop" #().
