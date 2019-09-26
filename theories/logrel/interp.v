@@ -391,8 +391,8 @@ Section rules.
     iApply dwp_fupd.
     iApply (dwp_atomic_lift_wp Φ1 Φ2%I); try done.
     repeat iSplitR.
-    - rewrite /WP1 /Φ1. wp_alloc l1 as "Hl". eauto with iFrame.
-    - rewrite /WP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame.
+    - rewrite /TWP1 /Φ1. wp_alloc l1 as "Hl". eauto with iFrame.
+    - rewrite /TWP2 /Φ2. wp_alloc l1 as "Hl". eauto with iFrame.
     - iIntros (? ?). iDestruct 1 as (l1 ->) "Hl1".
       iDestruct 1 as (l2 ->) "Hl2".
       iNext. iMod (interp_ref_alloc with "Hl1 Hl2 Hv") as "$". done.
@@ -416,8 +416,8 @@ Section rules.
     iDestruct "Hl1" as "[Hl1 Hl1']".
     iDestruct "Hl2" as "[Hl2 Hl2']".
     iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hl1] [Hl2] [Hl1' Hl2' Hcl]").
-    - rewrite /WP1. wp_load. done.
-    - rewrite /WP2. wp_load. done.
+    - rewrite /TWP1. wp_load. done.
+    - rewrite /TWP2. wp_load. done.
     - iIntros (w1 w2) "Hl1 Hl2".
       iDestruct (mapsto_agree with "Hl1 Hl1'") as %->.
       iCombine "Hl1 Hl1'" as "Hl1".
@@ -447,8 +447,8 @@ Section rules.
     iApply dwp_atomic.
     iInv (locsN.@(r1,r2)) as (v1 v2) "(>Hr1 & >Hr2 & #Hv)" "Hcl".
     iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hr1] [Hr2] [-]").
-    - rewrite /WP1 /Φ1. wp_store. eauto.
-    - rewrite /WP2 /Φ2. wp_store. eauto.
+    - rewrite /TWP1 /Φ1. wp_store. eauto.
+    - rewrite /TWP2 /Φ2. wp_store. eauto.
     - iIntros (? ?) "[-> Hr1] [-> Hr2]".
       iNext. iMod ("Hcl" with "[-]") as "_".
       { iNext. iExists _,_. by iFrame. }
@@ -467,14 +467,14 @@ Section rules.
     dwp_bind e1 e2. iApply (dwp_wand with "He").
     iIntros (? ?). rewrite (interp_eq (tref _)).
     iDestruct 1 as (r1 r2 -> ->) "Hr".
-    iInv (locsN.@(r1, r2)) as (w1 w2) "(Hr1 & Hr2 & >Hw)".
+    iInv (locsN.@(r1, r2)) as (w1 w2) "(>Hr1 & >Hr2 & >Hw)".
     iDestruct "Hw" as (n1 n2 -> ->) "%".
     iDestruct "Hv" as (m1 m2 -> ->) "%".
     pose (Φ1 := (λ v, ⌜v = #n1⌝ ∧ r1 ↦ₗ #(n1+m1))%I).
     pose (Φ2 := (λ v, ⌜v = #n2⌝ ∧ r2 ↦ᵣ #(n2+m2))%I).
     iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hr1] [Hr2] [-]").
-    - rewrite /WP1 /Φ1. wp_faa. eauto.
-    - rewrite /WP2 /Φ2. wp_faa. eauto.
+    - rewrite /TWP1 /Φ1. wp_faa. eauto.
+    - rewrite /TWP2 /Φ2. wp_faa. eauto.
     - iIntros (? ?) "[-> Hr1] [-> Hr2]".
       iNext. iModIntro. iSplitL.
       + iNext. iExists _,_. iFrame "Hr1 Hr2".

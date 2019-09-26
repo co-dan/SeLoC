@@ -329,9 +329,9 @@ Proof.
   iSpecialize ("H" $! e1' σ1' efs1 e2' σ2' efs2 with "[%] [%]").
   { by apply prim_step_det_nondet. }
   { by apply prim_step_det_nondet. }
-  iMod "H" as "H". iModIntro. iNext.
-  iMod "H" as "H". iModIntro. iNext.
-  iMod "H" as "($&HWP&Hefs)". iModIntro.
+  iMod "H" as "H". iModIntro.
+  iNext. iMod "H" as "H". iModIntro.
+  iDestruct "H" as "($&HWP&Hefs)".
   iSplitL "HWP".
   - by iApply "IH".
   - iApply (big_sepL2_impl with "Hefs []").

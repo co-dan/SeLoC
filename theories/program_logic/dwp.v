@@ -24,8 +24,9 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
      state_rel σ1 σ2 (κ1 ++ κs1) (κ2 ++ κs2) -∗
      |={E1,∅}=> ⌜reducible_no_obs e1 σ1⌝ ∗ ⌜reducible_no_obs e2 σ2⌝ ∗
      ∀ e1' σ1' efs1 e2' σ2' efs2, ⌜prim_step e1 σ1 [] e1' σ1' efs1⌝ -∗
-                                  ⌜prim_step e2 σ2 [] e2' σ2' efs2⌝ -∗
-       |={∅,∅}=> ▷ |={∅,∅}=> ▷ |={∅,E1}=>
+                                   ⌜prim_step e2 σ2 [] e2' σ2' efs2⌝ -∗
+       |={∅,∅,E1}▷=>
+       (* |={∅,∅}=> ▷ |={∅,∅}=> ▷ |={∅,E1}=> *)
          state_rel σ1' σ2' (κ1++κs1) (κ2++κs2) ∗ dwp E1 e1' e2' Φ ∗
          [∗ list] ef ; ef' ∈ efs1 ; efs2, dwp ⊤ ef ef' (λ _ _, True)
   end)%I.
@@ -40,8 +41,7 @@ Proof.
   apply bi.forall_ne=>κs1.
   apply bi.forall_ne=>κ2.
   apply bi.forall_ne=>κs2.
-  repeat (f_contractive || f_equiv); apply dist_S, Hwp.
-  (* TODO: this is so slow *)
+  repeat (f_contractive || f_equiv); apply Hwp.
 Qed.
 
 Definition dwp_def `{irisDG Λ Σ, invG Σ} :
@@ -71,9 +71,9 @@ Proof.
   (* FIXME: reflexivity, as being called many times by f_equiv and f_contractive
   is very slow here *)
   do 33 (f_contractive || f_equiv).
-  do 6 (f_contractive || f_equiv).
+  do 4 (f_contractive || f_equiv).
   apply IH; first lia.
-  intros ??. eapply (dist_le (S (S n))); eauto with lia.
+  intros ??. eapply (dist_le (S n)); eauto with lia.
   apply HΦ.
 Qed.
 
@@ -113,7 +113,6 @@ Proof.
   iModIntro. iSplit; [by eauto|]. iSplit; [by eauto|].
   iIntros (e1' σ1' efs1 e2' σ2' efs2 Hstep1 Hstep2).
   do 2 iSpecialize ("H" with "[//]"). iMod "H" as "H". iIntros "!>!>".
-  iMod "H" as "H". iModIntro. iNext.
   iMod "H" as "H". iMod "Hclose" as "_". iModIntro.
   iDestruct "H" as "(Hσ & H & Hefs)". iFrame.
   iApply ("IH" with "[//] H HΦ").
@@ -169,8 +168,7 @@ Proof.
   iSpecialize ("H" with "[//]").
   iSpecialize ("H" with "[//]").
   iMod "H" as "H". iIntros "!>!>".
-  iMod "H" as "H". iIntros "!>!>".
-  iMod "H" as "H".
+  iMod "H" as "H". iModIntro.
   iDestruct "H" as "(Hσ & H & Hefs)".
   apply fill_step in Hstep2. iFrame.
   by iApply "IH".
@@ -207,7 +205,6 @@ Proof.
   iSpecialize ("H" with "[//]").
   iMod "H" as "H".
   iModIntro. iNext.
-  iMod "H" as "H". iModIntro. iNext.
   iMod "H" as "H".
   iMod "HR" as "HR". iModIntro.
   iDestruct "H" as "(Hσ & H & Hefs)". iFrame.
@@ -271,11 +268,9 @@ Proof.
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iMod "H" as "H".
   iSpecialize ("H" $! σ1 σ2 κ1 κs1 κ2 κs2 with "Hσ").
-  iMod "H" as (??) "H". iModIntro.
-  do 2 (iSplit; first done).
+  iMod "H" as  "[$ [$ H]]". iModIntro.
   iIntros (e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
   iSpecialize ("H" $! e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
-  iMod "H" as "H". iModIntro. iNext.
   iMod "H" as "H". iModIntro. iNext.
   iMod "H" as "[Hst [H $]]".
   destruct (to_val e1') as [v1|] eqn:Hv1; last first.

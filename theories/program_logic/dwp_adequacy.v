@@ -15,149 +15,6 @@ Class heapPreDG Σ := HeapPreDG {
   heapPreDG_gen_heapG2 :> gen_heapPreG loc val Σ
 }.
 
-(** First the mega future modality *)
-Definition mega_future `{!invG Σ} (P : iProp Σ) :=
-  (|={⊤,∅}=> |={∅,∅}=> ▷ |={∅,∅}=> ▷ |={∅,⊤}=> P)%I.
-Instance: Params (@mega_future) 3.
-
-Instance mega_future_proper `{invG Σ} : Proper ((⊢) ==> (⊢)) mega_future.
-Proof. by rewrite /mega_future=> P Q ->. Qed.
-
-Section mega_future_props.
-  Context `{!invG Σ}.
-
-  Lemma except_0_later'  (P : iProp Σ) :
-    ◇ ▷ P -∗
-    ▷ ◇ P.
-  Proof.
-    rewrite bi.except_0_later. apply later_mono, except_0_intro.
-  Qed.
-
-  Lemma mega_future_mono (P Q : iProp Σ) :
-    (P -∗ Q) →
-    (mega_future P -∗ mega_future Q).
-  Proof. intros HPQ. by rewrite /mega_future HPQ. Qed.
-
-  Lemma mega_futureN_mono n (P Q : iProp Σ) :
-    (P -∗ Q) →
-    (Nat.iter n mega_future P -∗ Nat.iter n mega_future Q).
-  Proof.
-    intros HPQ. induction n as [|n IH]=> //=.
-    rewrite /mega_future IH //.
-  Qed.
-
-  Lemma mega_future_wand (P Q : iProp Σ) :
-    mega_future P -∗
-    (P -∗ Q) -∗
-    mega_future Q.
-  Proof.
-    iIntros "HP HPQ".
-    rewrite /mega_future.
-    iMod "HP". iModIntro.
-    iMod "HP". iModIntro. iNext.
-    iApply (step_fupd_wand with "HP HPQ").
-  Qed.
-
-  Lemma mega_futureN_wand n (P Q : iProp Σ) :
-    Nat.iter n mega_future P -∗
-    (P -∗ Q) -∗
-    Nat.iter n mega_future Q.
-  Proof.
-    iIntros "HP HPQ".
-    iInduction n as [|n] "IH".
-    - simpl. by iApply "HPQ".
-    - rewrite !Nat_iter_S.
-      iApply (mega_future_wand with "HP").
-      iIntros "H".
-      iApply ("IH" with "H HPQ").
-  Qed.
-
-  Lemma mega_future_fupd (P : iProp Σ) :
-    mega_future P ⊣⊢ mega_future (|={⊤}=> P).
-  Proof.
-    apply (anti_symm (⊢)).
-    - by rewrite /mega_future -(fupd_intro ⊤ P).
-    - rewrite /mega_future.
-      iIntros "H". iMod "H". iModIntro.
-      iMod "H". iModIntro. iNext.
-      iMod "H". iModIntro. iNext.
-      by rewrite fupd_trans.
-  Qed.
-
-  Lemma mega_futureN_S_fupd n (P : iProp Σ) :
-    Nat.iter (S n) mega_future P ⊣⊢ Nat.iter (S n) mega_future (|={⊤}=> P).
-  Proof.
-    apply (anti_symm (⊢)); rewrite !Nat_iter_S_r; apply mega_futureN_mono.
-    - rewrite mega_future_fupd //.
-    - rewrite -mega_future_fupd //.
-  Qed.
-
-  Lemma mega_futureN_add n1 n2 (P : iProp Σ) :
-    Nat.iter (n1 + n2) mega_future P ⊣⊢
-             Nat.iter n1 mega_future (Nat.iter n2 mega_future P).
-  Proof. by rewrite Nat_iter_add. Qed.
-
-  Lemma mega_future_plain P `{!Plain P} :
-    mega_future P -∗ |={⊤}=> ▷ ◇ ▷ ◇ P.
-  Proof.
-    rewrite /mega_future.
-    rewrite -(fupd_plain_mask _ ∅ (▷ ◇ ▷ ◇ P)%I).
-    iIntros "H". iMod "H".
-    iMod "H".
-    rewrite -(fupd_plain_later _ (▷ ◇ P)%I). iNext.
-    iMod "H".
-    by rewrite fupd_plain_mask -fupd_plain_later.
-  Qed.
-
-  Lemma mega_futureN_plain n P `{!Plain P} :
-    Nat.iter n mega_future P -∗ |={⊤}=> Nat.iter n (λ x, ▷ ◇ ▷ ◇ x) P.
-  Proof.
-    induction n as [|n IH].
-    - simpl. by rewrite -fupd_intro.
-    - rewrite !Nat_iter_S.
-      rewrite IH. rewrite -mega_future_fupd.
-      apply mega_future_plain. clear IH.
-      induction n=>/= //. apply _.
-  Qed.
-
-End mega_future_props.
-
-Lemma mega_future_soundness `{!invPreG Σ} φ :
-  (∀ `{Hinv: !invG Σ}, (mega_future (|={⊤}=> ⌜ φ ⌝ : iProp Σ))%I) →
-  φ.
-Proof.
-  intros Hprf.
-  apply (soundness (M:=iResUR Σ) _  (S (S 2))); simpl.
-  apply (fupd_plain_soundness ⊤ ⊤); first by apply _.
-  intros Hinv.
-  iPoseProof (Hprf Hinv) as "H". clear Hprf.
-  rewrite -mega_future_fupd.
-  iMod (mega_future_plain with "H") as "Hφ".
-  iModIntro. iNext. iMod "Hφ" as "Hφ".
-  iNext. iMod "Hφ" as "Hφ". by iNext.
-Qed.
-
-Lemma mega_futureN_soundness `{!invPreG Σ} n φ :
-  (∀ `{Hinv: !invG Σ}, (Nat.iter n mega_future (|={⊤}=> ⌜ φ ⌝ : iProp Σ))%I) →
-  φ.
-Proof.
-  intros Hprf.
-  apply (soundness (M:=iResUR Σ) _  (S (S (n * 2)))); simpl.
-  apply (fupd_plain_soundness ⊤ ⊤); first by apply _. intros Hinv.
-  iPoseProof (Hprf Hinv) as "H". clear Hprf.
-  destruct n as [|n].
-  - simpl. iMod "H" as "H". done.
-  - rewrite -mega_futureN_S_fupd.
-    iMod (mega_futureN_plain with "H") as "Hφ".
-    iModIntro. iClear "H".
-    iInduction n as [|n] "IH"; simpl.
-    + iNext. iMod "Hφ" as "Hφ".
-      iNext. iMod "Hφ" as "Hφ". by iNext.
-    + iNext. iMod "Hφ" as "Hφ".
-      iNext. iMod "Hφ" as "Hφ".
-      by iApply "IH".
-Qed.
-
 (* TODO: move to std++ *)
 Section test.
 Context `{FinMap K M}.
@@ -180,6 +37,7 @@ Proof.
   apply extract_fn_spec'. apply elem_of_dom. eauto.
 Qed.
 End test.
+(* / move to std++ *)
 
 Local Open Scope nat.
 
@@ -194,7 +52,7 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
   (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
   ∃ n, ∀ `{Hinv : !invG Σ},
-      (Nat.iter n mega_future
+      (|={⊤, ∅}▷=>^n
          (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
                    (p1 p2 : proph_mapG proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
@@ -288,7 +146,7 @@ Proof.
   intros HΦ [n HR].
   exists n. intros Hinv.
   iPoseProof (HR Hinv) as "H".
-  iApply (mega_futureN_mono with "H").
+  iApply (step_fupdN_mono with "H").
   iIntros "H". iMod "H". iModIntro.
   iDestruct "H" as (h1 h2 p1 p2) "[Hσ [Hout HDWP]]".
   iExists h2, h1, p2, p1.
@@ -328,7 +186,6 @@ Proof.
   iMod ("HDWP" with "[$Hσ1 $Hp1 $Hσ2 $Hp2]") as "($ & $ & HDWP)".
   iModIntro. iIntros (s' σ1' efs1 e' σ2' efs2 Hst_s Hst_e).
   iMod ("HDWP" with "[//] [//]") as "HDWP". iModIntro. iNext.
-  iMod "HDWP" as "HDWP". iModIntro. iNext.
   iMod "HDWP" as "(($ & $ & $ & $) & Hdwp & Hefs)". iModIntro.
   iSplitL "Hdwp".
   - by iApply ("IH" with "Hdwp HΦ").
@@ -345,13 +202,13 @@ Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
   v1 = v2.
 Proof.
   intros [n HR].
-  eapply (mega_futureN_soundness n)=>Hinv.
+  eapply (step_fupdN_soundness _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
-  iApply (mega_futureN_mono with "HR").
+  iApply (step_fupdN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR H]".
   rewrite big_sepL2_cons. iDestruct "H" as "(_ & H & _)".
-  rewrite dwp_value_inv'. done.
+  rewrite dwp_value_inv'. iMod "H". by iApply fupd_mask_weaken.
 Qed.
 
 Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
@@ -359,18 +216,17 @@ Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
   ∀ l, l ∈ L → σ1.(heap) !! l = σ2.(heap) !! l.
 Proof.
   intros [n HR] l Hl.
-  eapply (mega_futureN_soundness n)=>Hinv.
+  eapply (step_fupdN_soundness _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
-  iApply (mega_futureN_mono with "HR").
+  iApply (step_fupdN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv _]]".
   iDestruct "HSR" as "(Hσ1 & _ & Hσ2 & _)".
   rewrite /I_L. rewrite (big_sepS_elem_of _ _ l) //.
   rewrite interp_eq. iDestruct "Hinv" as (o1 o2 ? ?) "#Hinv".
   simplify_eq/=.
-  iApply fupd_plain_mask.
   iInv (locsN.@(o1, o1)) as (v1 v2) "(>Ho1 & >Ho2 & >Hv)" "_".
-  iModIntro.
+  iApply fupd_mask_weaken; first set_solver.
   iDestruct "Hv" as (i1 i2 -> ->) "%".
   assert (i1 = i2) as -> by eauto.
   iDestruct (gen_heap_valid with "Hσ1 Ho1") as %->.
@@ -386,10 +242,10 @@ Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 
   reducible_no_obs e σ1 ∧ reducible_no_obs s σ2.
 Proof.
   intros Hes Hss He [n HR].
-  eapply (mega_futureN_soundness n)=>Hinv.
+  eapply (step_fupdN_soundness _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
-  iApply (mega_futureN_mono with "HR").
-  iIntros "HR". iApply fupd_plain_mask_empty.
+  iApply (step_fupdN_mono with "HR").
+  iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre He) in "H".
@@ -408,10 +264,10 @@ Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e'
   length efs1 = length efs2.
 Proof.
   intros Hes Hss [n HR1] Hstep1 Hstep2.
-  eapply (mega_futureN_soundness (S n))=>Hinv.
+  eapply (step_fupdN_soundness _ (S n))=>Hinv.
   iPoseProof (HR1 Hinv) as "HR".
   rewrite Nat_iter_S_r.
-  iApply (mega_futureN_mono with "HR").
+  iApply (step_fupdN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
@@ -424,9 +280,9 @@ Proof.
   iMod ("H" $! _ _ [] [] [] [] with "HSR") as (Hred1 Hred2) "H".
   iSpecialize ("H" with "[//]").
   iSpecialize ("H" with "[//]"). iMod "H".
-  iModIntro. iModIntro. iNext. iMod "H" as "H".
   iModIntro. iNext. iMod "H" as "[_ [_ Hefs]]".
-  iModIntro. iModIntro. iApply (big_sepL2_length with "Hefs").
+  iModIntro. iApply fupd_mask_weaken; first set_solver.
+  iApply (big_sepL2_length with "Hefs").
 Qed.
 
 Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' L Φ :
@@ -440,8 +296,7 @@ Proof.
   rewrite /dwp_rel. exists (S n). move=>Hinv.
   rewrite Nat_iter_S_r.
   iPoseProof HR as "H".
-  iApply (mega_futureN_mono with "H").
-  rewrite /mega_future /=.
+  iApply (step_fupdN_mono with "H").
   iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI [Hinv HWP]]".
   iExists h1,h2,p1,p2.
 
@@ -453,10 +308,9 @@ Proof.
   assert (language.to_val s = None) as ->.
   { eapply val_stuck. eauto. }
   iSpecialize ("HWP" $! _ _ [] [] [] [] with "HI").
-  iMod "HWP" as (_ _) "HWP". iModIntro.
+  iMod "HWP" as (_ _) "HWP".
   iSpecialize ("HWP" with "[//]").
   iSpecialize ("HWP" with "[//]").
-  iMod "HWP" as "HWP". iModIntro. iNext.
   iMod "HWP" as "HWP". iModIntro. iNext.
   iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
 Qed.
@@ -482,8 +336,7 @@ Proof.
   rewrite /dwp_rel. exists (S n). move=>Hinv.
   rewrite Nat_iter_S_r.
   iPoseProof HR as "H".
-  iApply (mega_futureN_mono with "H").
-  rewrite /mega_future /=.
+  iApply (step_fupdN_mono with "H").
   iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI [Hinv HWP]]".
   iExists h1,h2,p1,p2.
 
@@ -495,14 +348,16 @@ Proof.
   destruct (language.to_val s) as [sv|] eqn:Hsv.
   { by iMod "HWP". }
   iSpecialize ("HWP" $! _ _ [] [] [] [] with "HI").
-  iMod "HWP" as (_ _) "HWP". iModIntro.
+  iMod "HWP" as (_ _) "HWP".
   iSpecialize ("HWP" with "[//]").
   iSpecialize ("HWP" with "[//]").
   iMod "HWP" as "HWP". iModIntro. iNext.
-  iMod "HWP" as "HWP". iModIntro. iNext.
-  iMod "HWP" as "(HI & HWP & Hefs)". iModIntro. iModIntro. iFrame.
-  iApply (big_sepL2_app with "[Hefs] [H2]").
-  - iApply (big_sepL2_mono with "Hefs").
+  iMod "HWP" as "(HI & HWP & Hefs)". iModIntro. iModIntro.
+  iFrame "Hinv HI".
+  iApply (big_sepL2_app with "H1").
+  iApply (big_sepL2_app with "[HWP Hefs] [H2]").
+  - iFrame "HWP".
+    iApply (big_sepL2_mono with "Hefs").
     intros; simpl. apply dwp_mono=> v1 v2.
     rewrite -plus_n_Sm. naive_solver.
   - iApply (big_sepL2_mono with "H2").

@@ -1,5 +1,6 @@
 From iris.base_logic Require Export gen_heap.
 From iris_ni.program_logic Require Export dwp classes ectx_lifting.
+From iris_ni.program_logic Require Export dwp classes.
 From iris.heap_lang Require Export lang lifting notation.
 From iris.heap_lang Require Import tactics proofmode.
 From iris.proofmode Require Import tactics.
@@ -24,15 +25,15 @@ Definition irisG2 `{heapDG Σ} : irisG heap_lang Σ :=
                     heapG_gen_heapG := heapDG_gen_heapG2;
                     heapG_proph_mapG := heapDG_proph_mapG2 |}.
 
-Definition WP1 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
-  @wp heap_lang (iProp Σ) stuckness
-      (@wp' heap_lang Σ irisG1)
-      NotStuck E e R.
+Definition TWP1 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
+  @twp heap_lang (iProp Σ) stuckness
+       (@twp' heap_lang Σ irisG1)
+       NotStuck E e R.
 
-Definition WP2 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
-  @wp heap_lang (iProp Σ) stuckness
-      (@wp' heap_lang Σ irisG2)
-      NotStuck E e R.
+Definition TWP2 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
+  @twp heap_lang (iProp Σ) stuckness
+       (@twp' heap_lang Σ irisG2)
+       NotStuck E e R.
 
 Definition mapsto1 `{heapDG Σ} (l : loc) (q : Qp) (v : val) :=
   @mapsto loc _ _ val Σ heapDG_gen_heapG1 l q v.
@@ -92,46 +93,44 @@ Lemma dwp_atomic_lift_wp Ψ1 Ψ2 E2 e1 e2 Φ
   {NO2 : NoObs e2}
   {He1 : NotVal e1}
   {He2 : NotVal e2}:
-  WP1 e1 E2 Ψ1 -∗
-  WP2 e2 ∅ Ψ2 -∗
+  TWP1 e1 E2 Ψ1 -∗
+  TWP2 e2 ∅ Ψ2 -∗
   (∀ v1 v2, Ψ1 v1 -∗ Ψ2 v2 -∗ ▷ Φ v1 v2) -∗
   dwp E2 e1 e2 Φ.
 Proof.
-  iIntros "HWP1 HWP2 H".
+  iIntros "HTWP1 HTWP2 H".
   rewrite dwp_unfold /dwp_pre /= He1 He2.
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
-  rewrite /WP1 /WP2 !wp_unfold /wp_pre /= !He1 !He2.
-  iSpecialize ("HWP1" $! σ1 [] (κ1++κs1) 0%nat with "[$Hσ1 $Hκs1]").
-  iSpecialize ("HWP2" $! σ2 [] (κ2++κs2) 0%nat with "[$Hσ2 $Hκs2]").
-  iMod "HWP1" as (Hred1) "HWP1".
-  iMod "HWP2" as (Hred2) "HWP2".
-  destruct Hred1 as (κ1' & ? & ? & ? & Hred1).
-  assert (κ1' = []) as ->.
-  { eapply (@noobs e1 _). eauto. }
-  destruct Hred2 as (κ2' & ? & ? & ? & Hred2).
-  assert (κ2' = []) as ->.
-  { eapply (@noobs e2 _). eauto. }
+  rewrite /TWP1 /TWP2 !twp_unfold /twp_pre /= !He1 !He2.
+  iSpecialize ("HTWP1" $! σ1 (κ1++κs1) 0%nat with "[$Hσ1 $Hκs1]").
+  iSpecialize ("HTWP2" $! σ2 (κ2++κs2) 0%nat with "[$Hσ2 $Hκs2]").
+  iMod "HTWP1" as (Hred1) "HTWP1".
+  iMod "HTWP2" as (Hred2) "HTWP2".
+  destruct Hred1 as (? & ? & ? & Hred1).
+  (* assert (κ1' = []) as ->. *)
+  (* { eapply (@noobs e1 _). eauto. } *)
+  destruct Hred2 as (? & ? & ? & Hred2).
+  (* assert (κ2' = []) as ->. *)
+  (* { eapply (@noobs e2 _). eauto. } *)
   iModIntro.
   iSplit. { iPureIntro. eexists. eauto. }
   iSplit. { iPureIntro. eexists. eauto. }
   iIntros (e1' σ1' efs e2' σ2' efs2 Hstep1 Hstep2).
-  iSpecialize ("HWP1" $! e1' σ1' efs with "[//]").
-  iSpecialize ("HWP2" with "[//]").
-  iMod "HWP1". iMod "HWP2". iModIntro. iNext.
-  iMod "HWP2". iMod "HWP1".
-  iDestruct "HWP1" as "([Hh1 Hp1] & HWP1 & _)".
-  iDestruct "HWP2" as "([Hh2 Hp2] & HWP2 & _)".
+  iSpecialize ("HTWP1" $! [] e1' σ1' efs with "[//]").
+  iSpecialize ("HTWP2" with "[//]").
+  iMod "HTWP2" as "(_ & [Hh2 Hp2] & HTWP2 & _)".
+  iMod "HTWP1" as "(_ & [Hh1 Hp1] & HTWP1 & _)".
   destruct (to_val e1') as [v1|] eqn:Hv1; last first.
   { exfalso. destruct (atomic _ _ _ _ _ Hstep1). naive_solver. }
   destruct (to_val e2') as [v2|] eqn:Hv2; last first.
   { exfalso. destruct (atomic _ _ _ _ _ Hstep2). naive_solver. }
   rewrite -(of_to_val _ _ Hv1) -(of_to_val _ _ Hv2).
-  rewrite !wp_value_inv'. iMod "HWP1".
+  rewrite !twp_value_inv'. iMod "HTWP1".
   rewrite (fupd_mask_mono ∅ E2); last by set_solver.
-  iMod "HWP2". iFrame "Hh1 Hp1 Hh2 Hp2".
-  iSpecialize ("H" with "HWP1 HWP2").
+  iMod "HTWP2". iFrame "Hh1 Hp1 Hh2 Hp2".
   iApply step_fupd_intro; first set_solver.
+  iSpecialize ("H" with "HTWP1 HTWP2").
   iNext. rewrite -dwp_value. iFrame.
   rewrite (nofork _ _ _ _ _ Hstep1).
   rewrite (nofork _ _ _ _ _ Hstep2).
@@ -144,15 +143,13 @@ Lemma dwp_load E (l1 l2: loc) v1 v2 Φ :
   (l1 ↦ₗ v1 -∗ l2 ↦ᵣ v2 -∗ ▷ Φ v1 v2) -∗
   dwp E (! #l1) (! #l2) Φ.
 Proof.
-  iIntros "Hl1 Hl2 HΦ".
+  iIntros ">Hl1 >Hl2 HΦ".
   iApply (dwp_atomic_lift_wp
     (λ v, ⌜v = v1⌝ ∗ l1 ↦ₗ v1)%I
     (λ v, ⌜v = v2⌝ ∗ l2 ↦ᵣ v2)%I
     with "[Hl1] [Hl2] [HΦ]").
-  { iApply (wp_load  _ _ l1 1 v1 with "[Hl1]").
-    iNext. iFrame "Hl1". eauto. }
-  { iApply (wp_load  _ _ l2 1 v2 with "[Hl2]").
-    iNext. done. eauto. }
+  { iApply (twp_load  _ _ l1 1 v1 with "[Hl1]"); eauto. }
+  { iApply (twp_load  _ _ l2 1 v2 with "[Hl2]"); eauto. }
   iIntros (? ?) "[% Hl1] [% Hl2]". simplify_eq.
   iApply ("HΦ" with "Hl1 Hl2").
 Qed.
@@ -165,8 +162,8 @@ Proof.
   pose (Ψ1 := (λ v, ∃ r : loc, ⌜v = #r⌝ ∧ r ↦ₗ v1)%I).
   pose (Ψ2 := (λ v, ∃ r : loc, ⌜v = #r⌝ ∧ r ↦ᵣ v2)%I).
   iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[] [] [H]").
-  { rewrite /WP1 /Ψ1. wp_alloc r as "Hr". eauto with iFrame. }
-  { rewrite /WP2 /Ψ2. wp_alloc r as "Hr". eauto with iFrame. }
+  { rewrite /TWP1 /Ψ1. wp_alloc r as "Hr". eauto with iFrame. }
+  { rewrite /TWP2 /Ψ2. wp_alloc r as "Hr". eauto with iFrame. }
   iIntros (? ?). iDestruct 1 as (r1 ->) "Hr1". iDestruct 1 as (r2 ->) "Hr2".
   iApply ("H" with "Hr1 Hr2").
 Qed.
@@ -177,12 +174,12 @@ Lemma dwp_store E (v1 v2 v1' v2' : val) (l1 l2 : loc) Φ :
   (l1 ↦ₗ v1' -∗ l2 ↦ᵣ v2' -∗ ▷Φ #() #()) -∗
   DWP #l1 <- v1' & #l2 <- v2' @ E : Φ.
 Proof.
-  iIntros "Hl1 Hl2 HΦ".
+  iIntros ">Hl1 >Hl2 HΦ".
   pose (Ψ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ v1')%I).
   pose (Ψ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ v2')%I).
   iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [HΦ]").
-  { rewrite /WP1 /Ψ1. wp_store. eauto with iFrame. }
-  { rewrite /WP2 /Ψ2. wp_store. eauto with iFrame. }
+  { rewrite /TWP1 /Ψ1. wp_store. eauto with iFrame. }
+  { rewrite /TWP2 /Ψ2. wp_store. eauto with iFrame. }
   iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
   iApply ("HΦ" with "Hl1 Hl2").
 Qed.

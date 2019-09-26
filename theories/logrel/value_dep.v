@@ -258,7 +258,7 @@ Section value_dep.
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
     iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α)
-        "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+        "(Hr1 & Hr2 & >Hcl1 & >Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_load with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
 
     iMod ("Hvs" with "Ha") as "[Ha HQ]".
@@ -287,7 +287,7 @@ Section value_dep.
     (** First we store the values and change the state to intermediate *)
     iApply dwp_atomic.
     iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α')
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+                   "(>Hr1 & >Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
 
     (** Notice that we know the exact classification of the values *)
@@ -306,7 +306,7 @@ Section value_dep.
       clear b. iModIntro. dwp_pures.
       iApply dwp_atomic.
       iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1' w2' b α)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+                   "(Hr1 & Hr2 & >Hcl1 & >Hcl2 & Ha & Hi)" "Hcl".
       iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
       (* classification is still the same *)
       iDestruct (classification_auth_agree with "Ha Hf") as %->.
@@ -328,7 +328,7 @@ Section value_dep.
       iModIntro. dwp_pures.
       iApply dwp_atomic.
       iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1' w2' b α)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+                   "(Hr1 & Hr2 & >Hcl1 & >Hcl2 & Ha & Hi)" "Hcl".
       iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
       (* classification is still the same *)
       iDestruct (classification_auth_agree with "Ha Hf") as %->.
@@ -353,7 +353,7 @@ Section value_dep.
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
     iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+                   "(>Hr1 & >Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_load with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
     iDestruct "Hi" as "[  (% & % & #Hw)
                        |[ (% & % & #Hw)
@@ -384,7 +384,7 @@ Section value_dep.
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
     iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α')
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+                   "(Hr1 & Hr2 & >Hcl1 & >Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_store with "Hcl1 Hcl2"). iIntros "Hcl1 Hcl2". iNext.
 
     iDestruct (classification_auth_agree with "Ha Hf") as %->.
@@ -414,7 +414,7 @@ Section value_dep.
     dwp_rec. dwp_pures.
     iApply dwp_atomic.
     iInv (nroot.@"vdep".@((#cl1, #r1)%V, (#cl2, #r2)%V)) as (w1 w2 b α)
-                   "(Hr1 & Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
+                   "(>Hr1 & >Hr2 & Hcl1 & Hcl2 & Ha & Hi)" "Hcl".
     iModIntro. iApply (dwp_store with "Hr1 Hr2"). iIntros "Hr1 Hr2". iNext.
 
     iMod ("Hvs" with "Ha") as "[Ha [#Hvs $]]".

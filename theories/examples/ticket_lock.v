@@ -72,7 +72,7 @@ Section proof.
     iDestruct "Hl" as (lo1 ln1 lo2 ln2 -> ->) "#Hinv".
     iLöb as "IH". dwp_rec. dwp_pures.
     dwp_bind (! _)%E (! _)%E.
-    iInv N as (o n) "(Hlo1 & Hln1 & Hlo2 & Hln2 & Ha)".
+    iInv N as (o n) "(>Hlo1 & >Hln1 & >Hlo2 & >Hln2 & Ha)".
     iApply (dwp_load with "Hlo1 Hlo2"). iIntros "Hlo1 Hlo2".
     destruct (decide (x = o)) as [->|Hneq].
     - iDestruct "Ha" as "[Hainv [[Ho HR] | Haown]]".
@@ -109,7 +109,7 @@ Section proof.
     iDestruct "Hl" as (lo1 ln1 lo2 ln2 -> ->) "#Hinv".
     iLöb as "IH". dwp_rec. dwp_pures.
     dwp_bind (! _)%E (! _)%E. simplify_eq/=.
-    iInv N as (o n) "(Hlo1 & Hln1 & Hlo2 & Hln2 & Ha)".
+    iInv N as (o n) "(>Hlo1 & >Hln1 & >Hlo2 & >Hln2 & Ha)".
     iApply (dwp_load with "Hln1 Hln2"). iIntros "Hln1 Hln2".
     iNext. iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Ha".
     { iNext. iExists o, n. by iFrame. }
@@ -124,8 +124,8 @@ Section proof.
       pose (Ψ1 := (λ v, ⌜v = (#n, #true)%V⌝ ∗ ln1 ↦ₗ #(n+1))%I).
       pose (Ψ2 := (λ v, ⌜v = (#n, #true)%V⌝ ∗ ln2 ↦ᵣ #(n+1))%I).
       iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hln1] [Hln2]").
-      { rewrite /WP1 /Ψ1. wp_cmpxchg_suc. eauto with iFrame. }
-      { rewrite /WP2 /Ψ2. wp_cmpxchg_suc. eauto with iFrame. }
+      { rewrite /TWP1 /Ψ1. wp_cmpxchg_suc. eauto with iFrame. }
+      { rewrite /TWP2 /Ψ2. wp_cmpxchg_suc. eauto with iFrame. }
       iIntros (? ?) "[-> Hln1] [-> Hln2]". iNext.
       iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Haown Hauth".
       { iNext. iExists o', (S n).
@@ -136,8 +136,8 @@ Section proof.
     - pose (Ψ1 := (λ v, ⌜v = (#n', #false)%V⌝ ∗ ln1 ↦ₗ #n')%I).
       pose (Ψ2 := (λ v, ⌜v = (#n', #false)%V⌝ ∗ ln2 ↦ᵣ #n')%I).
       iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hln1] [Hln2]").
-      { rewrite /WP1 /Ψ1. wp_cmpxchg_fail. eauto with iFrame. }
-      { rewrite /WP2 /Ψ2. wp_cmpxchg_fail. eauto with iFrame. }
+      { rewrite /TWP1 /Ψ1. wp_cmpxchg_fail. eauto with iFrame. }
+      { rewrite /TWP2 /Ψ2. wp_cmpxchg_fail. eauto with iFrame. }
       iIntros (? ?) "[-> Hln1] [-> Hln2]". iNext.
       iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Hauth Haown".
       { iNext. iExists o', n'. by iFrame. }

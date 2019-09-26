@@ -35,9 +35,9 @@ Section proof.
     pose (Ψ1 := (λ v, ∃ l : loc, ⌜v = #l⌝ ∗ l ↦ₗ #false)%I).
     pose (Ψ2 := (λ v, ∃ l : loc, ⌜v = #l⌝ ∗ l ↦ᵣ #false)%I).
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2).
-    { rewrite /WP1. wp_alloc l as "Hl".
+    { rewrite /TWP1. wp_alloc l as "Hl".
       iExists l. eauto with iFrame. }
-    { rewrite /WP2. wp_alloc l as "Hl".
+    { rewrite /TWP2. wp_alloc l as "Hl".
       iExists l. eauto with iFrame. }
     iIntros (? ?). iDestruct 1 as (l1 ->) "Hl1". iDestruct 1 as (l2 ->) "Hl2".
     iNext. iMod (own_alloc (Excl ())) as (γ) "Hγ"; first done.
@@ -56,14 +56,14 @@ Section proof.
     unlock try_acquire. dwp_pures=>/=.
     dwp_bind (CmpXchg _ _ _) (CmpXchg _ _ _).
     iApply dwp_atomic.
-    iInv N as (b) "(Hl1 & Hl2 & HR)" "Hcl". iModIntro.
+    iInv N as (b) "(>Hl1 & >Hl2 & HR)" "Hcl". iModIntro.
     pose (Ψ1 := (λ v, ⌜v = (#b, #(negb b))%V⌝ ∗ l1 ↦ₗ #true)%I).
     pose (Ψ2 := (λ v, ⌜v = (#b, #(negb b))%V⌝ ∗ l2 ↦ᵣ #true)%I).
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
-    { rewrite /WP1 /Ψ1. destruct b.
+    { rewrite /TWP1 /Ψ1. destruct b.
       by wp_cmpxchg_fail; iFrame.
       by wp_cmpxchg_suc; iFrame. }
-    { rewrite /WP2 /Ψ2. destruct b.
+    { rewrite /TWP2 /Ψ2. destruct b.
       by wp_cmpxchg_fail; iFrame.
       by wp_cmpxchg_suc; iFrame. }
     iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
@@ -102,10 +102,10 @@ Section proof.
     pose (Ψ1 := (λ v, ⌜v = #()⌝ ∗ l1 ↦ₗ #false)%I).
     pose (Ψ2 := (λ v, ⌜v = #()⌝ ∗ l2 ↦ᵣ #false)%I).
     iApply dwp_atomic.
-    iInv N as (b) "(Hl1 & Hl2 & Hb)" "Hcl".
+    iInv N as (b) "(>Hl1 & >Hl2 & Hb)" "Hcl".
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
-    { rewrite /WP1 /Ψ1. wp_store. eauto with iFrame. }
-    { rewrite /WP2 /Ψ2. wp_store. eauto with iFrame. }
+    { rewrite /TWP1 /Ψ1. wp_store. eauto with iFrame. }
+    { rewrite /TWP2 /Ψ2. wp_store. eauto with iFrame. }
     iIntros (? ?). iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2".
     iNext. iMod ("Hcl" with "[-HΦ]") as "_".
     { iNext. iExists false. by iFrame. }

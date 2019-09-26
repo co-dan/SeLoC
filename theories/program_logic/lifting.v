@@ -42,7 +42,7 @@ Proof.
     assert (xxx = []) as ->. { by eapply Hdet2. }
     do 3 eexists. eauto. }
   iIntros (e1' σ1' efs1 e2' σ2' efs2 Hstep1 Hstep2).
-  iModIntro. iNext. iModIntro. iNext. iMod "Hclose" as "_".
+  iModIntro. iNext. iMod "Hclose" as "_".
   iMod "H" as "H".
   assert (σ1' = σ1) as ->.
   { eapply Hdet1. eauto. }
