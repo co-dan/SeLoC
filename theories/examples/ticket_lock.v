@@ -79,9 +79,6 @@ Section proof.
       + iNext. iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Hainv Ht".
         { iNext. iExists o, n. iFrame. }
         dwp_pures.
-        (* TODO: regular dwp_pures doesn't work! *)
-        dwp_pure (#o = #o)%E (#o = #o)%E; try (left; done).
-        simpl.
         case_bool_decide; [|done]. dwp_pures. iApply dwp_value.
         iModIntro.
         iApply ("HΦ" with "[Ho] HR").
@@ -92,10 +89,6 @@ Section proof.
     - iNext. iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Ha".
       { iNext. iExists o, n. by iFrame. }
       dwp_pures.
-      (* TODO: regular dwp_pures doesn't work! *)
-      dwp_pure (#x = #o)%E (#x = #o)%E; try (left; done).
-      simpl.
-
       case_bool_decide; [simplify_eq |]. dwp_pures.
       iApply ("IH" with "Ht HΦ").
   Qed.

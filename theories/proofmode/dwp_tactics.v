@@ -61,8 +61,8 @@ Tactic Notation "dwp_pure" open_constr(efoc1) open_constr(efoc2) :=
         eapply (tac_dwp_pure _ _ _ (fill K1 e1') (fill K2 e2'));
         [iSolveTC                       (* PureExec *)
         |iSolveTC                       (* PureExec *)
-        |try fast_done                  (* The pure condition for PureExec *)
-        |try fast_done                  (* The pure condition for PureExec *)
+        |try solve_vals_compare_safe    (* The pure condition for PureExec *)
+        |try solve_vals_compare_safe    (* The pure condition for PureExec *)
         |iSolveTC                       (* IntoLaters *)
         |dwp_finish
         ]))
