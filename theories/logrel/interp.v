@@ -1,6 +1,6 @@
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
-From iris_ni.program_logic Require Import dwp heap_lang_lifting.
+From iris_ni.program_logic Require Export dwp heap_lang_lifting.
 From iris.proofmode Require Import tactics.
 From iris_ni.logrel Require Import types.
 From iris_ni.proofmode Require Import dwp_tactics.
