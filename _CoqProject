@@ -11,6 +11,7 @@ theories/proofmode/dwp_tactics.v
 theories/logrel/types.v
 theories/logrel/interp.v
 theories/logrel/value_dep.v
+theories/logrel/typing.v
 theories/examples/rand.v
 theories/examples/lock.v
 theories/examples/ticket_lock.v

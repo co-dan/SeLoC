@@ -55,6 +55,7 @@ Inductive has_type (Γ : stringmap type) :
     l ∈ 𝔏 →
     has_type Γ #l (tref (tint Low)).
 
+
 Section fundamental.
   Context `{!heapDG Σ}.
 
@@ -101,11 +102,16 @@ Section fundamental.
       { iApply (subst_valid_insert with "[Hf]").
         { by rewrite (interp_eq (tarrow _ _ _)). }
         iApply (subst_valid_insert with "Hv HΓ"). }
-      rewrite /γ'.
-      admit.
-      (* TODO :(
-      destruct x as [|x], f as [|f]; simpl; try iApply "H".
-      compute[insert_binder]. *)
+      rewrite /γ'. rewrite /insert /insert_binder.
+      rewrite !binder_insert_fmap.
+      destruct x as [|x], f as [|f];
+        simpl; rewrite ?subst_map_insert; try iApply "H".
+      destruct (decide (x = f)) as [->|]; iSimpl in "H".
+      + rewrite !delete_insert_delete !subst_subst !delete_idemp.
+        iApply "H".
+      + rewrite !delete_insert_ne // subst_map_insert.
+        rewrite !(subst_subst_ne _ x f) // subst_map_insert.
+        iApply "H".
     - iApply dwp_fork; last by eauto.
       iNext. iApply dwp_wand.
       + iApply (IHhas_type with "HΓ HI").
@@ -122,5 +128,6 @@ Section fundamental.
       + iApply (IHhas_type2 with "HΓ HI").
     - iApply dwp_value. iModIntro.
       iApply (big_sepS_elem_of _ 𝔏 l with "HI")=>//.
-  Abort.
+  Qed.
+End fundamental.
 End typing.
