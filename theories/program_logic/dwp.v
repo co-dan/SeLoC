@@ -26,7 +26,6 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
      ∀ e1' σ1' efs1 e2' σ2' efs2, ⌜prim_step e1 σ1 [] e1' σ1' efs1⌝ -∗
                                    ⌜prim_step e2 σ2 [] e2' σ2' efs2⌝ -∗
        |={∅,∅,E1}▷=>
-       (* |={∅,∅}=> ▷ |={∅,∅}=> ▷ |={∅,E1}=> *)
          state_rel σ1' σ2' (κ1++κs1) (κ2++κs2) ∗ dwp E1 e1' e2' Φ ∗
          [∗ list] ef ; ef' ∈ efs1 ; efs2, dwp ⊤ ef ef' (λ _ _, True)
   end)%I.

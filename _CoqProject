@@ -10,8 +10,8 @@ theories/program_logic/dwp_adequacy.v
 theories/proofmode/dwp_tactics.v
 theories/logrel/types.v
 theories/logrel/interp.v
-theories/logrel/value_dep.v
 theories/logrel/typing.v
+theories/examples/value_dep.v
 theories/examples/rand.v
 theories/examples/lock.v
 theories/examples/ticket_lock.v

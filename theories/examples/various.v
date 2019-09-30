@@ -174,3 +174,88 @@ If we make an invariant
 Then we wouldn't be able to use the `shot` case: after
 opening the invariant we will get `▷ ⟦tref (tint Low)⟧ ξ #r1 #r2`.
  *)
+
+(* The examples discussed in the appendix *)
+
+Definition p1 (r r' : loc) (h : bool) : expr :=
+  #r <- #true;;   (* r : (ref bool^low)^low *)
+  #r' <- #true;;  (* r' : (ref bool^low)^low *)
+  let: "x" := if: #h then #r else #r' in   (* x : (ref bool^low)^high *)
+  "x" <- #false;;
+  !#r'.
+
+Definition p2 (r r' : loc) (h : bool) : expr :=
+  #r <- #true;;
+  #r' <- #true;;
+  let: "x" := if: #h then #r else #r' in
+  !#r'.
+
+Section p12_proof.
+  Context `{!heapDG Σ, !spawnG Σ}.
+
+  Lemma bad_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
+    ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
+    ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
+    ⟦ tbool High ⟧ Low #h1 #h2 -∗
+    DWP (prog r1 r1' h1) & (prog r2 r2' h2) : ⟦ tbool Low ⟧ Low.
+  Proof.
+    iIntros "#Hr #Hr' #Hh".
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr".
+      - by iApply logrel_bool. }
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr'".
+      - by iApply logrel_bool. }
+    (* Attempt by structural reasoning (will fail at `let x = ..`) *)
+    dwp_bind (if: _ then _ else _)%E (if: _ then _ else _)%E.
+    iApply (dwp_wand with "[]").
+    { iApply logrel_if; repeat iSplit.
+      - iApply dwp_value. iApply "Hh".
+      - iApply dwp_value. simpl.
+        iApply "Hr".
+      - iApply dwp_value. simpl.
+        iApply "Hr'".
+      - iIntros (?).
+    (* Attempt by symbolic execution (will fail at the store) *)
+    (* destruct h1, h2. *)
+    (* { logrel_pures. simpl. admit. } *)
+  Abort.
+
+
+  Lemma good_example (r1 r2 r1' r2' : loc) (h1 h2 : bool) :
+    ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
+    ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
+    ⟦ tbool High ⟧ Low #h1 #h2 -∗
+    DWP (prog_good r1 r1' h1) & (prog_good r2 r2' h2) : ⟦ tbool Low ⟧ Low.
+  Proof.
+    iIntros "#Hr #Hr' #Hh".
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr".
+      - by iApply logrel_bool. }
+    iApply logrel_seq.
+    { iApply (logrel_store Low _ _ _ _ (tbool Low)); auto.
+      - iApply dwp_value. iModIntro. iApply "Hr'".
+      - by iApply logrel_bool. }
+    destruct h1, h2.
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply logrel_deref; eauto. iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply logrel_deref; eauto. iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply logrel_deref; eauto. iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+    { dwp_pures. simpl. iApply (dwp_mono with "[]"); last first.
+      { iApply logrel_deref; eauto. iApply dwp_value.
+        iApply "Hr'". }
+      simpl. eauto. }
+  Qed.
+
+End p12_proof.

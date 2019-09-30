@@ -2,12 +2,17 @@ From stdpp Require Import namespaces.
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.base_logic.lib Require Import wsat.
 From iris.proofmode Require Import tactics.
-From iris.heap_lang Require Import lang notation lifting proofmode. (* for the example *)
+From iris.heap_lang Require Import lang.
 From iris_ni.program_logic Require Export dwp lifting heap_lang_lifting.
 From iris_ni.logrel Require Export types interp.
 Import uPred.
 
-(** Now we define a simulation from a DWP *)
+Local Open Scope nat.
+Implicit Types L : gset loc.
+Implicit Types l : loc.
+
+(** In this file we define a bisimulation from DWP *)
+
 Class heapPreDG Σ := HeapPreDG {
   heapPreDG_proph_mapG1 :> proph_mapPreG proph_id (val*val) Σ;
   heapPreDG_proph_mapG2 :> proph_mapPreG proph_id (val*val) Σ;
@@ -15,8 +20,9 @@ Class heapPreDG Σ := HeapPreDG {
   heapPreDG_gen_heapG2 :> gen_heapPreG loc val Σ
 }.
 
-(* TODO: move to std++ *)
-Section test.
+(* Helper lemmas *)
+(* TODO: Move to std++ eventually *)
+Section helper.
 Context `{FinMap K M}.
 Context {A} `{Inhabited A}.
 Context {D} `{FinMapDom K M D}.
@@ -36,32 +42,7 @@ Proof.
   enough (m !! x = Some (extract_fn m x)); first by simplify_eq/=.
   apply extract_fn_spec'. apply elem_of_dom. eauto.
 Qed.
-End test.
-(* / move to std++ *)
-
-Local Open Scope nat.
-
-Implicit Types L : gset loc.
-Implicit Types l : loc.
-
-Definition I_L (L : gset loc) `{!heapDG Σ} :=
-  ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l)%I.
-
-(** Now the relation *)
-Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
-  (es ss : list expr)
-  (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
-  ∃ n, ∀ `{Hinv : !invG Σ},
-      (|={⊤, ∅}▷=>^n
-         (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
-                   (p1 p2 : proph_mapG proph_id (val*val) Σ),
-            let _ := HeapDG _ _ p1 p2 h1 h2 in
-            state_rel σ1 σ2 [] [] ∗
-            I_L L ∗
-            [∗ list] k↦e;s ∈ es;ss,
-                dwp ⊤ e s (if decide (k = O) then Φ else (λ _ _, True))))%I.
-
-Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
+End helper.
 
 Lemma allocator_helper σ L `{!invG Σ, !gen_heapG loc val Σ} :
   (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some #n) →
@@ -83,6 +64,25 @@ Proof.
   rewrite (dom_map_filter_L (λ x, x.1 ∈ L) σ L); first done.
   intros i. naive_solver.
 Qed.
+
+Definition I_L (L : gset loc) `{!heapDG Σ} :=
+  ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l)%I.
+
+(** Now the relation *)
+Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
+  (es ss : list expr)
+  (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
+  ∃ n, ∀ `{Hinv : !invG Σ},
+      (|={⊤, ∅}▷=>^n
+         (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
+                   (p1 p2 : proph_mapG proph_id (val*val) Σ),
+            let _ := HeapDG _ _ p1 p2 h1 h2 in
+            state_rel σ1 σ2 [] [] ∗
+            I_L L ∗
+            [∗ list] k↦e;s ∈ es;ss,
+                dwp ⊤ e s (if decide (k = O) then Φ else (λ _ _, True))))%I.
+
+Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
 (** Lifting DWP proofs *)
 Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invPreG Σ, !heapPreDG Σ} :
@@ -137,7 +137,6 @@ Proof.
 Qed.
 
 (** The relation has good properties *)
-(* NB: the out channel has to be the same location! *)
 Lemma dwp_rel_sym `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
   (∀ v1 v2, Φ v1 v2 ⊢ Φ v2 v1) →
   dwp_rel Σ es ss σ1 σ2 L Φ →
@@ -194,7 +193,6 @@ Proof.
     iAlways. iIntros (m e1 e2 ??) "Hdwp".
     iApply ("IH" $! _ _ 1 Φ with "Hdwp HΦ").
 Qed.
-
 (* Transitivity is still infeasible! *)
 
 Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :

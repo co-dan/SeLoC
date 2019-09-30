@@ -67,7 +67,6 @@ Instance heapDG_irisDG `{heapDG Σ} : irisDG heap_lang Σ := {
 Section lifting.
 Context `{heapDG Σ}.
 
-(* Local Hint Extern 0 (atomic _ _) => solve_atomic. *)
 Local Hint Extern 0 (head_reducible _ _) => eexists _, _, _; simpl.
 
 Local Hint Constructors head_step.
@@ -108,11 +107,7 @@ Proof.
   iMod "HTWP1" as (Hred1) "HTWP1".
   iMod "HTWP2" as (Hred2) "HTWP2".
   destruct Hred1 as (? & ? & ? & Hred1).
-  (* assert (κ1' = []) as ->. *)
-  (* { eapply (@noobs e1 _). eauto. } *)
   destruct Hred2 as (? & ? & ? & Hred2).
-  (* assert (κ2' = []) as ->. *)
-  (* { eapply (@noobs e2 _). eauto. } *)
   iModIntro.
   iSplit. { iPureIntro. eexists. eauto. }
   iSplit. { iPureIntro. eexists. eauto. }
