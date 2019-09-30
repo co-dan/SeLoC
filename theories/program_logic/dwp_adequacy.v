@@ -195,9 +195,9 @@ Proof.
 Qed.
 (* Transitivity is still infeasible! *)
 
-Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
-  dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 L I →
-  v1 = v2.
+Lemma dwp_rel_hd_to_val Σ `{!invPreG Σ, !heapPreDG Σ} e s es ss σ1 σ2 L :
+  dwp_rel Σ (e::es) (s::ss) σ1 σ2 L I →
+  to_val e = to_val s.
 Proof.
   intros [n HR].
   eapply (step_fupdN_soundness _ n)=>Hinv.
@@ -206,7 +206,23 @@ Proof.
   iIntros "HR".
   iMod "HR" as (h1 h2 p1 p2) "[HSR H]".
   rewrite big_sepL2_cons. iDestruct "H" as "(_ & H & _)".
-  rewrite dwp_value_inv'. iMod "H". by iApply fupd_mask_weaken.
+  rewrite decide_left.
+  destruct (to_val e) as [v1|] eqn:He, (to_val s) as [v2|] eqn:Hs.
+  - rewrite -(of_to_val e v1)// -(of_to_val s v2)//.
+    rewrite dwp_value_inv'. iMod "H" as %?. simplify_eq/=.
+      by iApply fupd_mask_weaken.
+  - rewrite !dwp_unfold /dwp_pre /= ?He ?Hs.
+    by iMod "H".
+  - rewrite !dwp_unfold /dwp_pre /= ?He ?Hs.
+    by iMod "H".
+  - by iApply fupd_mask_weaken.
+Qed.
+
+Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
+  dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 L I →
+  v1 = v2.
+Proof.
+  intros HR%dwp_rel_hd_to_val. by simplify_eq/=.
 Qed.
 
 Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
@@ -251,6 +267,20 @@ Proof.
   { by iMod "H". }
   iMod ("H" $! _ _ [] [] [] [] with "HSR") as (Hred1 Hred2) "H".
   iModIntro. done.
+Qed.
+
+Lemma dwp_rel_tp_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
+  dwp_rel Σ es ss σ1 σ2 L Φ →
+  length es = length ss.
+Proof.
+  intros [n HR].
+  eapply (step_fupdN_soundness _ n)=>Hinv.
+  iPoseProof (HR Hinv) as "HR".
+  iApply (step_fupdN_mono with "HR").
+  iIntros "HR".
+  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
+  rewrite big_sepL2_length. iFrame.
+  iApply fupd_mask_weaken; eauto.
 Qed.
 
 Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 L Φ :
@@ -317,8 +347,8 @@ Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e
   length es = length ss →
   dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 L Φ →
   (prim_step e σ1 [] e' σ1' efs) →
-  ∃ s' σ2' κ2 sfs,
-    prim_step s σ2 κ2 s' σ2' sfs ∧
+  ∃ s' σ2' sfs,
+    prim_step s σ2 [] s' σ2' sfs ∧
     dwp_rel Σ (es++(e'::efs)++es') (ss++(s'::sfs)++ss') σ1' σ2' L Φ.
 Proof.
   intros Hlen HR Hstep1.
@@ -330,7 +360,7 @@ Proof.
   destruct (dwp_rel_reducible_no_obs Σ _ _ e s _ σ1 σ2 _ Φ Hi1 Hi2 Hnon HR) as [Hred1 Hred2].
   destruct Hred2 as (s'&σ2'&efs2&Hstep2).
   destruct HR as [n HR].
-  exists s', σ2', [], efs2. split; auto.
+  exists s', σ2', efs2. split; auto.
   rewrite /dwp_rel. exists (S n). move=>Hinv.
   rewrite Nat_iter_S_r.
   iPoseProof HR as "H".
@@ -361,4 +391,179 @@ Proof.
   - iApply (big_sepL2_mono with "H2").
     intros; simpl. apply dwp_mono=> v1 v2.
     rewrite - !plus_n_Sm. naive_solver.
+Qed.
+
+(* A helper lemma.
+   TODO: Move it out to a different module *)
+Lemma list_decompose {A:Type} (es1 : list A) e (es2 : list A) (ss : list A) :
+  length (es1++e::es2) = length ss →
+  ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1 ++ s::ss2.
+Proof.
+  intros Hlen.
+  assert (length es1 < length ss) as Hlen2.
+  { revert Hlen. rewrite app_length /=. lia. }
+  destruct (@nth_split _ (length es1) ss e Hlen2) as (ss1 & ss2 & -> & Hlen3).
+  exists ss1, (nth (length es1) ss e), ss2. eauto.
+Qed.
+
+(* A slightly different version of [dwp_rel_simul] *)
+Lemma dwp_rel_simul' Σ `{!invPreG Σ, !heapPreDG Σ} es1 (e : expr) es2 ss σ1 σ2 L Φ :
+  dwp_rel Σ (es1++e::es2) ss σ1 σ2 L Φ →
+  ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1++s::ss2 ∧
+    ∀ e' σ1' efs,
+      (prim_step e σ1 [] e' σ1' efs) →
+      ∃ s' σ2' sfs,
+      prim_step s σ2 [] s' σ2' sfs ∧
+      dwp_rel Σ (es1++(e'::efs)++es2) (ss1++(s'::sfs)++ss2) σ1' σ2' L Φ.
+Proof.
+  intros HR.
+  assert (length (es1 ++ e :: es2) = length ss) as Htmplen.
+  { eapply dwp_rel_tp_length, HR. }
+  destruct (list_decompose es1 e es2 ss Htmplen) as (ss1&s&ss2&Hlen1&->).
+  do 3 eexists. repeat (split ; first done).
+  intros e' σ1' efs Hstep. eapply dwp_rel_simul; eauto.
+Qed.
+
+
+(** Putting everything together *)
+
+Definition R_pre Σ `{!invPreG Σ, !heapPreDG Σ} L x1 x2 : Prop :=
+  match x1,x2 with
+  | (es, σ1), (ss, σ2) => dwp_rel Σ es ss σ1 σ2 L I
+  end.
+
+Definition R Σ `{!invPreG Σ, !heapPreDG Σ} L : relation (list expr*state)
+  := tc (R_pre Σ L).
+
+(** A strong-low bisimulation *)
+Definition strong_bisim (L : gset loc)
+  (R : (list expr*state) → (list expr*state) → Prop) : Prop :=
+  (** - is a PER *)
+  transitive _ R ∧ symmetric _ R ∧
+  (** - on the threadpools of equal size *)
+  (∀ es σ1 ss σ2, R (es, σ1) (ss, σ2) → length es = length ss) ∧
+  (** - final values are observable *)
+  (∀ v1 v2 es σ1 ss σ2, R (of_val v1::es, σ1) (of_val v2::ss, σ2) → v1 = v2) ∧
+  (** - untrusted sinks are observable *)
+  (∀ es σ1 ss σ2 l, R (es, σ1) (ss, σ2) → l ∈ L →
+                      σ1.(heap) !! l = σ2.(heap) !! l) ∧
+  (** - the bisimulation condition *)
+  (∀ es1 e es2 σ1 ss σ2, R (es1++e::es2, σ1) (ss, σ2) →
+   ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1 ++ s::ss2 ∧
+   ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
+      ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
+      R (es1++(e'::es')++es2, σ1') (ss1++(s'::ss')++ss2, σ2')).
+
+(* TODO: helper lemmas *)
+Section relation_lemmas.
+  Context {A : Type}.
+  Implicit Types R : relation A.
+
+  Lemma tc_symmetric R :
+    symmetric _ R → symmetric _ (tc R).
+  Proof.
+    intros HR x y. induction 1 as [x y Hxy|x y z Hxy Hyz IH].
+    - by constructor; eauto.
+    - eapply tc_r; eauto.
+  Qed.
+
+  Lemma transitive_tc_id R `{Transitive _ R} : ∀ x y, tc R x y ↔ R x y.
+  Proof.
+    intros x y; split; last by constructor.
+    induction 1; eauto.
+  Qed.
+
+  Notation subrel R1 R2 := (∀ x y, R1 x y → R2 x y).
+
+  Lemma tc_subrel R1 R2 : subrel R1 R2 → subrel (tc R1) (tc R2).
+  Proof.
+    intros HR x y. induction 1 as [x y Hxy|x y z Hxy Hyz IH].
+    - by constructor; eauto.
+    - eapply tc_l; eauto.
+  Qed.
+
+End relation_lemmas.
+
+Theorem R_strong_bisim Σ L `{!invPreG Σ, !heapPreDG Σ} : strong_bisim L (R Σ L).
+Proof.
+  unfold R. repeat split.
+  - unfold transitive. apply tc_transitive.
+  - apply tc_symmetric. intros [es σ1] [ss σ2].
+    unfold R_pre. apply dwp_rel_sym. eauto.
+  - intros es σ1 ss σ2 Htc.
+    (* We generalize the goal slightly so that the induction works out.
+     We use the same trick in all the cases below. *)
+    pose (f := λ (x y : list expr*state), length x.1 = length y.1).
+    enough (f (es, σ1) (ss, σ2)); first by eauto.
+    enough (tc f (es, σ1) (ss, σ2)).
+    { apply transitive_tc_id; eauto.
+      intros [x ?] [y ?] [z ?]; unfold f=>/= -> -> //. }
+    eapply (tc_subrel (R_pre Σ L)); last done.
+    clear. rewrite /f /R_pre=> [[es σ1] [ss σ2]] /=.
+    (* Just lifting the property *)
+    apply dwp_rel_tp_length.
+  - intros v1 v2 es σ1 ss σ2 Htc.
+    pose (f := λ (x y : list expr*state),
+               to_val <$> hd_error x.1 = to_val <$> hd_error y.1).
+    cut (f (of_val v1 :: es, σ1) (of_val v2 :: ss, σ2)).
+    { rewrite /f /=; naive_solver.  }
+    enough (tc f (of_val v1 :: es, σ1) (of_val v2 :: ss, σ2)).
+    { apply transitive_tc_id; eauto.
+      intros [x ?] [y ?] [z ?]; unfold f=>/= -> -> //. }
+    eapply (tc_subrel (R_pre Σ L)); last done.
+    clear. rewrite /f /R_pre=> [[es σ1] [ss σ2]] /=.
+    (* Just lifting the property *)
+    destruct es as [|e es], ss as [|s ss];
+      first [ intros ?%dwp_rel_tp_length; naive_solver
+            | simpl; eauto ].
+    by intros ->%dwp_rel_hd_to_val.
+  - intros es σ1 ss σ2 l Htc. revert l.
+    pose (f := λ (x y : list expr*state), ∀ l, l ∈ L → heap x.2 !! l = heap y.2 !! l).
+    enough (f (es, σ1) (ss, σ2)); first done.
+    enough (tc f (es, σ1) (ss, σ2)).
+    { apply transitive_tc_id; eauto.
+      intros [x ?] [y ?] [z ?]; unfold f=>/= Hl1 Hl2 l Hl.
+      by rewrite (Hl1 _ Hl) (Hl2 _ Hl). }
+    eapply (tc_subrel (R_pre Σ L)); last done.
+    clear. rewrite /f /R_pre=> [[es σ1] [ss σ2]] /=.
+    (* Just lifting the property *)
+    apply dwp_rel_progress.
+  - intros es1 e es2 σ1 ss σ2 Htc.
+    pose (f :=  λ (x y : list expr*state),
+            let '(es, σ1) := x in
+            let '(ss, σ2) := y in
+            ∀ es1 e es2, es = es1 ++ e::es2 →
+            ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1 ++ s::ss2 ∧
+            ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
+              ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
+              tc (R_pre Σ L) (es1 ++ (e' :: es') ++ es2, σ1') (ss1 ++ (s' :: ss') ++ ss2, σ2')).
+    enough (f (es1 ++ e :: es2, σ1) (ss, σ2)) as Hf.
+    { apply Hf; eauto. }
+    revert Htc.
+    generalize (es1 ++ e :: es2, σ1) as x.
+    generalize (ss, σ2) as y.
+    intros x y. clear σ1 σ2 es1 es2 e ss.
+    (* Here we do the induction directly, as it is perhaps easier *)
+    induction 1 as [x y H|x y z H1 H2 IH]; destruct x as [es σ1], y as [ss σ2].
+    + unfold f. unfold R_pre in H.
+      intros es1 e es2 ->.
+      destruct (dwp_rel_simul' _ es1 e es2 ss σ1 σ2 L _ H)
+               as (ss1 & s & ss2 & Hlen & -> & HR).
+      do 3 eexists. repeat (split; first done).
+      intros e' σ1' es' Hstep1.
+      destruct (HR e' σ1' es' Hstep1) as (s' & σ2' & sfs & Hstep2 & HR').
+      do 3 eexists. split; first done. econstructor; eauto.
+    + destruct z as (ts, σ3).
+      intros es1 e es2 ->.
+      destruct (dwp_rel_simul' _ es1 e es2 ss σ1 σ2 L _ H1)
+               as (ss1 & s & ss2 & Hlen & -> & HR).
+      specialize (IH ss1 s ss2 eq_refl).
+      destruct IH as (ts1 & t & ts2 & Hlen2 & -> & IH).
+      exists ts1,t,ts2. repeat split; eauto.
+      { by rewrite Hlen. }
+      intros e' σ1' es' Hstep1.
+      destruct (HR e' σ1' es' Hstep1) as (s' & σ2' & ss' & Hstep2 & HR2).
+      destruct (IH s' σ2' ss' Hstep2) as (t' & σ3' & ts' & Hstep3 & IH3).
+      exists t', σ3', ts'. split; eauto.
+      rewrite /R_pre. eapply tc_l; eauto; simpl; eauto.
 Qed.
