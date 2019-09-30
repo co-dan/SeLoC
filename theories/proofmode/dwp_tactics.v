@@ -1,5 +1,7 @@
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
-From iris.proofmode Require Import environments coq_tactics tactics.
+From iris.proofmode Require Import
+     environments coq_tactics tactics intro_patterns.
+From iris.base_logic Require Import cancelable_invariants.
 From iris.heap_lang Require Import tactics proofmode.
 
 Lemma tac_dwp_bind `{!heapDG Σ} K1 K2 Δ E Φ e1 e2 f1 f2 :
@@ -80,3 +82,19 @@ Ltac dwp_pures :=
   repeat (dwp_pure _ _; [iSimpl]).
 (* The `;[]` makes sure that no side-condition
    magically spawns. *)
+
+
+(* iCinv tactic *)
+Definition fmt_triple (P : ident) (b c : string) : intro_pat :=
+  IList [[IIdent P; IList [[IIdent (INamed b); IIdent (INamed c)]]]].
+
+Definition fmt_cinv_names (a b : string) : string := a ++ " " ++ b.
+
+Tactic Notation "iCinv" constr(cinv1) constr(cinv2) "as"
+       "(" simple_intropattern(x1) ")"
+       constr(pat) constr(Hclose) :=
+  let P := iFresh in
+  let tmppat1 := eval vm_compute in (fmt_cinv_names cinv1 cinv2) in
+  let tmppat2 := eval vm_compute in (fmt_triple P cinv2 Hclose) in
+  iMod (cinv_open with tmppat1) as tmppat2; first try solve_ndisj;
+    last iDestruct P as (x1) pat.

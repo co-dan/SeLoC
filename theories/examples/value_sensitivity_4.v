@@ -34,21 +34,6 @@ Section proof.
 
   Definition N := nroot.@"blabla".
 
-  Require Import iris.proofmode.intro_patterns.
-  Definition fmt_triple (P : ident) (b c : string) : intro_pat :=
-    IList [[IIdent P; IList [[IIdent (INamed b); IIdent (INamed c)]]]].
-
-  Definition fmt_cinv_names (a b : string) : string := a ++ " " ++ b.
-
-  Tactic Notation "iCinv" constr(cinv1) constr(cinv2) "as"
-         "(" simple_intropattern(x1) ")"
-         constr(pat) constr(Hclose) :=
-    let P := iFresh in
-    let tmppat1 := eval vm_compute in (fmt_cinv_names cinv1 cinv2) in
-    let tmppat2 := eval vm_compute in (fmt_triple P cinv2 Hclose) in
-    iMod (cinv_open with tmppat1) as tmppat2; first try solve_ndisj;
-    last iDestruct P as (x1) pat.
-
   (* We verify that the thread that does the "dumping out" in a loop is secure,
     under the monotonicity assumption. *)
   Lemma thread1_spec γi p γ γs out_low1 out_low2 out_high1 out_high2 rec1 rec2 ξ :
