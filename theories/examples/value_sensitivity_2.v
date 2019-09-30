@@ -7,7 +7,7 @@ From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp value_dep.
-From iris_ni.examples Require Import lock par various (* for oneshot *).
+From iris_ni.examples Require Import par various (* for oneshot *).
 
 Definition thread1 : val :=
   rec: "loop" "out" "rec" :=
