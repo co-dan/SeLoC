@@ -1,6 +1,8 @@
 (* heap_lang with deterministic allocation *)
 From stdpp Require Import base gmap.
 From iris.heap_lang Require Import lang lifting.
+From iris_ni Require Import program_logic.dwp program_logic.heap_lang_lifting.
+From iris.proofmode Require Import base tactics classes.
 
 (** A simple allocator only knows about the state.
     In the future we can also make it aware of the threadpool.
@@ -262,7 +264,6 @@ Proof.
 Qed.
 
 Section lifting.
-From iris.proofmode Require Import base tactics classes.
 
 Instance heapG_irisG_det `{!heapG Σ} : irisG heap_lang_det Σ := {
   iris_invG := heapG_invG;
@@ -299,8 +300,6 @@ Qed.
 End lifting.
 
 Section dwp_lifting.
-From iris_ni Require Import program_logic.dwp program_logic.heap_lang_lifting.
-From iris.proofmode Require Import base tactics classes.
 
 Instance heapDG_irisDG_det `{heapDG Σ} : irisDG heap_lang_det Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,

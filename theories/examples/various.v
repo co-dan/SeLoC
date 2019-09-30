@@ -197,7 +197,7 @@ Section p12_proof.
     ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
     ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
-    DWP (prog r1 r1' h1) & (prog r2 r2' h2) : ⟦ tbool Low ⟧ Low.
+    DWP (p1 r1 r1' h1) & (p1 r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
     iIntros "#Hr #Hr' #Hh".
     iApply logrel_seq.
@@ -228,7 +228,7 @@ Section p12_proof.
     ⟦ tref (tbool Low) ⟧ Low #r1 #r2 -∗
     ⟦ tref (tbool Low) ⟧ Low #r1' #r2' -∗
     ⟦ tbool High ⟧ Low #h1 #h2 -∗
-    DWP (prog_good r1 r1' h1) & (prog_good r2 r2' h2) : ⟦ tbool Low ⟧ Low.
+    DWP (p2 r1 r1' h1) & (p2 r2 r2' h2) : ⟦ tbool Low ⟧ Low.
   Proof.
     iIntros "#Hr #Hr' #Hh".
     iApply logrel_seq.
