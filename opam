@@ -1,12 +1,12 @@
 opam-version: "1.2"
 name: "coq-iris-ni"
-maintainer: "Dan Frumin"
-authors: "Dan Frumin"
-homepage: "https://github.com/co-dan/ni"
+maintainer: "REDACTED"
+authors: "REDACTED"
+homepage: "REDACTED"
 build: [make "-j%{jobs}%"]
 install: [make "install"]
 remove: ["rm" "-rf" "%{lib}%/coq/user-contrib/ni"]
 depends: [
-  "coq-iris" { (= "dev.2018-10-04.0.045c2d15") }
-  "coq-equations" { (>= "1.0") }
+  "coq-iris" { (>= "3.2.0") }
+  "coq-equations" { (>= "1.2+8.9") }
 ]
