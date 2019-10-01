@@ -11,6 +11,17 @@ Local Open Scope nat.
 Implicit Types L : gset loc.
 Implicit Types l : loc.
 
+Definition low_equiv L σ1 σ2 :=
+  (∀ l, l ∈ L → ∃ n : Z, σ1.(heap) !! l = Some #n ∧ σ2.(heap) !! l = Some #n).
+
+Instance low_equiv_transitive L : Transitive (low_equiv L).
+Proof.
+  intros σ1 σ2 σ3 Hl1 Hl2 l Hl.
+  destruct (Hl1 l Hl) as [x [Hx1 Hx2]].
+  destruct (Hl2 l Hl) as [y [Hy2 Hy3]].
+  simplify_eq/=; eauto.
+Qed.
+
 (** In this file we define a bisimulation from DWP *)
 
 Class heapPreDG Σ := HeapPreDG {
@@ -20,8 +31,8 @@ Class heapPreDG Σ := HeapPreDG {
   heapPreDG_gen_heapG2 :> gen_heapPreG loc val Σ
 }.
 
-(* Helper lemmas *)
-(* TODO: Move to std++ eventually *)
+(* BEGIN helper lemmas *)
+(* TODO Move to std++ eventually *)
 Section helper.
 Context `{FinMap K M}.
 Context {A} `{Inhabited A}.
@@ -43,6 +54,35 @@ Proof.
   apply extract_fn_spec'. apply elem_of_dom. eauto.
 Qed.
 End helper.
+(* TODO: helper lemmas *)
+Section relation_lemmas.
+  Context {A : Type}.
+  Implicit Types R : relation A.
+
+  Lemma tc_symmetric R :
+    symmetric _ R → symmetric _ (tc R).
+  Proof.
+    intros HR x y. induction 1 as [x y Hxy|x y z Hxy Hyz IH].
+    - by constructor; eauto.
+    - eapply tc_r; eauto.
+  Qed.
+
+  Lemma transitive_tc_id R `{Transitive _ R} : ∀ x y, tc R x y ↔ R x y.
+  Proof.
+    intros x y; split; last by constructor.
+    induction 1; eauto.
+  Qed.
+
+  Notation subrel R1 R2 := (∀ x y, R1 x y → R2 x y).
+
+  Lemma tc_subrel R1 R2 : subrel R1 R2 → subrel (tc R1) (tc R2).
+  Proof.
+    intros HR x y. induction 1 as [x y Hxy|x y z Hxy Hyz IH].
+    - by constructor; eauto.
+    - eapply tc_l; eauto.
+  Qed.
+End relation_lemmas.
+(* END helper lemmas *)
 
 Lemma allocator_helper σ L `{!invG Σ, !gen_heapG loc val Σ} :
   (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some #n) →
@@ -86,7 +126,7 @@ Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
 (** Lifting DWP proofs *)
 Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invPreG Σ, !heapPreDG Σ} :
-  (∀ l, l ∈ L → ∃ n : Z, σ1.(heap) !! l = Some #n ∧ σ2.(heap) !! l = Some #n) →
+  low_equiv L σ1 σ2 →
   (∀ `{!heapDG Σ}, I_L L -∗ DWP e1 & e2 : I) →
   dwp_rel Σ [e1] [e2] σ1 σ2 L I.
 Proof.
@@ -96,10 +136,10 @@ Proof.
   pose (σ2' := filter ((∉ L) ∘ fst) (σ2.(heap))).
   iMod (gen_heap_init σ1') as (hg1) "Hh1".
   iMod (allocator_helper σ1.(heap) L with "Hh1") as "[Hh1 HL1]".
-  { naive_solver. }
+  { unfold low_equiv in Hσ; naive_solver. }
   iMod (gen_heap_init σ2') as (hg2) "Hh2".
   iMod (allocator_helper σ2.(heap) L with "Hh2") as "[Hh2 HL2]".
-  { naive_solver. }
+  { unfold low_equiv in Hσ; naive_solver. }
 
   iMod (proph_map_init [] σ1.(used_proph_id)) as (pg1) "Hp1".
   iMod (proph_map_init [] σ2.(used_proph_id)) as (pg2) "Hp2".
@@ -227,7 +267,7 @@ Qed.
 
 Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
   dwp_rel Σ e s σ1 σ2 L I →
-  ∀ l, l ∈ L → σ1.(heap) !! l = σ2.(heap) !! l.
+  low_equiv L σ1 σ2.
 Proof.
   intros [n HR] l Hl.
   eapply (step_fupdN_soundness _ n)=>Hinv.
@@ -245,7 +285,7 @@ Proof.
   assert (i1 = i2) as -> by eauto.
   iDestruct (gen_heap_valid with "Hσ1 Ho1") as %->.
   iDestruct (gen_heap_valid with "Hσ2 Ho2") as %->.
-  done.
+  iPureIntro. eauto.
 Qed.
 
 Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 L Φ :
@@ -445,8 +485,7 @@ Definition strong_bisim (L : gset loc)
   (** - final values are observable *)
   (∀ v1 v2 es σ1 ss σ2, R (of_val v1::es, σ1) (of_val v2::ss, σ2) → v1 = v2) ∧
   (** - untrusted sinks are observable *)
-  (∀ es σ1 ss σ2 l, R (es, σ1) (ss, σ2) → l ∈ L →
-                      σ1.(heap) !! l = σ2.(heap) !! l) ∧
+  (∀ es σ1 ss σ2, R (es, σ1) (ss, σ2) → low_equiv L σ1 σ2) ∧
   (** - the bisimulation condition *)
   (∀ es1 e es2 σ1 ss1 s ss2 σ2,
       length es1 = length ss1 →
@@ -455,35 +494,6 @@ Definition strong_bisim (L : gset loc)
         ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
         R (es1++(e'::es')++es2, σ1') (ss1++(s'::ss')++ss2, σ2')).
 
-(* TODO: helper lemmas *)
-Section relation_lemmas.
-  Context {A : Type}.
-  Implicit Types R : relation A.
-
-  Lemma tc_symmetric R :
-    symmetric _ R → symmetric _ (tc R).
-  Proof.
-    intros HR x y. induction 1 as [x y Hxy|x y z Hxy Hyz IH].
-    - by constructor; eauto.
-    - eapply tc_r; eauto.
-  Qed.
-
-  Lemma transitive_tc_id R `{Transitive _ R} : ∀ x y, tc R x y ↔ R x y.
-  Proof.
-    intros x y; split; last by constructor.
-    induction 1; eauto.
-  Qed.
-
-  Notation subrel R1 R2 := (∀ x y, R1 x y → R2 x y).
-
-  Lemma tc_subrel R1 R2 : subrel R1 R2 → subrel (tc R1) (tc R2).
-  Proof.
-    intros HR x y. induction 1 as [x y Hxy|x y z Hxy Hyz IH].
-    - by constructor; eauto.
-    - eapply tc_l; eauto.
-  Qed.
-
-End relation_lemmas.
 
 Theorem R_strong_bisim Σ L `{!invPreG Σ, !heapPreDG Σ} : strong_bisim L (R Σ L).
 Proof.
@@ -518,13 +528,12 @@ Proof.
       first [ intros ?%dwp_rel_tp_length; naive_solver
             | simpl; eauto ].
     by intros ->%dwp_rel_hd_to_val.
-  - intros es σ1 ss σ2 l Htc. revert l.
-    pose (f := λ (x y : list expr*state), ∀ l, l ∈ L → heap x.2 !! l = heap y.2 !! l).
+  - intros es σ1 ss σ2 Htc.
+    pose (f := λ (x y : list expr*state), low_equiv L x.2 y.2).
     enough (f (es, σ1) (ss, σ2)); first done.
     enough (tc f (es, σ1) (ss, σ2)).
     { apply transitive_tc_id; eauto.
-      intros [x ?] [y ?] [z ?]; unfold f=>/= Hl1 Hl2 l Hl.
-      by rewrite (Hl1 _ Hl) (Hl2 _ Hl). }
+      intros [? x] [? y] [? z]; apply low_equiv_transitive. }
     eapply (tc_subrel (R_pre Σ L)); last done.
     clear. rewrite /f /R_pre=> [[es σ1] [ss σ2]] /=.
     (* Just lifting the property *)
