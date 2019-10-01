@@ -36,7 +36,7 @@ All the Coq modules are in the subfolders of the `theories` folder.
 The typing rules and the fundamental property are in `logrel/typing.v`.
 - Proposition 9 is proved in `examples/various.v`
 - The modular specifications for dynamically classified references are given in `examples/value_dep.v`. The example clients that use those specification are in `examples/value_sensitivity_2.v` and `examples/value_sensitivity_4.v`.
-- Soundness is in `program_logic/dwp_adequacy.v`.
+- The bisimulation is constructed in `program_logic/dwp_adequacy.v`.
 
 # Differences with the paper
 
