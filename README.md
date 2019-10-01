@@ -61,6 +61,6 @@ Lastly, In Coq, we do not use the AWP proposition for atomic
 weakest preconditions we used in the paper. Rather, in the rule
 `dwp-awp` (in the formalization:
 `dwp_atomic_lift_wp`) we require the expressions `e1` and `e2` to be
-/atomic/ and produce no forked off threads. Then, we fall back onto
+_atomic_ and produce no forked off threads. Then, we fall back onto
 the total weakest precondition from Iris. This allows us to reuse a
 lot of lemmas and tactics about total weakest preconditions from Iris.
