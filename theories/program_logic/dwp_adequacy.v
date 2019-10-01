@@ -448,11 +448,12 @@ Definition strong_bisim (L : gset loc)
   (∀ es σ1 ss σ2 l, R (es, σ1) (ss, σ2) → l ∈ L →
                       σ1.(heap) !! l = σ2.(heap) !! l) ∧
   (** - the bisimulation condition *)
-  (∀ es1 e es2 σ1 ss σ2, R (es1++e::es2, σ1) (ss, σ2) →
-   ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1 ++ s::ss2 ∧
-   ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
-      ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
-      R (es1++(e'::es')++es2, σ1') (ss1++(s'::ss')++ss2, σ2')).
+  (∀ es1 e es2 σ1 ss1 s ss2 σ2,
+      length es1 = length ss1 →
+      R (es1++e::es2, σ1) (ss1++s::ss2, σ2) →
+      ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
+        ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
+        R (es1++(e'::es')++es2, σ1') (ss1++(s'::ss')++ss2, σ2')).
 
 (* TODO: helper lemmas *)
 Section relation_lemmas.
@@ -528,7 +529,8 @@ Proof.
     clear. rewrite /f /R_pre=> [[es σ1] [ss σ2]] /=.
     (* Just lifting the property *)
     apply dwp_rel_progress.
-  - intros es1 e es2 σ1 ss σ2 Htc.
+  - intros es1 e es2 σ1 ss1 s ss2 σ2 Hlen Htc.
+    (* Here we need a stronger statement to get the IH right. *)
     pose (f :=  λ (x y : list expr*state),
             let '(es, σ1) := x in
             let '(ss, σ2) := y in
@@ -537,12 +539,14 @@ Proof.
             ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
               ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
               tc (R_pre Σ L) (es1 ++ (e' :: es') ++ es2, σ1') (ss1 ++ (s' :: ss') ++ ss2, σ2')).
-    enough (f (es1 ++ e :: es2, σ1) (ss, σ2)) as Hf.
-    { apply Hf; eauto. }
+    enough (f (es1 ++ e :: es2, σ1) (ss1 ++ s :: ss2, σ2)) as Hf.
+    { specialize (Hf es1 e es2 eq_refl).
+      destruct Hf as (ss1' & s' & ss2' & Hlen2 & Heqss & Hf).
+      simplify_list_eq. apply Hf. }
     revert Htc.
     generalize (es1 ++ e :: es2, σ1) as x.
-    generalize (ss, σ2) as y.
-    intros x y. clear σ1 σ2 es1 es2 e ss.
+    generalize (ss1 ++ s :: ss2, σ2) as y.
+    intros x y. clear Hlen σ1 σ2 es1 es2 e ss1 s ss2.
     (* Here we do the induction directly, as it is perhaps easier *)
     induction 1 as [x y H|x y z H1 H2 IH]; destruct x as [es σ1], y as [ss σ2].
     + unfold f. unfold R_pre in H.
