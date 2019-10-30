@@ -34,7 +34,38 @@ Class heapPreDG Σ := HeapPreDG {
 (* BEGIN helper lemmas *)
 (* TODO Move to std++ eventually *)
 Section helper.
+
+(* NOTE: this is in std++ master *)
+Lemma dom_map_filter `{FinMapDom K M D} {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) X :
+  (∀ i, i ∈ X ↔ ∃ x, m !! i = Some x ∧ P (i, x)) →
+  dom D (filter P m) ≡ X.
+Proof.
+  intros HX i. rewrite elem_of_dom HX.
+  unfold is_Some. by setoid_rewrite map_filter_lookup_Some.
+Qed.
+Lemma dom_map_filter_L `{FinMapDom K M D} `{!LeibnizEquiv D} {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) X :
+  (∀ i, i ∈ X ↔ ∃ x, m !! i = Some x ∧ P (i, x)) →
+  dom D (filter P m) = X.
+Proof. unfold_leibniz. apply dom_map_filter. Qed.
+
 Context `{FinMap K M}.
+
+(* NOTE: this is in std++ master *)
+Lemma map_disjoint_filter {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) :
+  filter P m ##ₘ filter (λ v, ¬ P v) m.
+Proof.
+  apply map_disjoint_spec. intros i x y.
+  rewrite !map_filter_lookup_Some. naive_solver.
+Qed.
+Lemma map_union_filter {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) :
+  filter P m ∪ filter (λ v, ¬ P v) m = m.
+Proof.
+  apply map_eq; intros i. apply option_eq; intros x.
+  rewrite lookup_union_Some; last by apply map_disjoint_filter.
+  rewrite !map_filter_lookup_Some.
+  destruct (decide (P (i,x))); naive_solver.
+Qed.
+
 Context {A} `{Inhabited A}.
 Context {D} `{FinMapDom K M D}.
 
