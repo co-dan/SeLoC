@@ -117,7 +117,7 @@ End relation_lemmas.
 
 Lemma allocator_helper σ L `{!invG Σ, !gen_heapG loc val Σ} :
   (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some #n) →
-  let σ' := filter ((∉ L) ∘ fst) σ in
+  let σ' := filter ((.∉ L) ∘ fst) σ in
   gen_heap_ctx σ' ==∗ gen_heap_ctx σ ∗ [∗ set] l ∈ L, l ↦ (extract_fn σ l).
 Proof.
   iIntros (HL) "Hσ'".
@@ -163,8 +163,8 @@ Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invPreG Σ, !heapPreDG Σ} :
 Proof.
   intros Hσ Hdwp.
   exists 0. intros Hinv. simpl.
-  pose (σ1' := filter ((∉ L) ∘ fst) (σ1.(heap))).
-  pose (σ2' := filter ((∉ L) ∘ fst) (σ2.(heap))).
+  pose (σ1' := filter ((.∉ L) ∘ fst) (σ1.(heap))).
+  pose (σ2' := filter ((.∉ L) ∘ fst) (σ2.(heap))).
   iMod (gen_heap_init σ1') as (hg1) "Hh1".
   iMod (allocator_helper σ1.(heap) L with "Hh1") as "[Hh1 HL1]".
   { unfold low_equiv in Hσ; naive_solver. }
@@ -187,7 +187,7 @@ Proof.
     destruct (Hσ x Hx) as (n&Hn1&Hn2).
     rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hn1).
     rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hn2).
-    iApply (interp_ref_alloc Low x x #n #n (tint Low) with "Hx1 Hx2 []").
+    iApply (interp_ref_alloc Low x x #n #n (tint Low) with "[$Hx1] [$Hx2] []").
     rewrite interp_eq. iExists n,n; eauto. }
   iMod "HI" as "#HI".
   iModIntro. iExists hg1,hg2,pg1,pg2.

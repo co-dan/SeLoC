@@ -76,7 +76,7 @@ Section fundamental.
     (reasonably so). At the point where we do `iExact` all the
     existentials are already instantiated. *)
     (* TODO: iApply (big_sepM2_insert_2 (λ (_ : string) (y1 : type) (y2 : val * val), ⟦ y1 ⟧ ξ y2.1 y2.2) with "Hτ HΓ"). iExact "Hτ". *)
-    iApply (big_sepM2_insert_2 _ with "[Hτ] HΓ"). iExact "Hτ".
+    iApply (big_sepM2_insert_2 _ with "[Hτ] [$HΓ]"). simpl. iExact "Hτ".
   Qed.
 
   Definition sem_typed Γ e τ :=

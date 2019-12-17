@@ -91,7 +91,7 @@ Inductive head_step : expr → state → list observation → expr → state →
      let p := fresh σ.(used_proph_id) in
      head_step NewProph σ
                []
-               (Val $ LitV $ LitProphecy p) (state_upd_used_proph_id ({[ p ]} ∪) σ)
+               (Val $ LitV $ LitProphecy p) (state_upd_used_proph_id ({[ p ]} ∪.) σ)
                []
   | ResolveS p v e σ w σ' κs ts :
      head_step e σ κs (Val v) σ' ts →

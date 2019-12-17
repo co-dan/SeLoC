@@ -70,8 +70,8 @@ Definition new_ms : val := λ: <>,
 Section proof.
   Context `{!heapDG Σ, !lockG Σ}.
 
-  Program Definition joint_list_pre (P : val -> val -> iProp Σ) :
-    (locO -n> locO -n> iProp Σ) -n> (locO -n> locO -n> iProp Σ)
+  Program Definition joint_list_pre (P : val -> val -> iPropO Σ) :
+    (locO -n> locO -n> iPropO Σ) -n> (locO -n> locO -n> iPropO Σ)
     := (λne R hd1 hd2,
         (hd1 ↦ₗ NONEV ∗ hd2 ↦ᵣ NONEV)
        ∨ (∃ v1 v2 (tl1 tl2 : loc), hd1 ↦ₗ SOMEV (v1, #tl1) ∗

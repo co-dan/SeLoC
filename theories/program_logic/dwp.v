@@ -14,8 +14,8 @@ Class irisDG' (Λstate Λobs : Type) (Σ : gFunctors) := IrisDG {
 Notation irisDG Λ Σ := (irisDG' (state Λ) (observation Λ) Σ).
 
 Definition dwp_pre `{invG Σ, irisDG Λ Σ}
-    (dwp : coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iProp Σ) -d> iProp Σ) :
-    coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iProp Σ) -d> iProp Σ := λ E1 e1 e2 Φ,
+    (dwp : coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iPropO Σ) -d> iPropO Σ) :
+    coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iPropO Σ) -d> iPropO Σ := λ E1 e1 e2 Φ,
  (match to_val e1,to_val e2 with
   | Some v1, Some v2 => |={E1}=> Φ v1 v2
   | Some _, None => |={E1}=> False
