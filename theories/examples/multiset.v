@@ -33,6 +33,42 @@ Definition insert_loop : val := rec: "loop" "hd" "v" :=
 Definition insert_ordered : val := λ: "hd" "v",
   insert_loop "hd" "v".
 
+Definition lookup_loop : val := rec: "loop" "hd" "v" :=
+  match: !"hd" with
+    NONE => #0
+  | SOME "x" =>
+    let: "w" := Fst "x" in
+    let: "tl" := Snd "x" in
+    if: "w" = "v"
+    then #1 + "loop" "tl" "v"
+    else #0 + "loop" "tl" "v"
+  end.
+
+Definition lookup_loop_ordered : val := rec: "loop" "hd" "v" :=
+  match: !"hd" with
+    NONE => #0
+  | SOME "x" =>
+    let: "w" := Fst "x" in
+    let: "tl" := Snd "x" in
+    if: "w" = "v"
+    then #1 + "loop" "tl" "v"
+    else if: "w" < "v"
+         then #0
+         else "loop" "tl" "v"
+  end.
+
+Definition lookup_low : val := λ: "l" "v",
+  let: "x" := !"l" in
+  let: "l-high" := Fst "x" in
+  let: "l-low" := Snd "x" in
+  lookup_loop_ordered "l-low" "v".
+
+Definition lookup : val := λ: "l" "v",
+  let: "x" := !"l" in
+  let: "l-high" := Fst "x" in
+  let: "l-low" := Snd "x" in
+  lookup_loop "l-high" "v".
+
 Definition insert : val := λ: "l" "v" "f",
   let: "x" := !"l" in
   let: "l-high" := Fst "x" in
@@ -106,6 +142,155 @@ Section proof.
         l1 ↦ₗ (#hdh1, #hdl1) ∗ l2 ↦ᵣ (#hdh2, #hdl2) ∗
         sec_list hdh1 hdh2 High ξ ∗
         sec_list hdl1 hdl2 Low ξ)%I.
+
+  Lemma lookup_unordered_spec (hd1 hd2 : loc) v1 v2 ξ Φ :
+    ⟦ tint High ⟧ ξ v1 v2 -∗
+    sec_list hd1 hd2 High ξ -∗
+    ▷ (∀ i1 i2, ⟦ tint High ⟧ ξ i1 i2 -∗
+                 sec_list hd1 hd2 High ξ -∗ Φ i1 i2) -∗
+    DWP lookup_loop #hd1 v1
+      & lookup_loop #hd2 v2 : Φ.
+  Proof.
+    iIntros "#Hvv Hls HΦ".
+    iLöb as "IH" forall (hd1 hd2 Φ).
+    dwp_rec. dwp_pures.
+    dwp_bind (! _)%E (! _)%E.
+    rewrite {1}/(sec_list hd1 hd2) joint_list_unfold.
+    iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
+    - iApply (dwp_load with "Hhd1 Hhd2").
+      iIntros "Hhd1 Hhd2". iNext.
+
+      dwp_pures. iApply dwp_value.
+      iModIntro. iApply ("HΦ" with "[] [-]").
+      + rewrite interp_eq.
+        iExists 0,0. eauto with iFrame.
+      + rewrite /sec_list joint_list_unfold.
+        iLeft. iFrame.
+    - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
+      iApply (dwp_load with "Hhd1 Hhd2").
+      iIntros "Hhd1 Hhd2". iNext.
+      dwp_pures.
+      (* w1 w2, v1 v2 are integers *)
+      iDestruct "Hww" as (i1 i2 -> ->) "%".
+      iDestruct "Hvv" as (j1 j2 -> ->) "%".
+      dwp_pures.
+      case_bool_decide; case_bool_decide; dwp_pures.
+      + dwp_bind (lookup_loop _ _) (lookup_loop _ _).
+        iApply ("IH" with "Hls [-]").
+        iNext. iIntros (m1' m2') "#Hm Hls".
+        iDestruct "Hm" as (m1 m2 -> ->) "Hm".
+        iDestruct "Hm" as %?.
+        dwp_pures. iApply dwp_value. iApply ("HΦ" with "[] [-]").
+        * iExists _,_. repeat iSplit; eauto with iFrame.
+          iPureIntro. destruct ξ; naive_solver.
+        * rewrite /(sec_list hd1 hd2) joint_list_unfold.
+          iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+          iExists _,_. repeat iSplit; eauto with iFrame.
+      + dwp_bind (lookup_loop _ _) (lookup_loop _ _).
+        iApply ("IH" with "Hls [-]").
+        iNext. iIntros (m1' m2') "#Hm Hls".
+        iDestruct "Hm" as (m1 m2 -> ->) "Hm".
+        iDestruct "Hm" as %?.
+        dwp_pures. iApply dwp_value. iApply ("HΦ" with "[] [-]").
+        * iExists _,_. repeat iSplit; eauto with iFrame.
+          iPureIntro. destruct ξ; naive_solver.
+        * rewrite /(sec_list hd1 hd2) joint_list_unfold.
+          iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+          iExists _,_. repeat iSplit; eauto with iFrame.
+          iPureIntro. destruct ξ; naive_solver.
+      + dwp_bind (lookup_loop _ _) (lookup_loop _ _).
+        iApply ("IH" with "Hls [-]").
+        iNext. iIntros (m1' m2') "#Hm Hls".
+        iDestruct "Hm" as (m1 m2 -> ->) "Hm".
+        iDestruct "Hm" as %?.
+        dwp_pures. iApply dwp_value. iApply ("HΦ" with "[] [-]").
+        * iExists _,_. repeat iSplit; eauto with iFrame.
+          iPureIntro. destruct ξ; naive_solver.
+        * rewrite /(sec_list hd1 hd2) joint_list_unfold.
+          iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+          iExists _,_. repeat iSplit; eauto with iFrame.
+          iPureIntro. destruct ξ; naive_solver.
+      + dwp_bind (lookup_loop _ _) (lookup_loop _ _).
+        iApply ("IH" with "Hls [-]").
+        iNext. iIntros (m1' m2') "#Hm Hls".
+        iDestruct "Hm" as (m1 m2 -> ->) "Hm".
+        iDestruct "Hm" as %?.
+        dwp_pures. iApply dwp_value. iApply ("HΦ" with "[] [-]").
+        * iExists _,_. repeat iSplit; eauto with iFrame.
+        * rewrite /(sec_list hd1 hd2) joint_list_unfold.
+          iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+          iExists _,_. repeat iSplit; eauto with iFrame.
+  Qed.
+
+  Lemma lookup_ordered_spec (hd1 hd2 : loc) v1 v2 ξ Φ :
+    ⟦ tint Low ⟧ ξ v1 v2 -∗
+    sec_list hd1 hd2 Low ξ -∗
+    ▷ (∀ i1 i2, ⟦ tint Low ⟧ ξ i1 i2 -∗
+                 sec_list hd1 hd2 Low ξ -∗ Φ i1 i2) -∗
+    DWP lookup_loop_ordered #hd1 v1
+      & lookup_loop_ordered #hd2 v2 : Φ.
+  Proof.
+    iIntros "#Hvv Hls HΦ".
+    iLöb as "IH" forall (hd1 hd2 Φ).
+    dwp_rec. dwp_pures.
+    dwp_bind (! _)%E (! _)%E.
+    rewrite {1}/(sec_list hd1 hd2) joint_list_unfold.
+    iDestruct "Hls" as "[[Hhd1 Hhd2]|Hls]".
+    - iApply (dwp_load with "Hhd1 Hhd2").
+      iIntros "Hhd1 Hhd2". iNext.
+
+      dwp_pures. iApply dwp_value.
+      iModIntro. iApply ("HΦ" with "[] [-]").
+      + rewrite interp_eq.
+        iExists 0,0. eauto with iFrame.
+      + rewrite /sec_list joint_list_unfold.
+        iLeft. iFrame.
+    - iDestruct "Hls" as (w1 w2 tl1 tl2) "(Hhd1 & Hhd2 & #Hww & Hls)".
+      iApply (dwp_load with "Hhd1 Hhd2").
+      iIntros "Hhd1 Hhd2". iNext.
+
+      dwp_pures.
+
+      (* w1 w2, v1 v2 are integers *)
+      iDestruct "Hww" as (? w -> ->) "H".
+      iDestruct "H" as %Hw.
+      assert (Low ⊑ ξ) as Hξ.
+      { by destruct ξ. }
+      rewrite (Hw Hξ).
+      iDestruct "Hvv" as (? v -> ->) "H".
+      iDestruct "H" as %Hv.
+      rewrite (Hv Hξ).
+      (* now we can continue symbolic execution *)
+
+      dwp_pures. case_bool_decide; dwp_pures.
+      + (* Found another occcurence *)
+        dwp_bind (lookup_loop_ordered _ _) (lookup_loop_ordered _ _).
+        iApply ("IH" with "Hls [-]").
+        iNext. iIntros (i1 i2) "#Hi Hls".
+        iDestruct "Hi" as (? i -> ->) "H".
+        iDestruct "H" as %Hi.
+        rewrite (Hi Hξ).
+        dwp_pures. iApply dwp_value. iApply ("HΦ" with "[] [-]").
+        * iExists _,_. eauto with iFrame.
+        * rewrite /(sec_list hd1 hd2) joint_list_unfold.
+          iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+          iExists w. eauto with iFrame.
+      + case_bool_decide; dwp_pures.
+        ++ iApply dwp_value. iApply ("HΦ" with "[] [-]").
+           * iExists _,_. eauto with iFrame.
+           * rewrite /(sec_list hd1 hd2) (joint_list_unfold _ hd1 hd2).
+             iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+             iExists w. eauto with iFrame.
+        ++ iApply ("IH" with "Hls [-]").
+           iNext. iIntros (i1 i2) "#Hi Hls".
+           iDestruct "Hi" as (? i -> ->) "H".
+           iDestruct "H" as %Hi.
+           rewrite (Hi Hξ). iApply ("HΦ" with "[] [-]").
+           { iExists i. eauto with iFrame. }
+           { rewrite /(sec_list hd1 hd2) (joint_list_unfold _ hd1 hd2).
+             iRight. iExists _,_,_,_. iFrame "Hhd1 Hhd2 Hls".
+             iExists w. eauto with iFrame. }
+  Qed.
 
   Lemma insert_unordered_spec (hd1 hd2 : loc) v1 v2 ξ Φ :
     ⟦ tint High ⟧ ξ v1 v2 -∗
@@ -223,31 +408,6 @@ Section proof.
         iExists _. eauto with iFrame.
   Qed.
 
-  (* TODO: Question: can the b's here be different? *)
-  Lemma insert_spec l1 l2 v1 v2 (b : bool) ξ Φ :
-    ls_inv l1 l2 ξ -∗
-    ⟦ tint (if b then High else Low) ⟧ ξ v1 v2 -∗
-    ▷ (ls_inv l1 l2 ξ -∗ Φ #() #()) -∗
-    DWP insert #l1 v1 #b & insert #l2 v2 #b : Φ.
-  Proof.
-    iDestruct 1 as (hdh1 hdh2 hdl1 hdl2) "(Hl1 & Hl2 & Hhs & Hls)".
-    iIntros "#Hvv HΦ".
-
-    dwp_rec. dwp_pures.
-    dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
-    iIntros "Hl1 Hl2". iNext.
-
-    dwp_pures. destruct b; dwp_pures.
-    - (* High-security *)
-      iApply (insert_unordered_spec with "Hvv Hhs").
-      iNext. iIntros "Hhs". iApply "HΦ".
-      iExists _,_,_,_. iFrame.
-    - (* Low-security *)
-      iApply (insert_ordered_spec with "Hvv Hls").
-      iNext. iIntros "Hls". iApply "HΦ".
-      iExists _,_,_,_. iFrame.
-  Qed.
-
   Lemma size_loop_spec (hd1 hd2 : loc) n1 n2 l ξ Φ :
     ⟦ tint Low ⟧ ξ n1 n2 -∗
     sec_list hd1 hd2 l ξ -∗
@@ -284,6 +444,67 @@ Section proof.
       iApply ("HΦ" with "[-Hvv] Hvv").
       rewrite /sec_list (joint_list_unfold _ hd1 hd2).
       iRight. iExists _,_,_,_. by iFrame.
+  Qed.
+
+  Lemma lookup_spec l1 l2 v1 v2 ξ Φ :
+    ls_inv l1 l2 ξ -∗
+    ⟦ tint High ⟧ ξ v1 v2 -∗
+    ▷ (∀ i1 i2, ⟦ tint High ⟧ ξ i1 i2 -∗ ls_inv l1 l2 ξ -∗ Φ i1 i2) -∗
+    DWP lookup #l1 v1 & lookup #l2 v2 : Φ.
+  Proof.
+    iDestruct 1 as (hdh1 hdh2 hdl1 hdl2) "(Hl1 & Hl2 & Hhs & Hls)".
+    iIntros "#Hvv HΦ".
+
+    dwp_rec. dwp_pures.
+    dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
+    iIntros "Hl1 Hl2". iNext.
+    dwp_pures.
+    iApply (lookup_unordered_spec with "Hvv Hhs").
+    iNext. iIntros (i1 i2) "Hi Hhs". iApply ("HΦ" with "Hi [-]").
+    iExists _. eauto with iFrame.
+  Qed.
+
+  Lemma lookup_low_spec l1 l2 v1 v2 ξ Φ :
+    ls_inv l1 l2 ξ -∗
+    ⟦ tint Low ⟧ ξ v1 v2 -∗
+    ▷ (∀ i1 i2, ⟦ tint Low ⟧ ξ i1 i2 -∗ ls_inv l1 l2 ξ -∗ Φ i1 i2) -∗
+    DWP lookup_low #l1 v1 & lookup_low #l2 v2 : Φ.
+  Proof.
+    iDestruct 1 as (hdh1 hdh2 hdl1 hdl2) "(Hl1 & Hl2 & Hhs & Hls)".
+    iIntros "#Hvv HΦ".
+
+    dwp_rec. dwp_pures.
+    dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
+    iIntros "Hl1 Hl2". iNext.
+    dwp_pures.
+    iApply (lookup_ordered_spec with "Hvv Hls").
+    iNext. iIntros (i1 i2) "Hi Hls". iApply ("HΦ" with "Hi [-]").
+    iExists _. eauto with iFrame.
+  Qed.
+
+  (* TODO: Question: can the b's here be different? *)
+  Lemma insert_spec l1 l2 v1 v2 (b : bool) ξ Φ :
+    ls_inv l1 l2 ξ -∗
+    ⟦ tint (if b then High else Low) ⟧ ξ v1 v2 -∗
+    ▷ (ls_inv l1 l2 ξ -∗ Φ #() #()) -∗
+    DWP insert #l1 v1 #b & insert #l2 v2 #b : Φ.
+  Proof.
+    iDestruct 1 as (hdh1 hdh2 hdl1 hdl2) "(Hl1 & Hl2 & Hhs & Hls)".
+    iIntros "#Hvv HΦ".
+
+    dwp_rec. dwp_pures.
+    dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2").
+    iIntros "Hl1 Hl2". iNext.
+
+    dwp_pures. destruct b; dwp_pures.
+    - (* High-security *)
+      iApply (insert_unordered_spec with "Hvv Hhs").
+      iNext. iIntros "Hhs". iApply "HΦ".
+      iExists _,_,_,_. iFrame.
+    - (* Low-security *)
+      iApply (insert_ordered_spec with "Hvv Hls").
+      iNext. iIntros "Hls". iApply "HΦ".
+      iExists _,_,_,_. iFrame.
   Qed.
 
   Lemma size_spec l1 l2 ξ Φ :
