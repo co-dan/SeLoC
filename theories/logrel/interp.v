@@ -80,6 +80,10 @@ Section semtypes.
     ∃ v1 v2 v1' v2', ⌜w1 = (v1,v1')%V⌝ ∧ ⌜w2 = (v2,v2')%V⌝ ∧
         A ξ v1 v2 ∗ B ξ v1' v2')%I.
 
+  Definition lrel_option (A : lrel Σ) : lrel Σ := LRel (λ ξ w1 w2,
+                 (⌜w1 = NONEV⌝ ∗ ⌜w2 = NONEV⌝)
+      ∨ ∃ v1 v2, (⌜w1 = SOMEV v1⌝ ∗ ⌜w2 = SOMEV v2⌝ ∗ A ξ v1 v2))%I.
+
   (* TODO: use the level `l`?
      DF: we use it in the actual interpretation of arrows *)
   Definition lrel_arr (A1 A2 : lrel Σ) (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
@@ -94,6 +98,7 @@ Section semtypes.
   interp tunit := lrel_unit;
   interp (tint l) := lrel_int l;
   interp (tbool l) := lrel_bool l;
+  interp (toption τ) := lrel_option (interp τ);
   interp (tarrow s t l) :=
     lrel_arr (interp s) (interp (stamp t l)) l;
   (* TODO: is this stamp needed here? *)
@@ -104,6 +109,7 @@ Section semtypes.
   Next Obligation. lia. Qed.
   Next Obligation. lia. Qed.
   Next Obligation. lia. Qed.
+  Next Obligation. lia. Qed.
 
   Lemma interp_eq τ :
     interp τ =
@@ -111,6 +117,7 @@ Section semtypes.
     | tunit => lrel_unit
     | tint l => lrel_int l
     | tbool l => lrel_bool l
+    | toption τ => lrel_option (interp τ)
     | tarrow s t l =>
       lrel_arr (interp s) (interp (stamp t l)) l
     | tprod τ1 τ2 => lrel_prod (interp τ1) (interp τ2)
@@ -142,6 +149,10 @@ Section semtypes.
       repeat iSplit; eauto with iFrame.
       + iApply IHτ1; eauto.
       + iApply IHτ2; eauto.
+    - iDestruct 1 as "[[-> ->]|H]"; [ iLeft | iRight ]; eauto.
+      iDestruct "H" as (x1 x2 -> ->) "H".
+      iExists x1, x2. repeat iSplit; eauto.
+      iApply IHτ; eauto.
     - reflexivity.
   Qed.
 
@@ -167,6 +178,11 @@ Section semtypes.
         by (simpl; by rewrite left_id).
       apply interp_label_mono.
       etrans; [ by apply join_mono_l | by apply join_mono_r ].
+    - (* Option *)
+      rewrite !interp_eq /=.
+      iDestruct 1 as "[[-> ->]|H]"; [ iLeft | iRight ]; eauto.
+      iDestruct "H" as (x1 x2 -> ->) "H". iExists x1, x2.
+      repeat iSplit; eauto. iApply IHHsub; eauto.
     - (* Arrow *)
       rewrite !interp_eq /=. iIntros "#IH". iAlways.
       iIntros (w1 w2) "Hw".
@@ -200,6 +216,12 @@ Notation "⟦ τ ⟧" := (interp τ).
 
 Section rules.
   Context `{!heapDG Σ}.
+  Implicit Types τ σ : type.
+  Implicit Types A B : val → val → iProp Σ.
+  Implicit Types ξ : slevel.
+  Implicit Types e t s : expr.
+  Implicit Types v w : val.
+
 
   Lemma logrel_sub ξ e1 e2 τ τ' :
     τ <: τ' →
@@ -268,13 +290,13 @@ Section rules.
     intros ?%join_leq. naive_solver.
   Qed.
 
-  Lemma logrel_if ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
+  Lemma logrel_if ξ A e1 e2 t1 t2 u1 u2 l :
     (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
-    ((DWP t1 & t2 : A ξ)
-     ∧ (DWP u1 & u2 : A ξ)
-     ∧ (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : A ξ)
-     ∧ (⌜¬ l ⊑ ξ⌝ → DWP t1 & u2 : A ξ)) -∗
-    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A ξ.
+    ((DWP t1 & t2 : A)
+     ∧ (DWP u1 & u2 : A)
+     ∧ (⌜¬ l ⊑ ξ⌝ → DWP u1 & t2 : A)
+     ∧ (⌜¬ l ⊑ ξ⌝ → DWP t1 & u2 : A)) -∗
+    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A.
   Proof.
     iIntros "He Htu".
     dwp_bind e1 e2.
@@ -291,18 +313,61 @@ Section rules.
       + by iDestruct "Htu" as "[_ [$ _]]".
   Qed.
 
-  Lemma logrel_if_low ξ A (e1 e2 t1 t2 u1 u2 : expr) l :
+  Lemma logrel_if_low ξ A e1 e2 t1 t2 u1 u2 l :
     l ⊑ ξ →
     (DWP e1 & e2 : ⟦ tbool l ⟧ ξ) -∗
-    (DWP t1 & t2 : A ξ) -∗
-    (DWP u1 & u2 : A ξ) -∗
-    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A ξ.
+    (DWP t1 & t2 : A) -∗
+    (DWP u1 & u2 : A) -∗
+    DWP (if: e1 then t1 else u1) & (if: e2 then t2 else u2) : A.
   Proof.
     iIntros (Hl) "He Ht Hu".
     iApply (logrel_if with  "He [Ht Hu]").
     repeat iSplit; try done.
     - iIntros (?). by exfalso.
     - iIntros (?). by exfalso.
+  Qed.
+
+  Lemma logrel_none τ ξ :
+    DWP NONEV & NONEV : ⟦ toption τ ⟧ ξ.
+  Proof.
+    iApply dwp_value; eauto. iModIntro.
+    iLeft; eauto.
+  Qed.
+
+  Lemma logrel_some v1 v2 τ ξ :
+    (DWP v1 & v2 : ⟦ τ ⟧ ξ) -∗
+    DWP SOMEV v1 & SOMEV v2 : ⟦ toption τ ⟧ ξ.
+  Proof.
+    iIntros "Hv". rewrite dwp_value_inv'.
+    iApply dwp_value. iMod "Hv" as "Hv". iModIntro.
+    rewrite (interp_eq (toption _)). iRight.
+    iExists v1,v2. repeat iSplit; eauto.
+  Qed.
+
+  Lemma logrel_match e1 e2 x1 x2 t1 t2 s1 s2 τ A E ξ :
+    (* the premises can also be joined by ∧ *)
+    (DWP e1 & e2 @ E : ⟦ toption τ ⟧ ξ) -∗
+    (DWP t1 & t2 @ E : A) -∗
+    (∀ v1 v2, ⟦ τ ⟧ ξ v1 v2 -∗
+              DWP subst' x1 v1 s1 & subst' x2 v2 s2 @ E : A) -∗
+    DWP match: e1 with
+          NONE => t1
+        | SOME x1 => s1
+        end
+      & match: e2 with
+          NONE => t2
+        | SOME x2 => s2
+        end
+      @ E : A.
+  Proof.
+    iIntros "He Ht Hs".
+    dwp_bind e1 e2.
+    iApply (dwp_wand with "He"). iIntros (v1 v2) "Hv".
+    rewrite (interp_eq (toption _)).
+    iDestruct "Hv" as "[[-> ->]|H]".
+    - dwp_pures. iApply "Ht".
+    - iDestruct "H" as (v1' v2' -> ->) "H". dwp_pures.
+      iApply "Hs". iApply "H".
   Qed.
 
   Lemma logrel_rec ξ f x e1 e2 τ1 τ2 l :

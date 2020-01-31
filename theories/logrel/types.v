@@ -145,6 +145,7 @@ Inductive type :=
 | tbool (l : slevel) : type
 | tarrow (s t : type) (l : slevel)
 | tprod (t1 t2 : type)
+| toption (t : type) (* a /low/ option type *)
 | tref (t : type).
 
 Instance type_eqdec : EqDecision type.
@@ -157,6 +158,7 @@ Fixpoint type_measure (τ : type) : nat :=
   | tbool _ => 0
   | tarrow s t _ => type_measure s + type_measure t + 1
   | tprod τ1 τ2 => type_measure τ1 + type_measure τ2 + 1
+  | toption τ => type_measure τ + 1
   | tref τ => type_measure τ + 1
   end.
 
@@ -168,6 +170,7 @@ Fixpoint stamp (τ : type) (l : slevel) : type :=
   | tbool l2 => tbool (l2 ⊔ l)
   | tprod τ1 τ2 => tprod (stamp τ1 l) (stamp τ2 l)
   | tarrow s t l2 => tarrow s t (l2 ⊔ l)
+  | toption τ => toption (stamp τ l)
   | tref τ => tref τ
   end.
 Lemma stamp_measure (τ : type) (l : slevel) :
@@ -182,6 +185,7 @@ Fixpoint lbl (τ : type) : slevel :=
   | tbool α => α
   | tprod τ1 τ2 => lbl τ1 ⊔ lbl τ2
   | tarrow s t β => lbl t ⊔ β
+  | toption τ => lbl τ
   | tref τ => lbl τ
   end.
 
@@ -200,6 +204,9 @@ Inductive type_sub : type → type → Prop :=
 | type_sub_bool l1 l2 :
     l1 ⊑ l2 →
     tbool l1 <: tbool l2
+| type_sub_option τ τ' :
+    τ <: τ'   →
+    toption τ <: toption τ'
 | type_sub_arrow τ₁ τ₂ τ'₁ τ'₂ l l' :
     τ'₁ <: τ₁   →
     τ₂  <: τ'₂  →
@@ -230,6 +237,6 @@ Proof. intros. induction τ; simpl; eauto. Qed.
 
 Lemma stamp_low τ : stamp τ Low = τ.
 Proof.
-  induction τ; simpl; rewrite ?right_id; eauto.
-  by rewrite IHτ1 IHτ2.
+  induction τ; simpl; rewrite ?right_id; eauto;
+  by (rewrite IHτ1 IHτ2 || rewrite IHτ).
 Qed.
