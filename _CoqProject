@@ -22,3 +22,4 @@ theories/examples/value_sensitivity_3.v
 theories/examples/value_sensitivity_4.v
 theories/examples/various.v
 theories/examples/multiset.v
+theories/examples/allocator.v

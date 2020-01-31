@@ -15,15 +15,21 @@ Class heapDG Σ := HeapDG {
   heapDG_gen_heapG2 :> gen_heapG loc val Σ;
 }.
 
+(** heapG instanecs for both sides *)
+Definition heapG1 `{heapDG Σ} : heapG Σ :=
+  {| heapG_invG := heapDG_invG;
+     heapG_gen_heapG := heapDG_gen_heapG1;
+     heapG_proph_mapG := heapDG_proph_mapG1 |}.
+Definition heapG2 `{heapDG Σ} : heapG Σ :=
+  {| heapG_invG := heapDG_invG;
+     heapG_gen_heapG := heapDG_gen_heapG2;
+     heapG_proph_mapG := heapDG_proph_mapG2 |}.
+
 (** irisG instances for both sides *)
 Definition irisG1 `{heapDG Σ} : irisG heap_lang Σ :=
-  @heapG_irisG Σ {| heapG_invG := heapDG_invG;
-                    heapG_gen_heapG := heapDG_gen_heapG1;
-                    heapG_proph_mapG := heapDG_proph_mapG1 |}.
+  @heapG_irisG Σ heapG1.
 Definition irisG2 `{heapDG Σ} : irisG heap_lang Σ :=
-  @heapG_irisG Σ {| heapG_invG := heapDG_invG;
-                    heapG_gen_heapG := heapDG_gen_heapG2;
-                    heapG_proph_mapG := heapDG_proph_mapG2 |}.
+  @heapG_irisG Σ heapG2.
 
 Definition TWP1 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
   @twp heap_lang (iProp Σ) stuckness
@@ -56,6 +62,24 @@ Notation "l ↦ᵣ{ q } -" := (∃ v, l ↦ᵣ{q} v)%I
   (at level 20, q at level 50, format "l  ↦ᵣ{ q }  -") : bi_scope.
 Notation "l ↦ᵣ -" := (l ↦ₗ{1} -)%I (at level 20) : bi_scope.
 
+Definition array1 `{heapDG Σ} (l : loc) (vs :  list val) :=
+  ([∗ list] i ↦ v ∈ vs, (l +ₗ i) ↦ₗ v)%I.
+Definition array2 `{heapDG Σ} (l : loc) (vs :  list val) :=
+  ([∗ list] i ↦ v ∈ vs, (l +ₗ i) ↦ᵣ v)%I.
+
+Notation "l ↦ₗ∗ vs" := (array1 l vs)
+  (at level 20, format "l  ↦ₗ∗  vs") : bi_scope.
+Notation "l ↦ᵣ∗ vs" := (array2 l vs)
+  (at level 20, format "l  ↦ᵣ∗  vs") : bi_scope.
+
+Definition meta1 `{heapDG Σ} {A} `{EqDecision A, Countable A}
+           (l : loc) (N : namespace) (x : A) :=
+  @meta loc _ _ val Σ heapDG_gen_heapG1 A _ _ l N x.
+Definition meta2 `{heapDG Σ} {A} `{EqDecision A, Countable A}
+           (l : loc) (N : namespace) (x : A) :=
+  @meta loc _ _ val Σ heapDG_gen_heapG2 A _ _ l N x.
+
+
 Instance heapDG_irisDG `{heapDG Σ} : irisDG heap_lang Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,
       @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
@@ -63,6 +87,24 @@ Instance heapDG_irisDG `{heapDG Σ} : irisDG heap_lang Σ := {
     ∗ @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG2 σ2.(heap)
     ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG2 κs2 σ2.(used_proph_id))%I
 }.
+
+Section array_liftings.
+  Context `{heapDG Σ}.
+  Lemma array1_cons l v vs : l ↦ₗ∗ (v :: vs) ⊣⊢ l ↦ₗ v ∗ (l +ₗ 1) ↦ₗ∗ vs.
+  Proof.
+    rewrite /array1 /mapsto1 big_sepL_cons loc_add_0.
+    setoid_rewrite loc_add_assoc.
+    setoid_rewrite Nat2Z.inj_succ.
+    by setoid_rewrite Z.add_1_l.
+  Qed.
+  Lemma array2_cons l v vs : l ↦ᵣ∗ (v :: vs) ⊣⊢ l ↦ᵣ v ∗ (l +ₗ 1) ↦ᵣ∗ vs.
+  Proof.
+    rewrite /array2 /mapsto2 big_sepL_cons loc_add_0.
+    setoid_rewrite loc_add_assoc.
+    setoid_rewrite Nat2Z.inj_succ.
+    by setoid_rewrite Z.add_1_l.
+  Qed.
+End array_liftings.
 
 Section lifting.
 Context `{heapDG Σ}.

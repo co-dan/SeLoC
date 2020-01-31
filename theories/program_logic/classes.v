@@ -1,6 +1,18 @@
 From iris.program_logic Require Import language ectx_language.
 From iris.heap_lang Require Export lang lifting notation.
 
+(* DF: Basically, this file contains /a lot/ of boilerplate.
+   For some DWP lemmas we want to easily discharge the side conditions:
+   - An expression does not fork off any threads.
+   - An expression does not produce observations/traces in op. sem.
+
+For instance, `App v1 v2` satisfies such side conditions.
+To show this we need to establish that if you evaluating `App v1 v2` in a thread
+pool does not increase the number of threads. Due to the way the reduction relation
+is defined we need to show the auxiliary lemma: `App v1 v2` has only one possible
+evaluation context that can trigger the reduction.
+*)
+
 Class NotVal (e : expr) :=
   not_val : to_val e = None.
 
@@ -171,6 +183,22 @@ Instance alloc_nofork e v :
   NoFork (ref e).
 Proof. solve_nofork alloc_fill. Qed.
 
+Lemma allocn_fill_item Ki (v1 v2 : val) e :
+  AllocN v1 v2 = fill_item Ki e →
+  is_Some (to_val e).
+Proof. destruct Ki; simpl; inversion 1; eauto. Qed.
+
+Lemma allocn_fill K (v1 v2 : val) e :
+  AllocN v1 v2 = fill K e →
+  is_Some (to_val e) ∨ K = [].
+Proof. solve_fill e K allocn_fill_item. Qed.
+
+Instance allocn_nofork e1 e2 v1 v2 :
+  IntoVal e1 v1 →
+  IntoVal e2 v2 →
+  NoFork (AllocN e1 e2).
+Proof. solve_nofork allocn_fill. Qed.
+
 Lemma load_fill_item Ki (v : val) e :
   Load v = fill_item Ki e →
   is_Some (to_val e).
@@ -278,6 +306,12 @@ Instance alloc_noobs e v :
   NoObs (ref e).
 Proof. solve_nofork alloc_fill. Qed.
 
+Instance allocn_noobs e1 e2 v1 v2 :
+  IntoVal e1 v1 →
+  IntoVal e2 v2 →
+  NoObs (AllocN e1 e2).
+Proof. solve_nofork allocn_fill. Qed.
+
 Instance load_noobs e v :
   IntoVal e v →
   NoObs (! e).
@@ -301,4 +335,5 @@ Instance faa_noobs e1 e2 v1 v2 :
   IntoVal e2 v2 →
   NoObs (FAA e1 e2).
 Proof. solve_nofork faa_fill. Qed.
+
 
