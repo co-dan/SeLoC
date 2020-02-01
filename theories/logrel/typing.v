@@ -12,6 +12,7 @@ Instance insert_binder (A : Type): Insert binder A (stringmap A) :=
 
 Inductive has_type (Γ : stringmap type) :
   expr → type → Prop :=
+(* structural *)
 | Sub_typed e τ τ' :
     has_type Γ e τ →
     τ <: τ' →
@@ -19,21 +20,37 @@ Inductive has_type (Γ : stringmap type) :
 | Var_typed x τ :
     Γ !! x = Some τ →
     has_type Γ (Var x) τ
+| Low_loc_typed (l : loc) :
+    l ∈ 𝔏 →
+    has_type Γ #l (tref (tint Low))
+(* constructors *)
 | Int_typed (n : Z) χ :
     has_type Γ #n (tint χ)
 | Bool_typed (b : bool) χ :
     has_type Γ #b (tbool χ)
 | Unit_typed :
     has_type Γ #() tunit
+| None_typed τ :
+    has_type Γ NONE (toption τ)
+| Some_typed τ e :
+    has_type Γ e τ →
+    has_type Γ (SOME e) (toption τ)
+| Rec_typed f x e τ τ' χ :
+    has_type (<[f:=tarrow τ τ' χ]>(<[x:=τ]>Γ)) e (stamp τ' χ) →
+    has_type Γ (rec: f x := e) (tarrow τ τ' χ)
+(* destructors *)
 | If_typed e e1 e2 χ τ :
     has_type Γ e (tbool χ) →
     χ ⊑ ξ →
     has_type Γ e1 τ →
     has_type Γ e2 τ →
     has_type Γ (if: e then e1 else e2) τ
-| Rec_typed f x e τ τ' χ :
-    has_type (<[f:=tarrow τ τ' χ]>(<[x:=τ]>Γ)) e (stamp τ' χ) →
-    has_type Γ (rec: f x := e) (tarrow τ τ' χ)
+| Match_typed e e1 x e2 τ τ' :
+    has_type Γ e (toption τ) →
+    has_type Γ e1 τ' →
+    has_type (<[x:=τ]>Γ) e2 τ' →
+    has_type Γ (match: e with NONE => e1 | SOME x => e2 end) τ'
+(* effects *)
 | Fork_typed e τ :
     has_type Γ e τ →
     has_type Γ (Fork e) tunit
@@ -50,10 +67,7 @@ Inductive has_type (Γ : stringmap type) :
 | FAA_typed e1 e2 χ :
     has_type Γ e1 (tref (tint χ)) →
     has_type Γ e2 (tint χ) →
-    has_type Γ (FAA e1 e2) (tint χ)
-| Low_loc_typed (l : loc) :
-    l ∈ 𝔏 →
-    has_type Γ #l (tref (tint Low)).
+    has_type Γ (FAA e1 e2) (tint χ).
 
 
 Section fundamental.
@@ -93,13 +107,17 @@ Section fundamental.
     - rewrite !lookup_fmap /subst_valid.
       rewrite big_sepM2_lookup_1//. iDestruct "HΓ" as ([v1 v2] ->) "Hv".
       iSimpl. by iApply dwp_value.
+    - iApply dwp_value. iModIntro.
+      iApply (big_sepS_elem_of _ 𝔏 l with "HI")=>//.
     - iApply logrel_int.
     - iApply logrel_bool.
     - iApply logrel_unit.
-    - iApply logrel_if_low=>//.
-      + by iApply IHhas_type1.
-      + by iApply IHhas_type2.
-      + by iApply IHhas_type3.
+    - dwp_pures. iApply logrel_none.
+    - dwp_bind (subst_map _ e) (subst_map _ e).
+      iApply dwp_wand.
+      { by iApply IHhas_type. }
+      iIntros (v1 v2) "#Hv". dwp_pures. iApply logrel_some.
+      by iApply dwp_value.
     - dwp_pures. iApply logrel_rec. iAlways. rewrite (interp_eq (tarrow _ _ _)).
       iIntros (f1 f2 v1 v2) "#Hf #Hv".
       pose (γ' := <[f:=(f1,f2)]>(<[x:=(v1,v2)]>γ)).
@@ -117,6 +135,21 @@ Section fundamental.
       + rewrite !delete_insert_ne // subst_map_insert.
         rewrite !(subst_subst_ne _ x f) // subst_map_insert.
         iApply "H".
+    - iApply logrel_if_low=>//.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
+      + by iApply IHhas_type3.
+    - iApply logrel_match.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
+      + iIntros (v1 v2) "#Hv".
+        pose (γ' := (<[x:=(v1,v2)]>γ)).
+        iDestruct (IHhas_type3 γ' with "[-] HI") as "H".
+        { iApply (subst_valid_insert with "Hv HΓ"). }
+        rewrite /γ'. rewrite /insert /insert_binder.
+        rewrite !binder_insert_fmap.
+        destruct x as [|x];
+          simpl; rewrite ?subst_map_insert; try iApply "H".
     - iApply dwp_fork; last by eauto.
       iNext. iApply dwp_wand.
       + iApply (IHhas_type with "HΓ HI").
@@ -131,8 +164,6 @@ Section fundamental.
     - iApply logrel_faa; first done.
       + iApply (IHhas_type1 with "HΓ HI").
       + iApply (IHhas_type2 with "HΓ HI").
-    - iApply dwp_value. iModIntro.
-      iApply (big_sepS_elem_of _ 𝔏 l with "HI")=>//.
   Qed.
 End fundamental.
 End typing.
