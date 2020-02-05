@@ -245,3 +245,19 @@ Proof.
   induction τ; simpl; rewrite ?right_id; eauto;
   by (rewrite IHτ1 IHτ2 || rewrite IHτ).
 Qed.
+
+(* "Flat types" are types τ for which the following typing rule is
+sound:
+
+  ⊢ v, w : τ      ⊢ e : bool high
+------------------------------------
+    ⊢ if e then v else w : τ
+*)
+Inductive flat_type : type → Prop :=
+| tint_flat : flat_type (tint High)
+| tbool_flat : flat_type (tbool High)
+| tunit_flat : flat_type tunit
+| tprod_flat τ τ' : flat_type τ →
+                    flat_type τ' →
+                    flat_type (tprod τ τ').
+

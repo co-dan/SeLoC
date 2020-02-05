@@ -46,6 +46,13 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e1 τ →
     has_type Γ e2 τ →
     has_type Γ (if: e then e1 else e2) τ
+| If_typed_flat e (v1 v2 : val) τ :
+    flat_type τ →
+    ξ ≠ High →
+    has_type Γ e (tbool High) →
+    has_type Γ v1 τ →
+    has_type Γ v2 τ →
+    has_type Γ (if: e then v1 else v2) τ
 | Match_typed e e1 x e2 τ τ' :
     has_type Γ e (toption τ) →
     has_type Γ e1 τ' →
@@ -146,6 +153,10 @@ Section fundamental.
         rewrite !(subst_subst_ne _ x f) // subst_map_insert.
         iApply "H".
     - iApply logrel_if_low=>//.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
+      + by iApply IHhas_type3.
+    - iApply logrel_if_flat=>//.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
       + by iApply IHhas_type3.

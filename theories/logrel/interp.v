@@ -210,6 +210,36 @@ Section semtypes.
     by apply interp_sub_mono_general; eauto.
   Qed.
 
+  Lemma flat_type_interp τ ξ :
+    (ξ ≠ High) →
+    flat_type τ →
+    (∀ v1 v2 w1 w2, interp τ ξ v1 v2 -∗ interp τ ξ w1 w2 -∗ interp τ ξ v1 w2)%I.
+  Proof.
+    intros ?. induction 1.
+    - iIntros (v1 v2 w1 w2). rewrite interp_eq.
+      iDestruct 1 as (k1 k1' ? ?) "H1".
+      iDestruct 1 as (k2 k2' ? ?) "H2".
+      simplify_eq/=.
+      iExists _, _. repeat iSplit; eauto.
+      iPureIntro. destruct ξ; compute; naive_solver.
+    - iIntros (v1 v2 w1 w2). rewrite interp_eq.
+      iDestruct 1 as (k1 k1' ? ?) "H1".
+      iDestruct 1 as (k2 k2' ? ?) "H2".
+      simplify_eq/=.
+      iExists _, _. repeat iSplit; eauto.
+      iPureIntro. destruct ξ; compute; naive_solver.
+    - iIntros (v1 v2 w1 w2). rewrite interp_eq.
+      iDestruct 1 as "[% %]".
+      iDestruct 1 as "[% %]". simplify_eq/=.
+      iSplit; eauto.
+    - iIntros (v1 v2 p1 p2). rewrite interp_eq.
+      iDestruct 1 as (w1 w1' u1 u1' ? ?) "[Hw1 Hu1]".
+      iDestruct 1 as (w2 w2' u2 u2' ? ?) "[Hw2 Hu2]".
+      simplify_eq/=.
+      iExists _,_,_,_. repeat iSplit; eauto.
+      + iApply (IHflat_type1 with "Hw1 Hw2").
+      + iApply (IHflat_type2 with "Hu1 Hu2").
+  Qed.
 End semtypes.
 
 Notation "⟦ τ ⟧" := (interp τ).
@@ -311,6 +341,27 @@ Section rules.
       + iDestruct "Htu" as "[_ [_ [_ Htu]]]". by iApply "Htu".
       + iDestruct "Htu" as "[_ [_ [Htu _]]]". by iApply "Htu".
       + by iDestruct "Htu" as "[_ [$ _]]".
+  Qed.
+
+  Lemma logrel_if_flat ξ τ e1 e2 (v1 v2 w1 w2 : val) :
+    (ξ ≠ High) →
+    flat_type τ →
+    (DWP e1 & e2 : ⟦ tbool High ⟧ ξ) -∗
+    (DWP v1 & v2 : ⟦ τ ⟧ ξ) -∗
+    (DWP w1 & w2 : ⟦ τ ⟧ ξ) -∗
+    DWP (if: e1 then v1 else w1) & (if: e2 then v2 else w2) : ⟦ τ ⟧ ξ.
+  Proof.
+    iIntros (? ?) "He Ht Hu".
+    iApply (logrel_if with "He").
+    repeat iSplit; eauto.
+    - iIntros (?). rewrite !dwp_value_inv'.
+      iApply dwp_value.
+      iMod "Ht" as "Ht". iMod "Hu" as "Hu". iModIntro.
+      iApply (flat_type_interp with "Hu Ht"); eauto.
+    - iIntros (?). rewrite !dwp_value_inv'.
+      iApply dwp_value.
+      iMod "Ht" as "Ht". iMod "Hu" as "Hu". iModIntro.
+      iApply (flat_type_interp with "Ht Hu"); eauto.
   Qed.
 
   Lemma logrel_if_low ξ A e1 e2 t1 t2 u1 u2 l :
