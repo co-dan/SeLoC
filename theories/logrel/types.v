@@ -146,7 +146,12 @@ Inductive type :=
 | tarrow (s t : type) (l : slevel)
 | tprod (t1 t2 : type)
 | toption (t : type) (* a /low/ option type *)
-| tref (t : type).
+| tref (t : type)
+.
+
+Definition tmutex_aux : seal (tref (tbool Low)). by eexists. Qed.
+Definition tmutex : type := tmutex_aux.(unseal).
+Definition tmutex_eq : tmutex = tref (tbool Low) := tmutex_aux.(seal_eq).
 
 Instance type_eqdec : EqDecision type.
 Proof. solve_decision. Qed.

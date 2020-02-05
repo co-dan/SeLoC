@@ -2,6 +2,7 @@ From stdpp Require Export stringmap gmap.
 From iris.heap_lang Require Import lang notation metatheory proofmode.
 From iris_ni.logrel Require Export types interp.
 From iris_ni.proofmode Require Import dwp_tactics.
+From iris_ni.examples Require Export lock.
 
 Section typing.
 Variable 𝔏 : gset loc.
@@ -67,7 +68,16 @@ Inductive has_type (Γ : stringmap type) :
 | FAA_typed e1 e2 χ :
     has_type Γ e1 (tref (tint χ)) →
     has_type Γ e2 (tint χ) →
-    has_type Γ (FAA e1 e2) (tint χ).
+    has_type Γ (FAA e1 e2) (tint χ)
+| Newlock_typed :
+    has_type Γ (newlock #()) tmutex
+| Acquire_typed lk :
+    has_type Γ lk tmutex →
+    has_type Γ (acquire lk) tunit
+| Release_typed lk :
+    has_type Γ lk tmutex →
+    has_type Γ (release lk) tunit
+.
 
 
 Section fundamental.
@@ -164,6 +174,15 @@ Section fundamental.
     - iApply logrel_faa; first done.
       + iApply (IHhas_type1 with "HΓ HI").
       + iApply (IHhas_type2 with "HΓ HI").
+    - iApply newlock_typed.
+    - change tunit with (stamp tunit Low).
+      iApply logrel_app.
+      + iApply acquire_typed.
+      + iApply IHhas_type; eauto.
+    - change tunit with (stamp tunit Low).
+      iApply logrel_app.
+      + iApply release_typed.
+      + iApply IHhas_type; eauto.
   Qed.
 End fundamental.
 End typing.

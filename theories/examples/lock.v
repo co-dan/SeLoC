@@ -1,5 +1,5 @@
 From iris.base_logic Require Import invariants.
-From iris_ni.logrel Require Import types.
+From iris_ni.logrel Require Import types interp.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 From iris.proofmode Require Import tactics.
 From iris_ni.proofmode Require Import dwp_tactics.
@@ -113,3 +113,64 @@ Section proof.
   Qed.
 
 End proof.
+
+Section semtyping.
+  Context `{!heapDG Σ}.
+
+  Lemma newlock_typed ξ :
+    DWP newlock #() & newlock #() : ⟦ tmutex ⟧ ξ.
+  Proof.
+    rewrite tmutex_eq.
+    unlock newlock. dwp_pures=>/=.
+    iApply logrel_alloc. iApply logrel_bool.
+  Qed.
+
+  Lemma acquire_typed ξ :
+    DWP acquire & acquire : ⟦ tarrow tmutex tunit Low ⟧ ξ.
+  Proof.
+    rewrite tmutex_eq.
+    unfold acquire. dwp_pures. iApply dwp_value. iModIntro.
+    rewrite interp_eq. iAlways. iIntros (lk1 lk2) "#Hlk".
+    dwp_pures. iLöb as "IH".
+    rewrite {5 7}/try_acquire. dwp_pures.
+    dwp_bind (CmpXchg _ _ _) (CmpXchg _ _ _).
+    rewrite /tmutex (interp_eq (tref _)).
+    iDestruct "Hlk" as (l1 l2 -> ->) "Hinv".
+    iInv (locsN.@(l1, l2)) as (w1 w2) "(>Hl1 & >Hl2 & >Hw)".
+    iDestruct "Hw" as (b b' -> ->) "%".
+    assert (b = b') as <- by (destruct ξ; eauto).
+    destruct b.
+    - pose (Φ1 := (λ v, ⌜v = (#true, #false)%V⌝ ∧ l1 ↦ₗ #true)%I).
+      pose (Φ2 := (λ v, ⌜v = (#true, #false)%V⌝ ∧ l2 ↦ᵣ #true)%I).
+      iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hl1] [Hl2] [-]"); unfold TWP1, TWP2.
+      { wp_cmpxchg_fail. unfold Φ1. iFrame. eauto. }
+      { wp_cmpxchg_fail. unfold Φ2. iFrame. eauto. }
+      iIntros (? ?). iDestruct 1 as "[-> Hl1]". iDestruct 1 as "[-> Hl2]".
+      iNext. iModIntro. iSplitL "Hl1 Hl2".
+      { iNext. iExists _,_. iFrame. rewrite interp_eq.
+        iExists _,_. eauto with iFrame. }
+      dwp_pures. iApply "IH".
+    - pose (Φ1 := (λ v, ⌜v = (#false, #true)%V⌝ ∧ l1 ↦ₗ #true)%I).
+      pose (Φ2 := (λ v, ⌜v = (#false, #true)%V⌝ ∧ l2 ↦ᵣ #true)%I).
+      iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hl1] [Hl2] [-]"); unfold TWP1, TWP2.
+      { wp_cmpxchg_suc. unfold Φ1. iFrame. eauto. }
+      { wp_cmpxchg_suc. unfold Φ2. iFrame. eauto. }
+      iIntros (? ?). iDestruct 1 as "[-> Hl1]". iDestruct 1 as "[-> Hl2]".
+      iNext. iModIntro. iSplitL "Hl1 Hl2".
+      { iNext. iExists _,_. iFrame. rewrite interp_eq.
+        iExists _,_. eauto with iFrame. }
+      dwp_pures. iApply logrel_unit.
+  Qed.
+
+  Lemma release_typed ξ :
+    DWP release & release : ⟦ tarrow tmutex tunit Low ⟧ ξ.
+  Proof.
+    rewrite tmutex_eq.
+    unfold release. dwp_pures. iApply dwp_value. iModIntro.
+    rewrite interp_eq. iAlways. iIntros (lk1 lk2) "#Hlk".
+    dwp_pures. iApply logrel_store; eauto.
+    - rewrite /tmutex. iApply dwp_value. iApply "Hlk".
+    - iApply logrel_bool.
+  Qed.
+
+End semtyping.
