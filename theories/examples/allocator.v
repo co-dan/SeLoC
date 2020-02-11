@@ -14,7 +14,7 @@ Definition allocator_alloc : val :=
   if: ("sz" ≤ "pos")
   then NONE
   else "i" <- "pos" + #1;;
-       let: "c" := "arr" + "pos" in
+       let: "c" := "arr" +ₗ "pos" in
        "c" <- "v";;
        SOME "c".
 
