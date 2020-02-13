@@ -63,6 +63,12 @@ Definition awk : val :=
   λ: "v", let: "x" := ref "v" in
           λ: "f", "x" <- #1;; "f" #();; !"x".
 
+Definition oneshotR := csumR (exclR unitR) (agreeR unitR).
+Class oneshotG Σ := { oneshot_inG :> inG Σ oneshotR }.
+Definition oneshotΣ : gFunctors := #[GFunctor oneshotR].
+Instance subG_oneshotΣ {Σ} : subG oneshotΣ Σ → oneshotG Σ.
+Proof. solve_inG. Qed.
+
 Section awk_proof.
   Context `{!heapDG Σ}.
 
@@ -89,12 +95,6 @@ Section awk_proof.
     iApply logrel_deref. rewrite !left_id.
     iApply (dwp_value with "Hr").
   Qed.
-
-  Definition oneshotR := csumR (exclR unitR) (agreeR unitR).
-  Class oneshotG Σ := { oneshot_inG :> inG Σ oneshotR }.
-  Definition oneshotΣ : gFunctors := #[GFunctor oneshotR].
-  Instance subG_oneshotΣ {Σ} : subG oneshotΣ Σ → oneshotG Σ.
-  Proof. solve_inG. Qed.
 
   Definition pending γ `{oneshotG Σ} := own γ (Cinl (Excl ())).
   Definition shot γ `{oneshotG Σ} := own γ (Cinr (to_agree ())).

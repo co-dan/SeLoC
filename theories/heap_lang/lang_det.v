@@ -1,8 +1,8 @@
 (* heap_lang with deterministic allocation *)
 From stdpp Require Import base gmap.
+From iris.proofmode Require Import base tactics classes.
 From iris.heap_lang Require Import lang lifting.
 From iris_ni Require Import program_logic.dwp program_logic.heap_lang_lifting.
-From iris.proofmode Require Import base tactics classes.
 
 (** A simple allocator only knows about the state.
     In the future we can also make it aware of the threadpool.

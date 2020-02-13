@@ -106,15 +106,13 @@ Definition new_ms : val := λ: <>,
 Section proof.
   Context `{!heapDG Σ, !lockG Σ}.
 
-  Program Definition joint_list_pre (P : val -> val -> iPropO Σ) :
-    (locO -n> locO -n> iPropO Σ) -n> (locO -n> locO -n> iPropO Σ)
-    := (λne R hd1 hd2,
+  Definition joint_list_pre (P : val → val → iPropO Σ)
+    (R : locO -n> locO -n> iPropO Σ) : (locO -n> locO -n> iPropO Σ) := (λne hd1 hd2,
         (hd1 ↦ₗ NONEV ∗ hd2 ↦ᵣ NONEV)
        ∨ (∃ v1 v2 (tl1 tl2 : loc), hd1 ↦ₗ SOMEV (v1, #tl1) ∗
                            hd2 ↦ᵣ SOMEV (v2, #tl2) ∗
                            P v1 v2 ∗
                            ▷ (R tl1 tl2)))%I.
-  Next Obligation. solve_proper. Qed.
 
   Instance joint_list_pre_contractive P : Contractive (joint_list_pre P).
   Proof. solve_contractive. Qed.
