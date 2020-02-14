@@ -6,7 +6,6 @@ From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang array proofmode lib.arith.
 
 (* make : int^low → array τ *)
-(* XXX: how to handle the side condition that n > 0 ? *)
 Definition make : val := λ: "n" "dummy",
   let: "n" := maximum "n" #0 in
   (AllocN (#1 + "n") "dummy", "n").
@@ -93,7 +92,8 @@ Section spec.
     { rewrite /make /maximum. dwp_pures.
       case_bool_decide; dwp_pures; iApply "H"; auto with lia. }
     clear n. iIntros (n' Hn).
-    assert (∃ n : nat, n' = n) as [n ->] by (exists (Z.to_nat n'); lia).
+    assert (∃ n : nat, n' = n) as [n ->].
+    { exists (Z.to_nat n'). rewrite Z2Nat.id; lia. }
     rewrite -(Nat2Z.inj_add 1) /=.
     dwp_bind (AllocN _ _) (AllocN _ _).
     (* allocN spec *)
@@ -138,10 +138,17 @@ Section spec.
     DWP !#(l1 +ₗ i1) & !#(l2 +ₗ i2) : A ξ.
   Proof.
     iIntros (PR C Hi1 Hi2) "Ha".
-    assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?)
-      by (exists (Z.to_nat i1); lia).
-    assert (∃ i2' : nat, i2 = i2' ∧ i2' < n)%nat as (i2' & -> & ?)
-      by (exists (Z.to_nat i2); lia).
+    assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
+    (* XXX on Coq 8.9 lia doesn't solve these goals... *)
+    { exists (Z.to_nat i1). rewrite !Z2Nat.id; try lia.
+      split; eauto. rewrite -(Nat2Z.id n).
+      apply Z2Nat.inj_lt; lia.
+    }
+    assert (∃ i2' : nat, i2 = i2' ∧ i2' < n)%nat as (i2' & -> & ?).
+    { exists (Z.to_nat i2). rewrite !Z2Nat.id; try lia.
+      split; eauto. rewrite -(Nat2Z.id n).
+      apply Z2Nat.inj_lt; lia.
+    }
     iApply dwp_atomic.
     iInv (locsN.@(l1, l2)) as
         (vs1 vs2) "(>% & >% & >Hl1 & >Hl2 & HAs)" "Hcl".
@@ -236,10 +243,16 @@ Section spec.
     DWP #(l1 +ₗ i1) <- v1 & #(l2 +ₗ i2) <- v2 : ⟦ tunit ⟧ ξ.
   Proof.
     iIntros (PR C Hi1 Hi2) "#Hv Ha".
-    assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?)
-      by (exists (Z.to_nat i1); lia).
-    assert (∃ i2' : nat, i2 = i2' ∧ i2' < n)%nat as (i2' & -> & ?)
-      by (exists (Z.to_nat i2); lia).
+    assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
+    { exists (Z.to_nat i1). rewrite !Z2Nat.id; try lia.
+      split; eauto. rewrite -(Nat2Z.id n).
+      apply Z2Nat.inj_lt; lia.
+    }
+    assert (∃ i2' : nat, i2 = i2' ∧ i2' < n)%nat as (i2' & -> & ?).
+    { exists (Z.to_nat i2). rewrite !Z2Nat.id; try lia.
+      split; eauto. rewrite -(Nat2Z.id n).
+      apply Z2Nat.inj_lt; lia.
+    }
     iApply dwp_atomic.
     iInv (locsN.@(l1, l2)) as
           (vs1 vs2) "(>% & >% & >Hl1 & >Hl2 & HAs)" "Hcl".
