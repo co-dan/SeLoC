@@ -10,6 +10,7 @@ Variable ξ : slevel.
 
 Instance insert_binder (A : Type): Insert binder A (stringmap A) :=
   binder_insert.
+Existing Instance singleton_binder.
 
 Inductive has_type (Γ : stringmap type) :
   expr → type → Prop :=
@@ -31,11 +32,11 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ #b (tbool χ)
 | Unit_typed :
     has_type Γ #() tunit
-| None_typed τ :
-    has_type Γ NONE (toption τ)
-| Some_typed τ e :
-    has_type Γ e τ →
-    has_type Γ (SOME e) (toption τ)
+| None_typed il χ :
+    has_type Γ NONE (tintoption il χ)
+| Some_typed il e χ :
+    has_type Γ e (tint il) →
+    has_type Γ (SOME e) (tintoption il χ)
 | Rec_typed f x e τ τ' χ :
     has_type (<[f:=tarrow τ τ' χ]>(<[x:=τ]>Γ)) e (stamp τ' χ) →
     has_type Γ (rec: f x := e) (tarrow τ τ' χ)
@@ -46,18 +47,29 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e1 τ →
     has_type Γ e2 τ →
     has_type Γ (if: e then e1 else e2) τ
-| If_typed_flat e (v1 v2 : val) τ :
+| If_typed_flat e (v1 v2 : expr) τ :
+    almost_val (dom _ Γ) v1 →
+    almost_val (dom _ Γ) v2 →
     flat_type τ →
     ξ ≠ High →
     has_type Γ e (tbool High) →
     has_type Γ v1 τ →
     has_type Γ v2 τ →
     has_type Γ (if: e then v1 else v2) τ
-| Match_typed e e1 x e2 τ τ' :
-    has_type Γ e (toption τ) →
+| Match_typed e e1 x e2 il τ' :
+    has_type Γ e (tintoption il Low) →
     has_type Γ e1 τ' →
-    has_type (<[x:=τ]>Γ) e2 τ' →
+    has_type (<[x:=tint il]>Γ) e2 τ' →
     has_type Γ (match: e with NONE => e1 | SOME x => e2 end) τ'
+| Match_typed_flat e x t1 t2 il τ' :
+    flat_type τ' →
+    ξ ≠ High →
+    almost_val (dom _ Γ) t1 →
+    almost_val ({[x]} ∪ dom _ Γ) t2 →
+    has_type Γ e (tintoption il High) →
+    has_type Γ t1 τ' →
+    has_type (<[x:=(tint High)]>Γ) t2 τ' →
+    has_type Γ (match: e with NONE => t1 | SOME x => t2 end) τ'
 (* effects *)
 | Fork_typed e τ :
     has_type Γ e τ →
@@ -86,6 +98,23 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ (release lk) tunit
 .
 
+Instance is_closed_expr_proper :
+  Proper ((≡ₚ) ==> (=) ==> (=)) is_closed_expr.
+Proof.
+  intros Γ1 Γ2 HΓ ? e ->.
+  revert Γ1 Γ2 HΓ. induction e=>Γ1 Γ2 HΓ; simpl;
+    first [ done
+          | apply IHe; eauto
+          | rewrite (IHe1 Γ1 Γ2) //;
+            rewrite (IHe2 Γ1 Γ2) //;
+            rewrite (IHe3 Γ1 Γ2) //
+          | rewrite (IHe1 Γ1 Γ2) //;
+            rewrite (IHe2 Γ1 Γ2) //
+          | idtac ];
+    try by (destruct f, x; simpl; eauto).
+  { apply bool_decide_iff.
+    by rewrite HΓ. }
+Qed.
 
 Section fundamental.
   Context `{!heapDG Σ}.
@@ -116,6 +145,7 @@ Section fundamental.
 
   Notation "Γ '⊧' e ':' τ" := (sem_typed Γ e τ)
   (at level 100, e at next level, τ at level 200).
+
 
   Lemma fundamental Γ e τ : has_type Γ e τ → Γ ⊧ e : τ.
   Proof.
@@ -156,10 +186,19 @@ Section fundamental.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
       + by iApply IHhas_type3.
-    - iApply logrel_if_flat=>//.
-      + by iApply IHhas_type1.
-      + by iApply IHhas_type2.
-      + by iApply IHhas_type3.
+    - iPoseProof (IHhas_type3 with "HΓ HI") as "H3".
+      iPoseProof (IHhas_type2 with "HΓ HI") as "H2".
+      iDestruct (big_sepM2_dom with "HΓ") as %Hfoo.
+      rewrite -(dom_fmap_L fst) in Hfoo.
+      iDestruct (big_sepM2_dom with "HΓ") as %Hbar.
+      rewrite -(dom_fmap_L snd) in Hbar.
+      (* TODO: name for the hypothesis H *)
+      destruct (almost_val_subst_map _ _ v1 H Hfoo) as [w1 ->].
+      destruct (almost_val_subst_map _ _ v1 H Hbar) as [w1' ->].
+      destruct (almost_val_subst_map _ _ v2 H0 Hfoo) as [w2' ->].
+      destruct (almost_val_subst_map _ _ v2 H0 Hbar) as [w2 ->].
+      iApply logrel_if_flat=>//.
+      by iApply IHhas_type1.
     - iApply logrel_match.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
@@ -167,6 +206,44 @@ Section fundamental.
         pose (γ' := (<[x:=(v1,v2)]>γ)).
         iDestruct (IHhas_type3 γ' with "[-] HI") as "H".
         { iApply (subst_valid_insert with "Hv HΓ"). }
+        rewrite /γ'. rewrite /insert /insert_binder.
+        rewrite !binder_insert_fmap.
+        destruct x as [|x];
+          simpl; rewrite ?subst_map_insert; try iApply "H".
+    - iPoseProof (IHhas_type2 with "HΓ HI") as "H2".
+      iDestruct (big_sepM2_dom with "HΓ") as %Hfoo.
+      rewrite -(dom_fmap_L fst) in Hfoo.
+      iDestruct (big_sepM2_dom with "HΓ") as %Hbar.
+      rewrite -(dom_fmap_L snd) in Hbar.
+      destruct (almost_val_subst_map _ _ t1 H1 Hfoo) as [w1 ->].
+      destruct (almost_val_subst_map _ _ t1 H1 Hbar) as [w1' ->].
+      iApply logrel_match_flat =>//.
+      (* XXX figure out a general lemma *)
+      { destruct x; simpl.
+        - revert H2. compute[singleton singleton_binder].
+          intros ?. eapply almost_val_union; eauto.
+        - assert ({[s]} ∪ dom stringset Γ =
+                  {[s]} ∪ (dom _ Γ ∖ {[s]})) as Hsg.
+          { unfold_leibniz. intros x.
+            destruct (decide (x = s)); naive_solver set_solver. }
+          rewrite Hsg in H2.
+          eapply almost_val_union; eauto.
+          by rewrite dom_delete_L Hfoo. }
+      { destruct x; simpl.
+        - revert H2. compute[singleton singleton_binder].
+          intros ?. eapply almost_val_union; eauto.
+        - assert ({[s]} ∪ dom stringset Γ =
+                  {[s]} ∪ (dom _ Γ ∖ {[s]})) as Hsg.
+          { unfold_leibniz. intros x.
+            destruct (decide (x = s)); naive_solver set_solver. }
+          rewrite Hsg in H2.
+          eapply almost_val_union; eauto.
+          by rewrite dom_delete_L Hbar. }
+      + by iApply IHhas_type1.
+      + iIntros (i1 i2) "#Hi".
+        pose (γ' := (<[x:=(i1,i2)]>γ)).
+        iDestruct (IHhas_type3 γ' with "[-] HI") as "H".
+        { iApply (subst_valid_insert with "Hi HΓ"). }
         rewrite /γ'. rewrite /insert /insert_binder.
         rewrite !binder_insert_fmap.
         destruct x as [|x];

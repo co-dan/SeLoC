@@ -1,4 +1,5 @@
 From iris.algebra Require Import cmra.
+From iris.heap_lang Require Import lang metatheory.
 
 (** * Security lattice *)
 Inductive slevel := Low | High.
@@ -57,6 +58,12 @@ Proof. by destruct l1,l2,l3. Qed.
 Lemma join_mono_r (l1 l2 l3 : slevel) :
   l2 ⊑ l3 → l1 ⊔ l2 ⊑ l1 ⊔ l3.
 Proof. by destruct l1,l2,l3. Qed.
+Lemma meet_mono_l (l1 l2 l3 : slevel) :
+  l1 ⊑ l2 → l1 ⊓ l3 ⊑ l2 ⊓ l3.
+Proof. by destruct l1,l2,l3. Qed.
+Lemma meet_mono_r (l1 l2 l3 : slevel) :
+  l2 ⊑ l3 → l1 ⊓ l2 ⊑ l1 ⊓ l3.
+Proof. by destruct l1,l2,l3. Qed.
 Lemma join_leq_l (l1 l2 : slevel) : l1 ⊑ l1 ⊔ l2.
 Proof. by destruct l1,l2. Qed.
 Lemma join_leq_r (l1 l2 : slevel) : l1 ⊑ l2 ⊔ l1.
@@ -87,6 +94,31 @@ Proof. by destruct l1,l2,l3; inversion 1. Qed.
 Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
 Hint Resolve leq_join_max_1 leq_join_max_2.
 Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
+
+Instance slevel_leb_rewriterelation : RewriteRelation ((⊑) : relation slevel).
+Instance slevel_join_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (join (A:=slevel)).
+Proof.
+  intros l1 l1' H1 l2 l2' H2.
+  etrans; [ apply join_mono_l | ]; eauto.
+Qed.
+Instance slevel_join_proper_flip :
+  Proper (flip (⊑) ==> flip (⊑) ==> flip (⊑)) (join (A:=slevel)).
+Proof.
+  intros l1 l1' H1 l2 l2' H2.
+  etrans; [ apply join_mono_l | apply join_mono_r ]; done.
+Qed.
+Instance slevel_meet_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (meet (A:=slevel)).
+Proof.
+  intros l1 l1' H1 l2 l2' H2.
+  etrans; [ apply meet_mono_l | apply meet_mono_r ]; done.
+Qed.
+Instance slevel_meet_proper_flip :
+  Proper (flip (⊑) ==> flip (⊑) ==> flip (⊑)) (meet (A:=slevel)).
+Proof.
+  intros l1 l1' H1 l2 l2' H2.
+  etrans; [ apply meet_mono_l | apply meet_mono_r ]; done.
+Qed.
+
 
 Section slevelR_cmra.
   Implicit Types l : slevelO.
@@ -145,9 +177,23 @@ Inductive type :=
 | tbool (l : slevel) : type
 | tarrow (s t : type) (l : slevel)
 | tprod (t1 t2 : type)
-| toption (t : type) (* a /low/ option type *)
-| tref (t : type)
-.
+| tintoption (il l : slevel)
+| tref (t : type).
+
+(* "Flat types" are types τ for which the following typing rule is
+sound:
+
+  ⊢ v, w : τ      ⊢ e : bool high
+------------------------------------
+    ⊢ if e then v else w : τ
+*)
+Inductive  flat_type : type → Prop :=
+| tint_flat : flat_type (tint High)
+| tbool_flat : flat_type (tbool High)
+| tunit_flat : flat_type tunit
+| tprod_flat τ τ' : flat_type τ →
+                    flat_type τ' →
+                    flat_type (tprod τ τ').
 
 Definition tmutex_aux : seal (tref (tbool Low)). by eexists. Qed.
 Definition tmutex : type := tmutex_aux.(unseal).
@@ -163,7 +209,7 @@ Fixpoint type_measure (τ : type) : nat :=
   | tbool _ => 0
   | tarrow s t _ => type_measure s + type_measure t + 1
   | tprod τ1 τ2 => type_measure τ1 + type_measure τ2 + 1
-  | toption τ => type_measure τ + 1
+  | tintoption _ _ => 0
   | tref τ => type_measure τ + 1
   end.
 
@@ -175,7 +221,7 @@ Fixpoint stamp (τ : type) (l : slevel) : type :=
   | tbool l2 => tbool (l2 ⊔ l)
   | tprod τ1 τ2 => tprod (stamp τ1 l) (stamp τ2 l)
   | tarrow s t l2 => tarrow s t (l2 ⊔ l)
-  | toption τ => toption (stamp τ l)
+  | tintoption il l2 => tintoption il (l2 ⊔ l)
   | tref τ => tref τ
   end.
 Lemma stamp_measure (τ : type) (l : slevel) :
@@ -190,7 +236,7 @@ Fixpoint lbl (τ : type) : slevel :=
   | tbool α => α
   | tprod τ1 τ2 => lbl τ1 ⊔ lbl τ2
   | tarrow s t β => lbl t ⊔ β
-  | toption τ => lbl τ
+  | tintoption il α => il ⊔ α
   | tref τ => lbl τ
   end.
 
@@ -209,9 +255,9 @@ Inductive type_sub : type → type → Prop :=
 | type_sub_bool l1 l2 :
     l1 ⊑ l2 →
     tbool l1 <: tbool l2
-| type_sub_option τ τ' :
-    τ <: τ'   →
-    toption τ <: toption τ'
+| type_sub_option il l1 l2:
+    l1 ⊑ l2 →
+    tintoption il l1 <: tintoption il l2
 | type_sub_arrow τ₁ τ₂ τ'₁ τ'₂ l l' :
     τ'₁ <: τ₁   →
     τ₂  <: τ'₂  →
@@ -246,18 +292,43 @@ Proof.
   by (rewrite IHτ1 IHτ2 || rewrite IHτ).
 Qed.
 
-(* "Flat types" are types τ for which the following typing rule is
-sound:
 
-  ⊢ v, w : τ      ⊢ e : bool high
-------------------------------------
-    ⊢ if e then v else w : τ
-*)
-Inductive flat_type : type → Prop :=
-| tint_flat : flat_type (tint High)
-| tbool_flat : flat_type (tbool High)
-| tunit_flat : flat_type tunit
-| tprod_flat τ τ' : flat_type τ →
-                    flat_type τ' →
-                    flat_type (tprod τ τ').
+From stdpp Require Import fin_sets gmap stringmap.
+Inductive almost_val : gset string → expr → Prop :=
+| is_a_value Γ v : almost_val Γ (Val v)
+| is_a_variable (x : string) Γ :
+    x ∈ Γ →
+    almost_val Γ (Var x).
 
+Lemma almost_val_mono Γ Γ' e :
+  Γ ⊆ Γ' →
+  almost_val Γ e →
+  almost_val Γ' e.
+Proof.
+  induction 2; constructor; set_solver.
+Qed.
+
+Lemma almost_val_subst_map X γ e :
+  almost_val X e →
+  X = dom _ γ →
+  ∃ (w : val), subst_map γ e = Val w.
+Proof.
+  intros Hv ->. inversion Hv; simplify_eq/=.
+  - eexists; eauto.
+  - apply elem_of_dom in H. destruct H as [w ->].
+    eexists; eauto.
+Qed.
+
+Lemma almost_val_union X Y γ e :
+  almost_val (X ∪ Y) e →
+  Y = dom _ γ →
+  almost_val X (subst_map γ e).
+Proof.
+  intros He ->.
+  inversion He; simplify_eq/=; first by constructor.
+  apply elem_of_union in H.
+  destruct (γ !! x) as [v|] eqn:Hx; first by constructor.
+  econstructor. destruct H; try done.
+  exfalso. apply elem_of_dom in H. destruct H as [??].
+  naive_solver.
+Qed.
