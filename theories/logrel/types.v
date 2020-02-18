@@ -326,9 +326,7 @@ Lemma almost_val_union X Y γ e :
 Proof.
   intros He ->.
   inversion He; simplify_eq/=; first by constructor.
-  apply elem_of_union in H.
   destruct (γ !! x) as [v|] eqn:Hx; first by constructor.
-  econstructor. destruct H; try done.
-  exfalso. apply elem_of_dom in H. destruct H as [??].
-  naive_solver.
+  econstructor. apply (not_elem_of_dom (D:=stringset)) in Hx.
+  set_solver.
 Qed.
