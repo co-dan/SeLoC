@@ -330,3 +330,17 @@ Proof.
   econstructor. apply (not_elem_of_dom (D:=stringset)) in Hx.
   set_solver.
 Qed.
+
+
+Inductive bin_op_int : bin_op → Prop :=
+| bin_op_int_plus : bin_op_int PlusOp
+| bin_op_int_mult : bin_op_int MultOp
+| bin_op_int_sub : bin_op_int MinusOp
+| bin_op_int_div : bin_op_int QuotOp.
+
+Lemma bin_op_int_safe (i1 i2 : Z) op :
+  bin_op_int op →
+  ∃ (z : Z), bin_op_eval op (LitV (LitInt i1)) (LitV (LitInt i2)) = Some (LitV (LitInt z)).
+Proof.
+  destruct op; inversion 1; eauto.
+Qed.

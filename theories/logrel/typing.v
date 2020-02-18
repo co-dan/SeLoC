@@ -41,6 +41,10 @@ Inductive has_type (Γ : stringmap type) :
     has_type (<[f:=tarrow τ τ' χ]>(<[x:=τ]>Γ)) e (stamp τ' χ) →
     has_type Γ (rec: f x := e) (tarrow τ τ' χ)
 (* destructors *)
+| App_typed e1 e2 τ τ' χ :
+    has_type Γ e1 (tarrow τ τ' χ) →
+    has_type Γ e2 τ →
+    has_type Γ (e1 e2) (stamp τ' χ)
 | If_typed e e1 e2 χ τ :
     has_type Γ e (tbool χ) →
     χ ⊑ ξ →
@@ -70,6 +74,16 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ t1 τ' →
     has_type (<[x:=(tint High)]>Γ) t2 τ' →
     has_type Γ (match: e with NONE => t1 | SOME x => t2 end) τ'
+(* math operations *)
+| BinOp_int_typed e1 e2 l1 l2 op :
+    bin_op_int op →
+    has_type Γ e1 (tint l1) →
+    has_type Γ e2 (tint l2) →
+    has_type Γ (BinOp op e1 e2) (tint (l1 ⊔ l2))
+| Eq_typed e1 e2 l1 l2 :
+    has_type Γ e1 (tint l1) →
+    has_type Γ e2 (tint l2) →
+    has_type Γ (e1 = e2) (tbool (l1 ⊔ l2))
 (* effects *)
 | Fork_typed e τ :
     has_type Γ e τ →
@@ -182,6 +196,9 @@ Section fundamental.
       + rewrite !delete_insert_ne // subst_map_insert.
         rewrite !(subst_subst_ne _ x f) // subst_map_insert.
         iApply "H".
+    - iApply logrel_app.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
     - iApply logrel_if_low=>//.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
@@ -248,6 +265,12 @@ Section fundamental.
         rewrite !binder_insert_fmap.
         destruct x as [|x];
           simpl; rewrite ?subst_map_insert; try iApply "H".
+    - iApply logrel_binop_int=>//.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
+    - iApply logrel_binop_eq.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
     - iApply dwp_fork; last by eauto.
       iNext. iApply dwp_wand.
       + iApply (IHhas_type with "HΓ HI").

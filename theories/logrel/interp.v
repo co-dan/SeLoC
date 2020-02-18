@@ -344,10 +344,33 @@ Section rules.
     iExists b1, b2. iPureIntro. naive_solver.
   Qed.
 
-  Lemma logrel_binop e1 e2 t1 t2 l1 l2 ξ :
+  Lemma logrel_binop_int e1 e2 t1 t2 l1 l2 ξ op :
+    bin_op_int op →
     (DWP e1 & e2 : ⟦ tint l1 ⟧ ξ) -∗
     (DWP t1 & t2 : ⟦ tint l2 ⟧ ξ) -∗
-    DWP e1 + t1 & e2 + t2 : ⟦ tint (l1 ⊔ l2) ⟧ ξ.
+    DWP BinOp op e1 t1 & BinOp op e2 t2 : ⟦ tint (l1 ⊔ l2) ⟧ ξ.
+  Proof.
+    iIntros (Hop) "He Ht".
+    dwp_bind t1 t2. iApply (dwp_wand with "Ht").
+    iIntros (w1 w2) "Hw".
+
+    dwp_bind e1 e2. iApply (dwp_wand with "He").
+    iIntros (v1 v2) "Hv".
+
+    iDestruct "Hw" as (m1 m2 -> ->) "%".
+    iDestruct "Hv" as (n1 n2 -> ->) "%".
+    destruct (bin_op_int_safe n1 m1 _ Hop) as [z1 Hz1].
+    destruct (bin_op_int_safe n2 m2 _ Hop) as [z2 Hz2].
+    dwp_pures.
+    iApply dwp_value. iModIntro.
+    iExists _,_. iPureIntro. repeat split; eauto.
+    intros ?%join_leq. naive_solver.
+  Qed.
+
+  Lemma logrel_binop_eq e1 e2 t1 t2 l1 l2 ξ :
+    (DWP e1 & e2 : ⟦ tint l1 ⟧ ξ) -∗
+    (DWP t1 & t2 : ⟦ tint l2 ⟧ ξ) -∗
+    DWP e1 = t1 & e2 = t2 : ⟦ tbool (l1 ⊔ l2) ⟧ ξ.
   Proof.
     iIntros "He Ht".
     dwp_bind t1 t2. iApply (dwp_wand with "Ht").

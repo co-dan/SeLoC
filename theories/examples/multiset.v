@@ -432,7 +432,8 @@ Section proof.
 
       dwp_bind (_ + _)%E (_ + _)%E.
       iApply dwp_wand.
-      { iApply logrel_binop; iApply dwp_value; first by iFrame.
+      { (iApply logrel_binop_int; first by constructor);
+          iApply dwp_value; first by iFrame.
         iModIntro. iExists _; eauto with iFrame. }
 
       iIntros (z1 z2) "Hz".
@@ -527,7 +528,8 @@ Section proof.
     iIntros (m1 m2) "Hls #Hm".
 
     iApply dwp_wand.
-    { iApply logrel_binop; iApply dwp_value; eauto with iFrame. }
+    { (iApply logrel_binop_int; try by constructor);
+      iApply dwp_value; eauto with iFrame. }
 
     iIntros (z1 z2) "Hz".
     rewrite (left_id Low).
