@@ -331,7 +331,6 @@ Proof.
   set_solver.
 Qed.
 
-
 Inductive bin_op_int : bin_op → Prop :=
 | bin_op_int_plus : bin_op_int PlusOp
 | bin_op_int_mult : bin_op_int MultOp
@@ -344,3 +343,23 @@ Lemma bin_op_int_safe (i1 i2 : Z) op :
 Proof.
   destruct op; inversion 1; eauto.
 Qed.
+
+Inductive bin_op_int_bool : bin_op → Prop :=
+| bin_op_int_lt : bin_op_int_bool LtOp
+| bin_op_int_le : bin_op_int_bool LeOp
+| bin_op_int_eq : bin_op_int_bool EqOp.
+
+Lemma bin_op_int_bool_safe (i1 i2 : Z) op :
+  bin_op_int_bool op →
+  ∃ (b : bool), bin_op_eval op (LitV (LitInt i1)) (LitV (LitInt i2)) = Some (LitV (LitBool b)).
+Proof.
+  destruct op; inversion 1; eauto.
+Qed.
+
+
+Delimit Scope FType_scope with ty.
+Bind Scope FType_scope with type.
+Infix "*" := tprod : FType_scope.
+Notation "(*)" := tprod (only parsing) : FType_scope.
+Notation "A '→' B" := (tarrow A B Low) : FType_scope.
+

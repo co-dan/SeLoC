@@ -367,12 +367,13 @@ Section rules.
     intros ?%join_leq. naive_solver.
   Qed.
 
-  Lemma logrel_binop_eq e1 e2 t1 t2 l1 l2 ξ :
+  Lemma logrel_binop_int_bool e1 e2 t1 t2 l1 l2 ξ op :
+    bin_op_int_bool op →
     (DWP e1 & e2 : ⟦ tint l1 ⟧ ξ) -∗
     (DWP t1 & t2 : ⟦ tint l2 ⟧ ξ) -∗
-    DWP e1 = t1 & e2 = t2 : ⟦ tbool (l1 ⊔ l2) ⟧ ξ.
+    DWP BinOp op e1 t1 & BinOp op e2 t2 : ⟦ tbool (l1 ⊔ l2) ⟧ ξ.
   Proof.
-    iIntros "He Ht".
+    iIntros (Hop) "He Ht".
     dwp_bind t1 t2. iApply (dwp_wand with "Ht").
     iIntros (w1 w2) "Hw".
 
@@ -381,6 +382,8 @@ Section rules.
 
     iDestruct "Hw" as (m1 m2 -> ->) "%".
     iDestruct "Hv" as (n1 n2 -> ->) "%".
+    destruct (bin_op_int_bool_safe n1 m1 _ Hop) as [b1 Hb1].
+    destruct (bin_op_int_bool_safe n2 m2 _ Hop) as [b2 Hb2].
     dwp_pures.
     iApply dwp_value. iModIntro.
     iExists _,_. iPureIntro. repeat split; eauto.

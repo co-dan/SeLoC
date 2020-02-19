@@ -80,10 +80,11 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e1 (tint l1) →
     has_type Γ e2 (tint l2) →
     has_type Γ (BinOp op e1 e2) (tint (l1 ⊔ l2))
-| Eq_typed e1 e2 l1 l2 :
+| BinOp_int_bool_typed e1 e2 l1 l2 op :
+    bin_op_int_bool op →
     has_type Γ e1 (tint l1) →
     has_type Γ e2 (tint l2) →
-    has_type Γ (e1 = e2) (tbool (l1 ⊔ l2))
+    has_type Γ (BinOp op e1 e2) (tbool (l1 ⊔ l2))
 (* effects *)
 | Fork_typed e τ :
     has_type Γ e τ →
@@ -268,7 +269,7 @@ Section fundamental.
     - iApply logrel_binop_int=>//.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
-    - iApply logrel_binop_eq.
+    - iApply logrel_binop_int_bool=>//.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
     - iApply dwp_fork; last by eauto.
