@@ -190,24 +190,28 @@ Section semtypes.
     - iDestruct 1 as (i1 i2 -> ->) "H". iDestruct "H" as %HH.
       iExists i1,i2.
       repeat iSplit; eauto with iFrame. iPureIntro.
-      intros ?. apply HH. transitivity (l ⊔ l2); auto.
+      intros ?. apply HH. transitivity (l ⊔ l2); eauto.
+      by apply join_mono_r.
     - iDestruct 1 as (i1 i2 -> ->) "H". iDestruct "H" as %HH.
       iExists i1,i2.
       repeat iSplit; eauto with iFrame. iPureIntro.
       intros ?. apply HH. transitivity (l ⊔ l2); auto.
+      by apply join_mono_r.
     - iIntros "#H". iAlways. iIntros (w1 w2) "Hw".
       iSpecialize ("H" with "Hw").
       iApply (dwp_wand with "H").
       iIntros (x1 x2) "H". iApply (IHτ2 with "H").
-      eauto.
+      by apply join_mono_r.
     - iDestruct 1 as (x1 x2 y1 y2 -> ->) "[H1 H2]".
       iExists _,_,_,_.
       repeat iSplit; eauto with iFrame.
       + iApply IHτ1; eauto.
       + iApply IHτ2; eauto.
     - iIntros "H". iSplit.
-      + iIntros (Hl2). rewrite <- Hlab in Hl2.
-        iDestruct "H" as "[H _]". iApply ("H" $! Hl2).
+      + iIntros (Hl2).
+        iDestruct "H" as "[H _]".
+        rewrite Hlab.
+        iApply ("H" $! Hl2).
       + iIntros (Hl2).
         destruct (decide ((l ⊔ l1 ⊑ ξ))) as [Hl1|Hl1].
         * iDestruct "H" as "[H _]". iSpecialize ("H" $! Hl1).
@@ -224,7 +228,7 @@ Section semtypes.
     - reflexivity.
   Qed.
 
-  Lemma interp_sub_mono_general τ1 τ2 l1 l2 ξ v1 v2 :
+  Lemma interp_sub_mono_general (τ1 τ2 : type) l1 l2 ξ v1 v2 :
     τ1 <: τ2 →
     l1 ⊑ l2 →
     interp (stamp τ1 l1) ξ v1 v2 -∗ interp (stamp τ2 l2) ξ v1 v2.
@@ -367,6 +371,29 @@ Section rules.
     intros ?%join_leq. naive_solver.
   Qed.
 
+  Lemma logrel_binop_bool e1 e2 t1 t2 l1 l2 ξ op :
+    bin_op_bool op →
+    (DWP e1 & e2 : ⟦ tbool l1 ⟧ ξ) -∗
+    (DWP t1 & t2 : ⟦ tbool l2 ⟧ ξ) -∗
+    DWP BinOp op e1 t1 & BinOp op e2 t2 : ⟦ tbool (l1 ⊔ l2) ⟧ ξ.
+  Proof.
+    iIntros (Hop) "He Ht".
+    dwp_bind t1 t2. iApply (dwp_wand with "Ht").
+    iIntros (w1 w2) "Hw".
+
+    dwp_bind e1 e2. iApply (dwp_wand with "He").
+    iIntros (v1 v2) "Hv".
+
+    iDestruct "Hw" as (m1 m2 -> ->) "%".
+    iDestruct "Hv" as (n1 n2 -> ->) "%".
+    destruct (bin_op_bool_safe n1 m1 _ Hop) as [z1 Hz1].
+    destruct (bin_op_bool_safe n2 m2 _ Hop) as [z2 Hz2].
+    dwp_pures.
+    iApply dwp_value. iModIntro.
+    iExists _,_. iPureIntro. repeat split; eauto.
+    intros ?%join_leq. naive_solver.
+  Qed.
+
   Lemma logrel_binop_int_bool e1 e2 t1 t2 l1 l2 ξ op :
     bin_op_int_bool op →
     (DWP e1 & e2 : ⟦ tint l1 ⟧ ξ) -∗
@@ -388,6 +415,46 @@ Section rules.
     iApply dwp_value. iModIntro.
     iExists _,_. iPureIntro. repeat split; eauto.
     intros ?%join_leq. naive_solver.
+  Qed.
+
+  Lemma logrel_prod ξ e1 e2 t1 t2 τ τ' :
+    (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
+    (DWP t1 & t2 : ⟦ τ' ⟧ ξ) -∗
+    DWP (e1, t1) & (e2, t2) : ⟦ τ * τ' ⟧ ξ.
+  Proof.
+    iIntros "He Ht".
+    dwp_bind t1 t2.
+    iApply (dwp_wand with "Ht").
+    iIntros (v1 v2) "#Hv".
+    dwp_bind e1 e2.
+    iApply (dwp_wand with "He").
+    iIntros (w1 w2) "#Hw".
+    dwp_pures.
+    iApply dwp_value.
+    iModIntro. rewrite (interp_eq (tprod _ _)).
+    iExists _,_,_,_. repeat iSplit; eauto.
+  Qed.
+
+  Lemma logrel_fst ξ e1 e2 τ τ' :
+    (DWP e1 & e2 : ⟦ τ * τ' ⟧ ξ) -∗
+    DWP Fst e1 & Fst e2 : ⟦ τ ⟧ ξ.
+  Proof.
+    iIntros "He". dwp_bind e1 e2.
+    iApply (dwp_wand with "He").
+    iIntros (? ?). rewrite interp_eq.
+    iDestruct 1 as (v1 v2 w1 w2 -> ->) "[#Hv #Hw]".
+    dwp_pures. by iApply dwp_value.
+  Qed.
+
+  Lemma logrel_snd ξ e1 e2 τ τ' :
+    (DWP e1 & e2 : ⟦ τ * τ' ⟧ ξ) -∗
+    DWP Snd e1 & Snd e2 : ⟦ τ' ⟧ ξ.
+  Proof.
+    iIntros "He". dwp_bind e1 e2.
+    iApply (dwp_wand with "He").
+    iIntros (? ?). rewrite interp_eq.
+    iDestruct 1 as (v1 v2 w1 w2 -> ->) "[#Hv #Hw]".
+    dwp_pures. by iApply dwp_value.
   Qed.
 
   Lemma logrel_if ξ A e1 e2 t1 t2 u1 u2 l :

@@ -1,5 +1,6 @@
 From iris.algebra Require Import cmra.
 From iris.heap_lang Require Import lang metatheory.
+From stdpp Require Import fin_sets gmap stringmap.
 
 (** * Security lattice *)
 Inductive slevel := Low | High.
@@ -91,28 +92,30 @@ Lemma join_leq (l1 l2 l3 : slevel) :
   l1 ⊔ l2 ⊑ l3 → l1 ⊑ l3 ∧ l2 ⊑ l3.
 Proof. by destruct l1,l2,l3; inversion 1. Qed.
 
-Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
-Hint Resolve leq_join_max_1 leq_join_max_2.
-Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
+Section local.
 
-Instance slevel_leb_rewriterelation : RewriteRelation ((⊑) : relation slevel).
-Instance slevel_join_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (join (A:=slevel)).
+Local Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
+Local Hint Resolve leq_join_max_1 leq_join_max_2.
+Local Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
+
+Global Instance slevel_leb_rewriterelation : RewriteRelation ((⊑) : relation slevel).
+Global Instance slevel_join_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (join (A:=slevel)).
 Proof.
   intros l1 l1' H1 l2 l2' H2.
   etrans; [ apply join_mono_l | ]; eauto.
 Qed.
-Instance slevel_join_proper_flip :
+Global Instance slevel_join_proper_flip :
   Proper (flip (⊑) ==> flip (⊑) ==> flip (⊑)) (join (A:=slevel)).
 Proof.
   intros l1 l1' H1 l2 l2' H2.
   etrans; [ apply join_mono_l | apply join_mono_r ]; done.
 Qed.
-Instance slevel_meet_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (meet (A:=slevel)).
+Global Instance slevel_meet_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (meet (A:=slevel)).
 Proof.
   intros l1 l1' H1 l2 l2' H2.
   etrans; [ apply meet_mono_l | apply meet_mono_r ]; done.
 Qed.
-Instance slevel_meet_proper_flip :
+Global Instance slevel_meet_proper_flip :
   Proper (flip (⊑) ==> flip (⊑) ==> flip (⊑)) (meet (A:=slevel)).
 Proof.
   intros l1 l1' H1 l2 l2' H2.
@@ -199,7 +202,7 @@ Definition tmutex_aux : seal (tref (tbool Low)). by eexists. Qed.
 Definition tmutex : type := tmutex_aux.(unseal).
 Definition tmutex_eq : tmutex = tref (tbool Low) := tmutex_aux.(seal_eq).
 
-Instance type_eqdec : EqDecision type.
+Global Instance type_eqdec : EqDecision type.
 Proof. solve_decision. Qed.
 
 Fixpoint type_measure (τ : type) : nat :=
@@ -269,13 +272,13 @@ Inductive type_sub : type → type → Prop :=
     tprod τ₁ σ₁ <: tprod τ₂ σ₂
 where "τ '<:' σ" := (type_sub τ σ).
 
-Hint Constructors type_sub.
+Local Hint Constructors type_sub.
 
-Instance type_sub_reflexive : Reflexive type_sub.
+Global Instance type_sub_reflexive : Reflexive type_sub.
 Proof. by constructor. Qed.
-Instance type_sub_transitive : Transitive type_sub.
+Global Instance type_sub_transitive : Transitive type_sub.
 Proof. intros ?????. by econstructor. Qed.
-Instance type_sub_preorder : PreOrder type_sub.
+Global Instance type_sub_preorder : PreOrder type_sub.
 Proof. split; apply _. Qed.
 
 Lemma stamp_sub τ l : τ <: stamp τ l.
@@ -292,8 +295,8 @@ Proof.
   by (rewrite IHτ1 IHτ2 || rewrite IHτ).
 Qed.
 
+End local.
 
-From stdpp Require Import fin_sets gmap stringmap.
 Inductive almost_val : gset string → expr → Prop :=
 | is_a_value Γ v : almost_val Γ (Val v)
 | is_a_variable (x : string) Γ :
@@ -356,10 +359,22 @@ Proof.
   destruct op; inversion 1; eauto.
 Qed.
 
+Inductive bin_op_bool : bin_op → Prop :=
+| bin_op_bool_and : bin_op_bool AndOp
+| bin_op_bool_or : bin_op_bool OrOp.
+
+Lemma bin_op_bool_safe (b1 b2 : bool) op :
+  bin_op_bool op →
+  ∃ (b : bool), bin_op_eval op (LitV (LitBool b1)) (LitV (LitBool b2)) = Some (LitV (LitBool b)).
+Proof.
+  destruct op; inversion 1; eauto.
+Qed.
+
 
 Delimit Scope FType_scope with ty.
 Bind Scope FType_scope with type.
 Infix "*" := tprod : FType_scope.
 Notation "(*)" := tprod (only parsing) : FType_scope.
 Notation "A '→' B" := (tarrow A B Low) : FType_scope.
+Notation "τ '<:' σ" := (type_sub τ σ) (at level 50).
 

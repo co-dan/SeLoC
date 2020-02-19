@@ -32,6 +32,10 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ #b (tbool χ)
 | Unit_typed :
     has_type Γ #() tunit
+| Prod_typed e1 e2 τ τ' :
+    has_type Γ e1 τ →
+    has_type Γ e2 τ' →
+    has_type Γ (e1, e2) (τ * τ')%ty
 | None_typed il χ :
     has_type Γ NONE (tintoption il χ)
 | Some_typed il e χ :
@@ -41,6 +45,12 @@ Inductive has_type (Γ : stringmap type) :
     has_type (<[f:=tarrow τ τ' χ]>(<[x:=τ]>Γ)) e (stamp τ' χ) →
     has_type Γ (rec: f x := e) (tarrow τ τ' χ)
 (* destructors *)
+| Fst_typed e τ τ' :
+    has_type Γ e (τ * τ')%ty →
+    has_type Γ (Fst e) τ
+| Snd_typed e τ τ' :
+    has_type Γ e (τ * τ')%ty →
+    has_type Γ (Snd e) τ'
 | App_typed e1 e2 τ τ' χ :
     has_type Γ e1 (tarrow τ τ' χ) →
     has_type Γ e2 τ →
@@ -80,6 +90,11 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e1 (tint l1) →
     has_type Γ e2 (tint l2) →
     has_type Γ (BinOp op e1 e2) (tint (l1 ⊔ l2))
+| BinOp_bool_typed e1 e2 l1 l2 op :
+    bin_op_bool op →
+    has_type Γ e1 (tbool l1) →
+    has_type Γ e2 (tbool l2) →
+    has_type Γ (BinOp op e1 e2) (tbool (l1 ⊔ l2))
 | BinOp_int_bool_typed e1 e2 l1 l2 op :
     bin_op_int_bool op →
     has_type Γ e1 (tint l1) →
@@ -174,6 +189,9 @@ Section fundamental.
     - iApply logrel_int.
     - iApply logrel_bool.
     - iApply logrel_unit.
+    - iApply logrel_prod.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
     - dwp_pures. iApply logrel_none.
     - dwp_bind (subst_map _ e) (subst_map _ e).
       iApply dwp_wand.
@@ -197,6 +215,8 @@ Section fundamental.
       + rewrite !delete_insert_ne // subst_map_insert.
         rewrite !(subst_subst_ne _ x f) // subst_map_insert.
         iApply "H".
+    - iApply logrel_fst. by iApply IHhas_type.
+    - iApply logrel_snd. by iApply IHhas_type.
     - iApply logrel_app.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
@@ -267,6 +287,9 @@ Section fundamental.
         destruct x as [|x];
           simpl; rewrite ?subst_map_insert; try iApply "H".
     - iApply logrel_binop_int=>//.
+      + by iApply IHhas_type1.
+      + by iApply IHhas_type2.
+    - iApply logrel_binop_bool=>//.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.
     - iApply logrel_binop_int_bool=>//.
