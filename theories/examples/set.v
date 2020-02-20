@@ -21,8 +21,8 @@ Definition cap : expr := rec: "cap" "k" :=
 
 (* eq_option : option (int High) High → int High → bool High *)
 Definition eq_option : expr := λ: "o" "v2",
-  let: "v1" := "v2"+#1 in
-  let: "v1" := match: "o" with NONE => "v1" | SOME "v" => "v" end in
+  let: "w" := "v2"+#1 in (* pick something that is different from v2 *)
+  let: "v1" := match: "o" with NONE => "w" | SOME "v" => "v" end in
   "v1" = "v2".
 
 (* lte_option : option (int High) High → int High → bool High *)
@@ -50,6 +50,43 @@ Definition lookup_loop : expr :=
        "lookup_loop" "arr" ("k"-#1) "l" "r" "x" "is_found".
 
 
+(* insert_loop : ref (refN (option (int high))) -> ref (int low) →
+                 int low -> int low -> int high -> unit *)
+Definition insert_loop : expr :=
+  rec: "insert_loop" "arr_r" "k_r" "i" "sz" "x" :=
+  (* sz (= cap(k)), i just goes from 0 to sz
+     technically, we can recalculate sz from !k_r, but
+     we just pass it directly
+   *)
+  if: ("sz" ≤ "i")
+  then (* we need to resize the underlying array *)
+    "k_r" <- !"k_r"+#1;;
+    let: "arr2" := "make" (cap (!"k_r")) NONE in
+    "copy" !"arr_r" "arr2" "sz";;
+    "set" "arr2" "i" (SOME "x");;
+    "arr_r" <- "arr2"
+  else
+    let: "r" := "get" (!"arr_r") "i" in
+    match: "r" with
+    (* the current position is availabe *)
+      NONE => "set" (!"arr_r") "i" (SOME "x")
+    | SOME "v" =>
+       (* NB: we have to keep duplicates when inserting! otherwise
+              an attacker can learn the contents of the array by
+              trying to force the resize operation and see if they
+              succeed. *)
+       (* We also pre-allocate both tuples even though we are going to
+          use only one of them . *)
+      (* the first project is what we are going to insert at the current position,
+         the second element is what we are going to push further in the array *)
+      let: "xv" := ("x", "v") in
+      let: "vx" := ("v", "x") in
+      let: "pp" := if: ("x" ≤ "v") then "xv" else "vx" in
+      let: "p1" := Fst "pp" in
+      let: "p2" := Snd "pp" in
+      "set" (!"arr_r") "i" (SOME "p1");;
+      "insert_loop" "arr_r" "k_r" ("i"+#1) "sz" "p2"
+    end.
 
 
 Lemma BinOp_int_typed' 𝔏 ξ Γ e1 e2 l2 l3 op :
@@ -143,6 +180,16 @@ Proof.
   by eapply App_typed.
 Qed.
 
+Lemma Seq_typed 𝔏 ξ Γ e1 e2 τ :
+  has_type 𝔏 ξ Γ e1 tunit →
+  has_type 𝔏 ξ Γ e2 τ →
+  has_type 𝔏 ξ Γ (e1;; e2) τ.
+Proof.
+  intros. rewrite -(stamp_low τ).
+  eapply App_typed; last done.
+  eapply Rec_typed. rewrite stamp_low. by compute.
+Qed.
+
 Lemma Rec_typed' 𝔏 ξ Γ e f x τ τ' :
   has_type 𝔏 ξ (<[f:=(τ → τ')%ty]> (<[x:=τ]> Γ)) e τ' →
   has_type 𝔏 ξ Γ (rec: f x := e) (τ → τ').
@@ -205,15 +252,12 @@ Hint Resolve App_typed' : typed.
 Remove Hints Rec_typed : typed.
 Hint Resolve Rec_typed' : typed.
 
+Hint Resolve Seq_typed : typed.
+
 Section typed.
 
   Variable 𝔏 : gset loc.
   Variable arr_t : type.
-  Definition ctx : stringmap type :=
-    <["get":=(arr_t → tint High → tintoption High High)%ty]>{["make":=(tunit → arr_t)%ty]}.
-
-  Definition ctx_ Γ : stringmap type :=
-    <["get":=(arr_t → tint High → tintoption High High)%ty]>(<["make":=(tunit → arr_t)%ty]>Γ).
 
   Lemma cap_typed Γ : has_type 𝔏 Low Γ cap (tint Low → tint Low).
   Proof.
@@ -241,7 +285,7 @@ Section typed.
   Hint Resolve lte_option_typed : typed.
 
   Lemma lookup_loop_typed Γ :
-    Γ !! "get" = Some (arr_t → tint High → tintoption High High)%ty →
+    Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
     has_type 𝔏 Low Γ lookup_loop
              (arr_t → tint Low → tint High → tint High → tint High → tbool High → tbool High).
   Proof.
@@ -253,5 +297,60 @@ Section typed.
     eapply App_typed'; eauto 500 with typed.
   Qed.
 
+  Lemma insert_loop_typed Γ :
+    Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
+    Γ !! "set" = Some (arr_t → tint High → tintoption High Low → tunit)%ty →
+    Γ !! "make" = Some (tint Low → tintoption High Low → arr_t)%ty →
+    Γ !! "copy" = Some (arr_t → arr_t → tint Low → tunit)%ty →
+    has_type 𝔏 Low Γ insert_loop
+      (tref arr_t → tref (tint Low) → tint Low → tint Low → tint High → tunit)%ty.
+  Proof.
+    intros.
+    unfold insert_loop.
+    repeat eapply Rec_typed'.
+    eapply If_typed';[eauto 10 with typed..|].
+    - eapply Seq_typed; first eauto 20 with typed.
+      eapply App_typed'.
+      { eapply App_typed'; eauto 50 with typed. }
+      eapply Rec_typed'.
+      eapply Seq_typed.
+      { eapply App_typed'; eauto 50 with typed. }
+      eapply Seq_typed.
+      { eapply App_typed'; first eauto 50 with typed.
+        eapply App_typed'.
+        - eapply Sub_typed. (*XXX*)
+          eauto with typed. apply (type_sub_int _ High). done.
+        - eapply App_typed'; eauto 50 with typed. }
+      eauto 50 with typed.
+    - eapply App_typed'.
+      { eapply App_typed'.
+        { eapply Sub_typed. (*XXX*)
+          eauto with typed. apply (type_sub_int _ High). done. }
+        eauto 50 with typed. }
+      eapply Rec_typed'.
+      eapply Match_typed; first eauto with typed.
+      { eapply App_typed'; first eauto with typed.
+        eapply App_typed'.
+        { eapply Sub_typed. (*XXX*)
+          eauto with typed. apply (type_sub_int _ High). done. }
+        eauto 50 with typed. }
+      eapply App_typed'; first eauto 50 with typed.
+      eapply Rec_typed'.
+      eapply App_typed'; first eauto 50 with typed.
+      eapply Rec_typed'.
+      eapply App_typed'; first eauto 50 with typed.
+      eapply Rec_typed'.
+      eapply App_typed'; first eauto 50 with typed.
+      eapply Rec_typed'.
+      eapply App_typed'; first eauto 50 with typed.
+      eapply Rec_typed'.
+      eapply Seq_typed.
+      + eapply App_typed'; first eauto with typed.
+        eapply App_typed'.
+        { eapply Sub_typed. (*XXX*)
+          eauto 50 with typed. apply (type_sub_int _ High). done. }
+        eauto 50 with typed.
+      + eauto 100 with typed.
+  Qed.
 
 End typed.
