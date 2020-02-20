@@ -22,8 +22,8 @@ Definition set : val := λ: "arr" "i" "v",
   let: "iii" := if: BinOp AndOp (#0 ≤ "i") ("i" < "n") then "ii" else #0 in
   "a" +ₗ "iii" <- "v".
 
-(* get : array τ → int^α → τ → τ *)
-Definition get : val := λ: "arr" "i" "dummy",
+(* get : array τ → int^α → τ *)
+Definition get : val := λ: "arr" "i",
   let: "a" := Fst "arr" in
   let: "n" := Snd "arr" in
   let: "ii" := "i" + #1 in
@@ -176,18 +176,16 @@ Section spec.
   Qed.
 
   (** ** Main 'get' typing *)
-  Lemma get_spec (a1 a2 : val) v1 v2 d1 d2 A ξ :
+  Lemma get_spec (a1 a2 : val) v1 v2 A ξ :
     pseudo_refl A ξ →
     contractible A ξ →
     lrel_array A ξ a1 a2 -∗
     ⟦ tint High ⟧ ξ v1 v2 -∗
-    A ξ d1 d2 -∗
-    DWP get a1 v1 d1 & get a2 v2 d2 : A ξ.
+    DWP get a1 v1 & get a2 v2 : A ξ.
   Proof.
     iIntros (PR C).
     iDestruct 1 as (l1 l2 n -> ->) "Ha".
     iDestruct 1 as (i1 i2 -> ->) "_".
-    iIntros "#Hd".
     rewrite /get. dwp_pures.
     repeat case_bool_decide; dwp_pures; iApply (array_get_both with "Ha"); auto with lia.
   Qed.
