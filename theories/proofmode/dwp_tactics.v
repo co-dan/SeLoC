@@ -96,5 +96,5 @@ Tactic Notation "iCinv" constr(cinv1) constr(cinv2) "as"
   let P := iFresh in
   let tmppat1 := eval vm_compute in (fmt_cinv_names cinv1 cinv2) in
   let tmppat2 := eval vm_compute in (fmt_triple P cinv2 Hclose) in
-  iMod (cinv_open with tmppat1) as tmppat2; first try solve_ndisj;
+  iMod (cinv_acc with tmppat1) as tmppat2; first try solve_ndisj;
     last iDestruct P as (x1) pat.

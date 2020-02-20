@@ -140,15 +140,11 @@ Section spec.
     iIntros (PR C Hi1 Hi2) "Ha".
     assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
     (* XXX on Coq 8.9 lia doesn't solve these goals... *)
-    { exists (Z.to_nat i1). rewrite !Z2Nat.id; try lia.
-      split; eauto. rewrite -(Nat2Z.id n).
-      apply Z2Nat.inj_lt; lia.
-    }
+    { exists (Z.to_nat i1). rewrite !Z2Nat.id; last lia.
+      split; first done. rewrite -(Nat2Z.id n) -Z2Nat.inj_lt; lia. }
     assert (∃ i2' : nat, i2 = i2' ∧ i2' < n)%nat as (i2' & -> & ?).
-    { exists (Z.to_nat i2). rewrite !Z2Nat.id; try lia.
-      split; eauto. rewrite -(Nat2Z.id n).
-      apply Z2Nat.inj_lt; lia.
-    }
+    { exists (Z.to_nat i2). rewrite !Z2Nat.id; last lia.
+      split; first done. rewrite -(Nat2Z.id n) -Z2Nat.inj_lt; lia. }
     iApply dwp_atomic.
     iInv (locsN.@(l1, l2)) as
         (vs1 vs2) "(>% & >% & >Hl1 & >Hl2 & HAs)" "Hcl".
@@ -242,15 +238,11 @@ Section spec.
   Proof.
     iIntros (PR C Hi1 Hi2) "#Hv Ha".
     assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
-    { exists (Z.to_nat i1). rewrite !Z2Nat.id; try lia.
-      split; eauto. rewrite -(Nat2Z.id n).
-      apply Z2Nat.inj_lt; lia.
-    }
+    { exists (Z.to_nat i1). rewrite !Z2Nat.id; last lia.
+      split; first done. rewrite -(Nat2Z.id n) -Z2Nat.inj_lt; lia. }
     assert (∃ i2' : nat, i2 = i2' ∧ i2' < n)%nat as (i2' & -> & ?).
-    { exists (Z.to_nat i2). rewrite !Z2Nat.id; try lia.
-      split; eauto. rewrite -(Nat2Z.id n).
-      apply Z2Nat.inj_lt; lia.
-    }
+    { exists (Z.to_nat i2). rewrite !Z2Nat.id; last lia.
+      split; first done. rewrite -(Nat2Z.id n) -Z2Nat.inj_lt; lia. }
     iApply dwp_atomic.
     iInv (locsN.@(l1, l2)) as
           (vs1 vs2) "(>% & >% & >Hl1 & >Hl2 & HAs)" "Hcl".
