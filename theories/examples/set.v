@@ -9,6 +9,14 @@ From iris.algebra Require Import excl.
 From iris_ni.logrel Require Import array typing.
 From iris_ni.examples Require Import lock.
 
+(* copy : (arr_t → arr_t → tint Low → tunit) *)
+Definition array_copy : expr := rec: "copy" "arr1" "arr2" "n" :=
+  if: ("n" ≤ #0)
+  then #()
+  else let: "x" := "get" "arr1" "n" in
+       "set" "arr2" "n" "x";;
+       "copy" "arr1" "arr2" ("n"-#1).
+
 Definition set_t : type :=
   tprod (tarrow (tint High) tunit Low)
         (tarrow (tint High) (tbool High) Low).
@@ -62,7 +70,7 @@ Definition insert_loop : expr :=
   then (* we need to resize the underlying array *)
     "k_r" <- !"k_r"+#1;;
     let: "arr2" := "make" (cap (!"k_r")) NONE in
-    "copy" !"arr_r" "arr2" "sz";;
+    array_copy !"arr_r" "arr2" "sz";;
     "set" "arr2" "i" (SOME "x");;
     "arr_r" <- "arr2"
   else
@@ -88,6 +96,23 @@ Definition insert_loop : expr :=
       "insert_loop" "arr_r" "k_r" ("i"+#1) "sz" "p2"
     end.
 
+(* new_set : unit → set_t *)
+(* takes array functions as arguments *)
+Definition new_set : expr := λ: "make" "get" "set" <>,
+  let: "lk" := newlock #() in
+  let: "k" := ref #1 in  (* low integer *)
+  (* the size of the underlying array is always cap(k) *)
+  let: "arr_r" := ref ("make" #1 NONE) in
+  let: "insert" := λ: "x",
+    acquire "lk";;
+    insert_loop "arr_r" "k" #0 (cap !"k") "x";;
+    release "lk" in
+  let: "lookup" := λ: "x",
+    acquire "lk";;
+    let: "res" := lookup_loop (!"arr_r") (!"k") #0 (cap (!"k")) "x" #false in
+    release "lk";;
+    "res" in
+  ("insert", "lookup").
 
 Lemma BinOp_int_typed' 𝔏 ξ Γ e1 e2 l2 l3 op :
   bin_op_int op →
@@ -259,6 +284,30 @@ Section typed.
   Variable 𝔏 : gset loc.
   Variable arr_t : type.
 
+
+  Lemma array_copy_typed Γ :
+    Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
+    Γ !! "set" = Some (arr_t → tint High → tintoption High Low → tunit)%ty →
+    has_type 𝔏 Low Γ array_copy
+      (arr_t → arr_t → tint Low → tunit)%ty.
+  Proof.
+    intros. unfold array_copy.
+    repeat eapply Rec_typed'.
+    eapply If_typed'; [eauto with typed..|].
+    eapply App_typed'.
+    { eapply App_typed'.
+      - eapply Sub_typed. (*XXX*)
+        eauto with typed. apply (type_sub_int _ High). done.
+      - eauto 20 with typed. }
+    eapply Rec_typed'.
+    eapply Seq_typed; last eauto 50 with typed.
+    eapply App_typed'; first eauto with typed.
+    eapply App_typed'.
+    { eapply Sub_typed. (*XXX*)
+      eauto with typed. apply (type_sub_int _ High). done. }
+    eauto 20 with typed.
+  Qed.
+
   Lemma cap_typed Γ : has_type 𝔏 Low Γ cap (tint Low → tint Low).
   Proof.
     unfold cap. eauto 500 with typed.
@@ -283,6 +332,7 @@ Section typed.
   Hint Resolve cap_typed : typed.
   Hint Resolve eq_option_typed : typed.
   Hint Resolve lte_option_typed : typed.
+  Hint Resolve array_copy_typed : typed.
 
   Lemma lookup_loop_typed Γ :
     Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
@@ -301,7 +351,6 @@ Section typed.
     Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
     Γ !! "set" = Some (arr_t → tint High → tintoption High Low → tunit)%ty →
     Γ !! "make" = Some (tint Low → tintoption High Low → arr_t)%ty →
-    Γ !! "copy" = Some (arr_t → arr_t → tint Low → tunit)%ty →
     has_type 𝔏 Low Γ insert_loop
       (tref arr_t → tref (tint Low) → tint Low → tint Low → tint High → tunit)%ty.
   Proof.
@@ -314,7 +363,8 @@ Section typed.
       { eapply App_typed'; eauto 50 with typed. }
       eapply Rec_typed'.
       eapply Seq_typed.
-      { eapply App_typed'; eauto 50 with typed. }
+      { repeat (eapply App_typed'; first eauto 20 with typed).
+        eapply array_copy_typed; eauto 20 with typed. }
       eapply Seq_typed.
       { eapply App_typed'; first eauto 50 with typed.
         eapply App_typed'.
@@ -353,4 +403,132 @@ Section typed.
       + eauto 100 with typed.
   Qed.
 
+  Hint Resolve insert_loop_typed : typed.
+  Hint Resolve lookup_loop_typed : typed.
+
+  Lemma new_set_typed Γ :
+    has_type 𝔏 Low Γ new_set
+    ((* make *) (tint Low → tintoption High Low → arr_t) →
+     (* get *) (arr_t → tint High → tintoption High Low) →
+     (* set *) (arr_t → tint High → tintoption High Low → tunit) →
+     tunit → set_t)%ty.
+  Proof.
+    unfold new_set.
+    repeat eapply Rec_typed'.
+    eapply App_typed'; first by eauto with typed.
+    eapply Rec_typed'.
+    eapply App_typed'; first by eauto with typed.
+    eapply Rec_typed'.
+    eapply App_typed'; first by eauto 50 with typed.
+    eapply Rec_typed'.
+    eapply App_typed'.
+    { eapply Rec_typed'.
+      eapply Seq_typed; first by eauto 50 with typed.
+      eapply Seq_typed; last by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply insert_loop_typed; eauto 50 with typed. }
+    eapply Rec_typed'.
+    eapply App_typed'.
+    { eapply Rec_typed'.
+      eapply Seq_typed; first by eauto 50 with typed.
+      eapply App_typed'; last by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'.
+      { eapply Sub_typed. (*XXX*)
+        - eauto 50 with typed.
+        - apply (type_sub_int _ High). done. }
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply App_typed'; first by eauto 50 with typed.
+      eapply lookup_loop_typed; eauto 50 with typed. }
+    eauto 200 with typed.
+  Qed.
+
 End typed.
+
+Section composed.
+  Context `{!heapDG Σ}.
+
+  Opaque new_set array.make array.get array.set.
+  (* so that simpl subst doesn't go through *)
+
+  Definition arr_t :=
+    tprod (tint High → tintoption High Low)
+          (tint High → tintoption High Low → tunit).
+
+  Definition make : val := λ: "sz" "dummy",
+    let: "a" := array.make "sz" "dummy" in
+    (λ: "i", array.get "a" "i",
+     λ: "i" "x", array.set "a" "i" "x").
+
+  Definition get : val := λ: "x", Fst "x".
+  Definition set : val := λ: "x", Snd "x".
+
+  Lemma make_typed :
+    DWP make & make : ⟦ tint Low → tintoption High Low → arr_t ⟧ Low.
+  Proof.
+    iApply dwp_value. iModIntro.
+    rewrite interp_eq. iAlways.
+    iIntros (? ?). iDestruct 1 as (sz0 sz -> ->) "%".
+    assert (sz0 = sz) as -> by eauto.
+    dwp_rec. dwp_pures.
+    iApply dwp_value. iModIntro.
+    rewrite (interp_eq (tarrow _ _ _)). iAlways.
+    iIntros (d1 d2) "#Hd".
+    dwp_rec. dwp_bind (array.make _ _) (array.make _ _).
+    iApply dwp_wand.
+    { iApply (make_spec with "Hd"). }
+    iIntros (a1 a2) "#Ha".
+    dwp_pures. iApply dwp_value.
+    iModIntro. rewrite (interp_eq (tprod _ _)).
+    iExists _,_,_,_. repeat iSplit; eauto.
+    - rewrite (interp_eq (tarrow _ _ _)).
+      iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
+      iApply get_spec; eauto.
+      admit. (*TODO flat type => pseudo_refl *)
+      admit.
+    - rewrite (interp_eq (tarrow _ _ _)).
+      iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
+      iApply dwp_value. iModIntro.
+      rewrite (interp_eq (tarrow _ _ _)).
+      iAlways. iIntros (w1 w2) "#Hw". dwp_pures.
+      iApply set_spec; eauto.
+      admit. (*TODO flat type => pseudo_refl *)
+      admit.
+  Admitted.
+
+  Lemma get_typed :
+    DWP get & get : ⟦ arr_t → tint High → tintoption High Low ⟧ Low.
+  Proof. Admitted.
+  Lemma set_typed :
+    DWP set & set : ⟦ arr_t → tint High → tintoption High Low → tunit ⟧ Low.
+  Proof. Admitted.
+
+  Lemma new_set_composed_typed 𝔏 Γ :
+    sem_typed 𝔏 Low Γ
+        (new_set
+         make get set)
+        (tunit → set_t).
+  Proof.
+    iIntros (γ) "#HΓ #Hout".
+    rewrite /subst_valid.
+    iDestruct (big_sepM2_dom with "HΓ") as %Hdom.
+    simpl.
+    rewrite -(stamp_low (_ → set_t)%ty).
+    iApply logrel_app; last first.
+    { iApply set_typed. }
+    rewrite -(stamp_low (_ → _ → set_t)%ty).
+    iApply logrel_app; last first.
+    { iApply get_typed. }
+    rewrite -(stamp_low (_ → _ → _ → set_t)%ty).
+    iApply logrel_app; last first.
+    { iApply make_typed. }
+    iApply fundamental; first apply new_set_typed; eauto.
+  Qed.
+
+End composed.
