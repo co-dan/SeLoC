@@ -18,8 +18,8 @@ Definition array_copy : expr := rec: "copy" "arr1" "arr2" "n" :=
        "copy" "arr1" "arr2" ("n"-#1).
 
 Definition set_t : type :=
-  tprod (tarrow (tint High) tunit Low)
-        (tarrow (tint High) (tbool High) Low).
+  ((tint High → tunit)
+  * (tint High → tbool High))%ty.
 
 (* cap : int Low → int Low *)
 Definition cap : expr := rec: "cap" "k" :=
@@ -446,9 +446,9 @@ Section composed.
   (* so that simpl subst doesn't go through *)
 
   Definition arr_t :=
-    tprod (tprod (tint High → tintoption High High)
-                 (tint Low → tintoption High Low))
-          (tint Low → tintoption High Low → tunit).
+    ((tint High → tintoption High High)
+    * (tint Low → tintoption High Low)
+    * (tint Low → tintoption High Low → tunit))%ty.
 
   (** The next two lemmas show that we can store terms of the
   [tintoption High Low] type in the arrays *)
