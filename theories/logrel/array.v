@@ -70,25 +70,25 @@ Section spec.
     (∀ v1 v2, A ξ v1 v1 ∗ A ξ v2 v2 -∗ A ξ v1 v2).
 
   (* XXX: use vectors instead of lists? *)
-  Definition array_inv A ξ l1 l2 n :=
+  Definition array_inv τ ξ l1 l2 n :=
     inv (locsN.@(l1,l2))
         (∃ vs1 vs2, ⌜List.length vs1 = n⌝ ∗
                     ⌜List.length vs2 = n⌝ ∗
                     l1 ↦ₗ∗ vs1 ∗ l2 ↦ᵣ∗ vs2 ∗
-                    [∗ list] i ↦ v1;v2 ∈ vs1;vs2, A ξ v1 v2)%I.
-  Definition lrel_array (A : lrel Σ) : lrel Σ := LRel (λ ξ w1 w2,
+                    [∗ list] i ↦ v1;v2 ∈ vs1;vs2, ⟦ τ ⟧ ξ v1 v2)%I.
+  Definition lrel_array τ : lrel Σ := LRel (λ ξ w1 w2,
     ∃ (l1 l2 : loc) (n : nat),
       ⌜w1 = (#l1, #n)%V⌝ ∧ ⌜w2 = (#l2, #n)%V⌝ ∧
-      array_inv A ξ l1 l2 (S n))%I.
+      array_inv τ ξ l1 l2 (S n))%I.
 
   (** * Make typing *)
-  Lemma make_spec (n : Z) v1 v2 A ξ :
-    A ξ v1 v2 -∗
-    DWP make #n v1 & make #n v2 : lrel_array A ξ.
+  Lemma make_spec (n : Z) v1 v2 τ ξ :
+    ⟦ τ ⟧ ξ v1 v2 -∗
+    DWP make #n v1 & make #n v2 : lrel_array τ ξ.
   Proof.
     iIntros "#Hv".
     iAssert (∀ n : Z, ⌜ 0 ≤ n ⌝ →
-      DWP (AllocN #(1 + n) v1, #n) & (AllocN #(1 + n) v2, #n) : lrel_array A ξ)%I as "H"; last first.
+      DWP (AllocN #(1 + n) v1, #n) & (AllocN #(1 + n) v2, #n) : lrel_array τ ξ)%I as "H"; last first.
     { rewrite /make /maximum. dwp_pures.
       case_bool_decide; dwp_pures; iApply "H"; auto with lia. }
     clear n. iIntros (n' Hn).
@@ -111,7 +111,7 @@ Section spec.
                       ⌜List.length vs1 = S n⌝ ∗
                       ⌜List.length vs2 = S n⌝ ∗
                       l1 ↦ₗ∗ vs1 ∗ l2 ↦ᵣ∗ vs2 ∗
-                      [∗ list] i ↦ v1;v2 ∈ vs1;vs2, A ξ v1 v2)%I with "[-]")
+                      [∗ list] i ↦ v1;v2 ∈ vs1;vs2, ⟦τ⟧ ξ v1 v2)%I with "[-]")
       as "#Hinv".
     { iNext. iExists (replicate (S n) v1), (replicate (S n) v2). iFrame.
       rewrite !replicate_length. do 2 (iSplit; [done|]).
@@ -120,8 +120,8 @@ Section spec.
   Qed.
 
   (** * Length typing *)
-  Lemma length_spec v1 v2 A ξ :
-    lrel_array A ξ v1 v2 -∗
+  Lemma length_spec v1 v2 τ ξ :
+    lrel_array τ ξ v1 v2 -∗
     DWP length v1 & length v2 : ⟦ tint Low ⟧ ξ.
   Proof.
     iDestruct 1 as (l1 l2 n -> ->) "Ha".
@@ -129,13 +129,13 @@ Section spec.
   Qed.
 
   (** * Get typing *)
-  Lemma array_get_both A ξ l1 l2 i1 i2 n :
-    pseudo_refl A ξ →
-    contractible A ξ →
+  Lemma array_get_both τ ξ l1 l2 i1 i2 n :
+    pseudo_refl (⟦ stamp τ High ⟧) ξ →
+    contractible (⟦ stamp τ High ⟧) ξ →
     0 ≤ i1 < n →
     0 ≤ i2 < n →
-    array_inv A ξ l1 l2 n -∗
-    DWP !#(l1 +ₗ i1) & !#(l2 +ₗ i2) : A ξ.
+    array_inv τ ξ l1 l2 n -∗
+    DWP !#(l1 +ₗ i1) & !#(l2 +ₗ i2) : ⟦ stamp τ High ⟧ ξ.
   Proof.
     iIntros (PR C Hi1 Hi2) "Ha".
     assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
@@ -157,33 +157,78 @@ Section spec.
     { rewrite /TWP2 /Ψ2.
       iApply (twp_load_offset (heapG0:=heapG2) with "Hl2"); eauto. }
     iDestruct 1 as (->) "Hl1"; iDestruct 1 as (->) "Hl2". iNext.
-    iAssert (A ξ (vs1 !!! i1') (vs2 !!! i1')) as "#HvsA".
+    iAssert (⟦ τ ⟧ ξ (vs1 !!! i1') (vs2 !!! i1')) as "#HvsA".
     { by iApply (big_sepL2_lookup with "HAs"). }
-    iAssert (A ξ (vs1 !!! i2') (vs2 !!! i2')) as "#HvsA'".
+    iAssert (⟦ τ ⟧ ξ (vs1 !!! i2') (vs2 !!! i2')) as "#HvsA'".
     { by iApply (big_sepL2_lookup with "HAs"). }
     iMod ("Hcl" with "[-]") as "_".
     { iNext. iExists _,_. iFrame "Hl1 Hl2 HAs".
       repeat iSplit; eauto with iFrame. }
-    iModIntro. iApply C. iSplit.
+    iModIntro. rewrite -(stamp_low τ).
+    repeat rewrite (interp_label_mono τ Low High)//.
+    rewrite stamp_low.
+    iApply C. iSplit.
     - rewrite (PR (vs1 !!! i1')).
       iDestruct "HvsA" as "[$ _]".
     - rewrite (PR (vs1 !!! i2')).
       iDestruct "HvsA'" as "[_ $]".
   Qed.
 
+  Lemma array_get_same τ ξ l1 l2 i1 n :
+    0 ≤ i1 < n →
+    array_inv τ ξ l1 l2 n -∗
+    DWP !#(l1 +ₗ i1) & !#(l2 +ₗ i1) : ⟦ τ ⟧ ξ.
+  Proof.
+    iIntros (Hi1) "Ha".
+    assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
+    (* XXX on Coq 8.9 lia doesn't solve these goals... *)
+    { exists (Z.to_nat i1). rewrite !Z2Nat.id; last lia.
+      split; first done. rewrite -(Nat2Z.id n) -Z2Nat.inj_lt; lia. }
+    iApply dwp_atomic.
+    iInv (locsN.@(l1, l2)) as
+        (vs1 vs2) "(>% & >% & >Hl1 & >Hl2 & HAs)" "Hcl".
+    iModIntro.
+    pose (Ψ1 := (λ v, ⌜v = vs1 !!! i1'⌝ ∗ l1 ↦ₗ∗ vs1)%I).
+    pose (Ψ2 := (λ v, ⌜v = vs2 !!! i1'⌝ ∗ l2 ↦ᵣ∗ vs2)%I).
+    iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
+    { rewrite /TWP1 /Ψ1.
+      iApply (twp_load_offset (heapG0:=heapG1) with "Hl1"); eauto. }
+    { rewrite /TWP2 /Ψ2.
+      iApply (twp_load_offset (heapG0:=heapG2) with "Hl2"); eauto. }
+    iDestruct 1 as (->) "Hl1"; iDestruct 1 as (->) "Hl2". iNext.
+    iAssert (⟦ τ ⟧ ξ (vs1 !!! i1') (vs2 !!! i1')) as "#H".
+    { by iApply (big_sepL2_lookup with "HAs"). }
+    iMod ("Hcl" with "[-]") as "_".
+    { iNext. iExists _,_. iFrame "Hl1 Hl2 HAs".
+      repeat iSplit; eauto with iFrame. }
+    iModIntro. done.
+  Qed.
+
   (** ** Main 'get' typing *)
-  Lemma get_spec (a1 a2 : val) v1 v2 A ξ :
-    pseudo_refl A ξ →
-    contractible A ξ →
-    lrel_array A ξ a1 a2 -∗
+  Lemma get_spec (a1 a2 : val) v1 v2 τ ξ :
+    pseudo_refl ⟦ stamp τ High ⟧ ξ →
+    contractible ⟦ stamp τ High ⟧ ξ →
+    lrel_array τ ξ a1 a2 -∗
     ⟦ tint High ⟧ ξ v1 v2 -∗
-    DWP get a1 v1 & get a2 v2 : A ξ.
+    DWP get a1 v1 & get a2 v2 : ⟦ stamp τ High ⟧ ξ.
   Proof.
     iIntros (PR C).
     iDestruct 1 as (l1 l2 n -> ->) "Ha".
     iDestruct 1 as (i1 i2 -> ->) "_".
     rewrite /get. dwp_pures.
     repeat case_bool_decide; dwp_pures; iApply (array_get_both with "Ha"); auto with lia.
+  Qed.
+
+  Lemma get_spec_low (a1 a2 : val) v1 v2 τ ξ :
+    lrel_array τ ξ a1 a2 -∗
+    ⟦ tint Low ⟧ ξ v1 v2 -∗
+    DWP get a1 v1 & get a2 v2 : ⟦ τ ⟧ ξ.
+  Proof.
+    iDestruct 1 as (l1 l2 n -> ->) "Ha".
+    iDestruct 1 as (i1 i2 -> ->) "%".
+    assert (i1 = i2) as -> by (destruct ξ; eauto).
+    rewrite /get. dwp_pures.
+    repeat case_bool_decide; dwp_pures; iApply (array_get_same with "Ha"); auto with lia.
   Qed.
 
   (** * Set typing *)
@@ -227,13 +272,26 @@ Section spec.
       rewrite insert_length. lia.
   Qed.
 
-  Lemma array_set_both A ξ v1 v2 l1 l2 i1 i2 n :
-    pseudo_refl A ξ →
-    contractible A ξ →
+  Lemma lrel_list_update_same A ξ vs1 vs2 (i1 : nat) v1 v2 :
+    (i1 < List.length vs1)%nat →
+    A ξ v1 v2 -∗
+    ([∗ list] v0;v3 ∈ vs1;vs2, A ξ v0 v3) -∗
+    [∗ list] v0;v3 ∈ <[i1:=v1]>vs1;<[i1:=v2]>vs2, A ξ v0 v3.
+  Proof.
+    iIntros (Hi1) "#Hv HAs".
+    iDestruct (big_sepL2_length with "HAs") as %Hfoo.
+    rewrite (big_sepL2_insert_acc _ _ _ i1) //.
+    iDestruct "HAs" as "[Hv' HAs]".
+    iApply ("HAs" with "Hv").
+  Qed.
+
+  Lemma array_set_both τ ξ v1 v2 l1 l2 i1 i2 n :
+    pseudo_refl ⟦ τ ⟧ ξ →
+    contractible ⟦ τ ⟧ ξ →
     0 ≤ i1 < n →
     0 ≤ i2 < n →
-    A ξ v1 v2 -∗
-    array_inv A ξ l1 l2 n -∗
+    ⟦ τ ⟧ ξ v1 v2 -∗
+    array_inv τ ξ l1 l2 n -∗
     DWP #(l1 +ₗ i1) <- v1 & #(l2 +ₗ i2) <- v2 : ⟦ tunit ⟧ ξ.
   Proof.
     iIntros (PR C Hi1 Hi2) "#Hv Ha".
@@ -265,13 +323,45 @@ Section spec.
     iModIntro. rewrite interp_eq; eauto.
   Qed.
 
+  Lemma array_set_same τ ξ v1 v2 l1 l2 i1 n :
+    0 ≤ i1 < n →
+    ⟦ τ ⟧ ξ v1 v2 -∗
+    array_inv τ ξ l1 l2 n -∗
+    DWP #(l1 +ₗ i1) <- v1 & #(l2 +ₗ i1) <- v2 : ⟦ tunit ⟧ ξ.
+  Proof.
+    iIntros (Hi1) "#Hv Ha".
+    assert (∃ i1' : nat, i1 = i1' ∧ i1' < n)%nat as (i1' & -> & ?).
+    { exists (Z.to_nat i1). rewrite !Z2Nat.id; last lia.
+      split; first done. rewrite -(Nat2Z.id n) -Z2Nat.inj_lt; lia. }
+    iApply dwp_atomic.
+    iInv (locsN.@(l1, l2)) as
+          (vs1 vs2) "(>% & >% & >Hl1 & >Hl2 & HAs)" "Hcl".
+    iModIntro.
+    pose (Ψ1 v := (⌜v = #()⌝ ∗ l1 ↦ₗ∗ <[i1':=v1]>vs1)%I).
+    pose (Ψ2 v := (⌜v = #()⌝ ∗ l2 ↦ᵣ∗ <[i1':=v2]>vs2)%I).
+    iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
+    { rewrite /TWP1 /Ψ1.
+     iApply (twp_store_offset (heapG0:=heapG1) with "Hl1"); eauto. }
+    { rewrite /TWP2 /Ψ2.
+      iApply (twp_store_offset (heapG0:=heapG2) with "Hl2"); eauto. }
+    iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2". iNext.
+
+    iDestruct (lrel_list_update_same _ _ _ _ i1' with "Hv HAs") as "HAs";
+      eauto with lia.
+
+    iMod ("Hcl" with "[-]") as "_".
+    { iNext. iExists _,_. iFrame "HAs Hl1".
+      rewrite !insert_length. eauto 10. }
+    iModIntro. rewrite interp_eq; eauto.
+  Qed.
+
   (** ** The main 'set' typing *)
-  Lemma set_spec (a1 a2 : val) iv1 iv2 v1 v2 A ξ :
-    pseudo_refl A ξ →
-    contractible A ξ →
-    lrel_array A ξ a1 a2 -∗
+  Lemma set_spec (a1 a2 : val) iv1 iv2 v1 v2 τ ξ :
+    pseudo_refl ⟦ τ ⟧ ξ →
+    contractible ⟦ τ ⟧ ξ →
+    lrel_array τ ξ a1 a2 -∗
     ⟦ tint High ⟧ ξ iv1 iv2 -∗
-    A ξ v1 v2 -∗
+    ⟦ τ ⟧ ξ v1 v2 -∗
     DWP (set a1 iv1 v1) & (set a2 iv2 v2) : ⟦ tunit ⟧ ξ.
   Proof.
     iIntros (PR C).
@@ -282,4 +372,20 @@ Section spec.
     repeat case_bool_decide; dwp_pures;
       iApply (array_set_both with "Hd Ha"); auto with lia.
   Qed.
+
+  Lemma set_spec_low (a1 a2 : val) iv1 iv2 v1 v2 τ ξ :
+    lrel_array τ ξ a1 a2 -∗
+    ⟦ tint Low ⟧ ξ iv1 iv2 -∗
+    ⟦ τ ⟧ ξ v1 v2 -∗
+    DWP (set a1 iv1 v1) & (set a2 iv2 v2) : ⟦ tunit ⟧ ξ.
+  Proof.
+    iDestruct 1 as (l1 l2 n -> ->) "Ha".
+    iDestruct 1 as (i1 i2 -> ->) "%".
+    assert (i1 = i2) as -> by (destruct ξ; eauto).
+    iIntros "#Hd".
+    rewrite /set. dwp_pures.
+    repeat case_bool_decide; dwp_pures;
+      iApply (array_set_same with "Hd Ha"); auto with lia.
+  Qed.
+
 End spec.

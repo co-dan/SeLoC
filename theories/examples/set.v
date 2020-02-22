@@ -46,7 +46,7 @@ Definition lookup_loop : expr :=
   rec: "lookup_loop" "arr" "k" "l" "r" "x" "is_found" :=
   if: "k" = #0 then "is_found"
   else let: "i" := BinOp QuotOp ("l" + "r") #2 in
-       let: "elem" := "get" "arr" "i" in
+       let: "elem" := "get_" "arr" "i" in
        let: "lr1" := ("i"+#1, "r") in
        let: "lr2" := ("l", "i"-#1) in
        let: "lr" := if: (lte_option "elem" "x")
@@ -98,7 +98,7 @@ Definition insert_loop : expr :=
 
 (* new_set : unit → set_t *)
 (* takes array functions as arguments *)
-Definition new_set : expr := λ: "make" "get" "set" <>,
+Definition new_set : expr := λ: "make" "get" "get_" "set" <>,
   let: "lk" := newlock #() in
   let: "k" := ref #1 in  (* low integer *)
   (* the size of the underlying array is always cap(k) *)
@@ -285,9 +285,9 @@ Section typed.
   Variable arr_t : type.
 
 
-  Lemma array_copy_typed Γ :
-    Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
-    Γ !! "set" = Some (arr_t → tint High → tintoption High Low → tunit)%ty →
+  Lemma array_copy_typed Γ ξ :
+    Γ !! "get" = Some (arr_t → tint Low → tintoption High ξ)%ty →
+    Γ !! "set" = Some (arr_t → tint Low → tintoption High ξ → tunit)%ty →
     has_type 𝔏 Low Γ array_copy
       (arr_t → arr_t → tint Low → tunit)%ty.
   Proof.
@@ -295,17 +295,17 @@ Section typed.
     repeat eapply Rec_typed'.
     eapply If_typed'; [eauto with typed..|].
     eapply App_typed'.
-    { eapply App_typed'.
-      - eapply Sub_typed. (*XXX*)
-        eauto with typed. apply (type_sub_int _ High). done.
-      - eauto 20 with typed. }
+    { eapply App_typed'; eauto 20 with typed. }
+      (* - eapply Sub_typed. (*XXX*) *)
+      (*   eauto with typed. apply (type_sub_int _ High). done. *)
+      (* - eauto 20 with typed. } *)
     eapply Rec_typed'.
     eapply Seq_typed; last eauto 50 with typed.
     eapply App_typed'; first eauto with typed.
-    eapply App_typed'.
-    { eapply Sub_typed. (*XXX*)
-      eauto with typed. apply (type_sub_int _ High). done. }
-    eauto 20 with typed.
+    eapply App_typed'; eauto 20 with typed.
+    (* { eapply Sub_typed. (*XXX*) *)
+    (*   eauto with typed. apply (type_sub_int _ High). done. } *)
+    (* eauto 20 with typed. *)
   Qed.
 
   Lemma cap_typed Γ : has_type 𝔏 Low Γ cap (tint Low → tint Low).
@@ -335,7 +335,7 @@ Section typed.
   Hint Resolve array_copy_typed : typed.
 
   Lemma lookup_loop_typed Γ :
-    Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
+    Γ !! "get_" = Some (arr_t → tint High → tintoption High High)%ty →
     has_type 𝔏 Low Γ lookup_loop
              (arr_t → tint Low → tint High → tint High → tint High → tbool High → tbool High).
   Proof.
@@ -348,8 +348,8 @@ Section typed.
   Qed.
 
   Lemma insert_loop_typed Γ :
-    Γ !! "get" = Some (arr_t → tint High → tintoption High Low)%ty →
-    Γ !! "set" = Some (arr_t → tint High → tintoption High Low → tunit)%ty →
+    Γ !! "get" = Some (arr_t → tint Low → tintoption High Low)%ty →
+    Γ !! "set" = Some (arr_t → tint Low → tintoption High Low → tunit)%ty →
     Γ !! "make" = Some (tint Low → tintoption High Low → arr_t)%ty →
     has_type 𝔏 Low Γ insert_loop
       (tref arr_t → tref (tint Low) → tint Low → tint Low → tint High → tunit)%ty.
@@ -367,24 +367,14 @@ Section typed.
         eapply array_copy_typed; eauto 20 with typed. }
       eapply Seq_typed.
       { eapply App_typed'; first eauto 50 with typed.
-        eapply App_typed'.
-        - eapply Sub_typed. (*XXX*)
-          eauto with typed. apply (type_sub_int _ High). done.
-        - eapply App_typed'; eauto 50 with typed. }
+        eapply App_typed'; eauto 50 with typed. }
       eauto 50 with typed.
-    - eapply App_typed'.
-      { eapply App_typed'.
-        { eapply Sub_typed. (*XXX*)
-          eauto with typed. apply (type_sub_int _ High). done. }
-        eauto 50 with typed. }
+    - eapply App_typed'; first by eauto 100 with typed.
       eapply Rec_typed'.
-      eapply Match_typed; first eauto with typed.
-      { eapply App_typed'; first eauto with typed.
-        eapply App_typed'.
-        { eapply Sub_typed. (*XXX*)
-          eauto with typed. apply (type_sub_int _ High). done. }
-        eauto 50 with typed. }
-      eapply App_typed'; first eauto 50 with typed.
+      eapply Match_typed; first by eauto with typed.
+      { eapply App_typed'; first by eauto with typed.
+        eapply App_typed'; eauto 50 with typed. }
+      eapply App_typed'; first by eauto 50 with typed.
       eapply Rec_typed'.
       eapply App_typed'; first eauto 50 with typed.
       eapply Rec_typed'.
@@ -396,10 +386,7 @@ Section typed.
       eapply Rec_typed'.
       eapply Seq_typed.
       + eapply App_typed'; first eauto with typed.
-        eapply App_typed'.
-        { eapply Sub_typed. (*XXX*)
-          eauto 50 with typed. apply (type_sub_int _ High). done. }
-        eauto 50 with typed.
+        eapply App_typed'; eauto 50 with typed.
       + eauto 100 with typed.
   Qed.
 
@@ -409,8 +396,9 @@ Section typed.
   Lemma new_set_typed Γ :
     has_type 𝔏 Low Γ new_set
     ((* make *) (tint Low → tintoption High Low → arr_t) →
-     (* get *) (arr_t → tint High → tintoption High Low) →
-     (* set *) (arr_t → tint High → tintoption High Low → tunit) →
+     (* get *) (arr_t → tint Low → tintoption High Low) →
+     (* get_ *) (arr_t → tint High → tintoption High High) →
+     (* set *) (arr_t → tint Low → tintoption High Low → tunit) →
      tunit → set_t)%ty.
   Proof.
     unfold new_set.
@@ -458,15 +446,78 @@ Section composed.
   (* so that simpl subst doesn't go through *)
 
   Definition arr_t :=
-    tprod (tint High → tintoption High Low)
-          (tint High → tintoption High Low → tunit).
+    tprod (tprod (tint High → tintoption High High)
+                 (tint Low → tintoption High Low))
+          (tint Low → tintoption High Low → tunit).
+
+  (** The next two lemmas show that we can store terms of the
+  [tintoption High Low] type in the arrays *)
+  Lemma option_pseudo_refl :
+    pseudo_refl ⟦ tintoption High High ⟧ Low.
+  Proof.
+    rewrite (interp_eq (tintoption _ _)).
+    iIntros (o1 o2). iDestruct 1 as "[_ Hv]".
+    iSpecialize ("Hv" with "[]").
+    { iPureIntro. naive_solver. }
+    iDestruct "Hv" as "[Hv1 Hv2]".
+    iDestruct "Hv1" as "[-> | Hv1]";
+      iDestruct "Hv2" as "[-> | Hv2]".
+    - iSplit; iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      + iSplit; iLeft; eauto.
+      + iSplit; iLeft; eauto.
+    - iDestruct "Hv2" as (v2 ->) "#H".
+      iSplit; iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      + iSplit; iLeft; eauto.
+      + iSplit; iRight; iExists _; eauto with iFrame.
+    - iDestruct "Hv1" as (v1 ->) "#H".
+      iSplit; iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      + iSplit; iRight; iExists _; eauto with iFrame.
+      + iSplit; iLeft; eauto.
+    - iDestruct "Hv1" as (v1 ->) "#H1".
+      iDestruct "Hv2" as (v2 ->) "#H2".
+      iSplit; iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      + iSplit; iRight; iExists _; eauto with iFrame.
+      + iSplit; iRight; iExists _; eauto with iFrame.
+  Qed.
+  Lemma option_contractible :
+    contractible ⟦ tintoption High High ⟧ Low.
+  Proof.
+    rewrite (interp_eq (tintoption _ _)).
+    iIntros (o1 o2) "[H1 H2]".
+    iDestruct "H1" as "[_ H1]".
+    iSpecialize ("H1" with "[]").
+    { naive_solver. }
+    iDestruct "H2" as "[_ H2]".
+    iSpecialize ("H2" with "[]").
+    { naive_solver. }
+    iDestruct "H1" as "[[-> | H1] H1']";
+      iDestruct "H2" as "[[-> | H2] H2']".
+    - iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      iSplit; iLeft; eauto.
+    - iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      iDestruct "H2" as (v2 ->) "H2".
+      iSplit.
+      + iLeft; eauto.
+      + iRight. iExists _; eauto with iFrame.
+    - iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      iDestruct "H1" as (v2 ->) "H1".
+      iSplit.
+      + iRight. iExists _; eauto with iFrame.
+      + iLeft; eauto.
+    - iSplit; iIntros (Hi); try by (exfalso ; naive_solver).
+      iDestruct "H1" as (v1 ->) "H1".
+      iDestruct "H2" as (v2 ->) "H2".
+      iSplit; iRight; iExists _; eauto with iFrame.
+  Qed.
 
   Definition make : val := λ: "sz" "dummy",
     let: "a" := array.make "sz" "dummy" in
     (λ: "i", array.get "a" "i",
+     λ: "i", array.get "a" "i",
      λ: "i" "x", array.set "a" "i" "x").
 
-  Definition get : val := λ: "x", Fst "x".
+  Definition get_ : val := λ: "x", Fst (Fst "x").
+  Definition get : val := λ: "x", Snd (Fst "x").
   Definition set : val := λ: "x", Snd "x".
 
   Lemma make_typed :
@@ -487,32 +538,68 @@ Section composed.
     dwp_pures. iApply dwp_value.
     iModIntro. rewrite (interp_eq (tprod _ _)).
     iExists _,_,_,_. repeat iSplit; eauto.
+    rewrite (interp_eq (tprod _ _)).
+    iExists _,_,_,_. repeat iSplit; eauto.
     - rewrite (interp_eq (tarrow _ _ _)).
       iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
-      iApply get_spec; eauto.
-      admit. (*TODO flat type => pseudo_refl *)
-      admit.
+      rewrite !right_id.
+      (* rewrite (interp_sub_mono (tintoption High Low) (tintoption High High)); last by constructor. *)
+      iApply (get_spec with "Ha"); eauto with iFrame;
+        simpl; rewrite left_id.
+      apply option_pseudo_refl.
+      apply option_contractible.
+    - rewrite (interp_eq (tarrow _ _ _)).
+      iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
+      rewrite !right_id.
+      iApply get_spec_low; eauto.
     - rewrite (interp_eq (tarrow _ _ _)).
       iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
       iApply dwp_value. iModIntro.
       rewrite (interp_eq (tarrow _ _ _)).
       iAlways. iIntros (w1 w2) "#Hw". dwp_pures.
-      iApply set_spec; eauto.
-      admit. (*TODO flat type => pseudo_refl *)
-      admit.
-  Admitted.
+      iApply set_spec_low; eauto.
+  Qed.
 
   Lemma get_typed :
-    DWP get & get : ⟦ arr_t → tint High → tintoption High Low ⟧ Low.
-  Proof. Admitted.
+    DWP get & get : ⟦ arr_t → tint Low → tintoption High Low ⟧ Low.
+  Proof.
+    iApply dwp_value. iModIntro.
+    rewrite interp_eq. iAlways.
+    iIntros (a1 a2). rewrite /arr_t interp_eq.
+    iDestruct 1 as (r1 r2 set1 set2 -> ->) "[H Hset]".
+    iDestruct "H" as (get_1 get_2 get1 get2 -> ->) "[Hget_ Hget]".
+    dwp_rec. dwp_pures. iApply dwp_value.
+    iApply "Hget".
+  Qed.
+
+  Lemma get__typed :
+    DWP get_ & get_ : ⟦ arr_t → tint High → tintoption High High ⟧ Low.
+  Proof.
+    iApply dwp_value. iModIntro.
+    rewrite interp_eq. iAlways.
+    iIntros (a1 a2). rewrite /arr_t interp_eq.
+    iDestruct 1 as (r1 r2 set1 set2 -> ->) "[H Hset]".
+    iDestruct "H" as (get_1 get_2 get1 get2 -> ->) "[Hget_ Hget]".
+    dwp_rec. dwp_pures. iApply dwp_value.
+    iApply "Hget_".
+  Qed.
+
   Lemma set_typed :
-    DWP set & set : ⟦ arr_t → tint High → tintoption High Low → tunit ⟧ Low.
-  Proof. Admitted.
+    DWP set & set : ⟦ arr_t → tint Low → tintoption High Low → tunit ⟧ Low.
+  Proof.
+    iApply dwp_value. iModIntro.
+    rewrite interp_eq. iAlways.
+    iIntros (a1 a2). rewrite /arr_t interp_eq.
+    iDestruct 1 as (r1 r2 set1 set2 -> ->) "[H Hset]".
+    iDestruct "H" as (get_1 get_2 get1 get2 -> ->) "[Hget_ Hget]".
+    dwp_rec. dwp_pures. iApply dwp_value.
+    iApply "Hset".
+  Qed.
 
   Lemma new_set_composed_typed 𝔏 Γ :
     sem_typed 𝔏 Low Γ
         (new_set
-         make get set)
+         make get get_ set)
         (tunit → set_t).
   Proof.
     iIntros (γ) "#HΓ #Hout".
@@ -524,11 +611,15 @@ Section composed.
     { iApply set_typed. }
     rewrite -(stamp_low (_ → _ → set_t)%ty).
     iApply logrel_app; last first.
-    { iApply get_typed. }
+    { iApply get__typed. }
     rewrite -(stamp_low (_ → _ → _ → set_t)%ty).
     iApply logrel_app; last first.
+    { iApply get_typed. }
+    rewrite -(stamp_low (_ → _ → _ → _ → set_t)%ty).
+    iApply logrel_app; last first.
     { iApply make_typed. }
-    iApply fundamental; first apply new_set_typed; eauto.
+    iApply fundamental;
+      first apply new_set_typed; eauto.
   Qed.
 
 End composed.
