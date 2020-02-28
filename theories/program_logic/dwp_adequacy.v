@@ -420,7 +420,7 @@ Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e
   (prim_step e σ1 [] e' σ1' efs) →
   ∃ s' σ2' sfs,
     prim_step s σ2 [] s' σ2' sfs ∧
-    dwp_rel Σ (es++(e'::efs)++es') (ss++(s'::sfs)++ss') σ1' σ2' L Φ.
+    dwp_rel Σ (es++(e'::es')++efs) (ss++(s'::ss')++sfs) σ1' σ2' L Φ.
 Proof.
   intros Hlen HR Hstep1.
   assert (to_val e = None) as Hnon. { by eapply val_stuck. }
@@ -454,12 +454,12 @@ Proof.
   iMod "HWP" as "(HI & HWP & Hefs)". iModIntro. iModIntro.
   iFrame "Hinv HI".
   iApply (big_sepL2_app with "H1").
-  iApply (big_sepL2_app with "[HWP Hefs] [H2]").
+  iApply (big_sepL2_app with "[HWP H2] [Hefs]").
   - iFrame "HWP".
-    iApply (big_sepL2_mono with "Hefs").
+    iApply (big_sepL2_mono with "H2").
     intros; simpl. apply dwp_mono=> v1 v2.
     rewrite -plus_n_Sm. naive_solver.
-  - iApply (big_sepL2_mono with "H2").
+  - iApply (big_sepL2_mono with "Hefs").
     intros; simpl. apply dwp_mono=> v1 v2.
     rewrite - !plus_n_Sm. naive_solver.
 Qed.
@@ -481,11 +481,11 @@ Qed.
 Lemma dwp_rel_simul' Σ `{!invPreG Σ, !heapPreDG Σ} es1 (e : expr) es2 ss σ1 σ2 L Φ :
   dwp_rel Σ (es1++e::es2) ss σ1 σ2 L Φ →
   ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1++s::ss2 ∧
-    ∀ e' σ1' efs,
-      (prim_step e σ1 [] e' σ1' efs) →
-      ∃ s' σ2' sfs,
-      prim_step s σ2 [] s' σ2' sfs ∧
-      dwp_rel Σ (es1++(e'::efs)++es2) (ss1++(s'::sfs)++ss2) σ1' σ2' L Φ.
+    ∀ e' σ1' es',
+      (prim_step e σ1 [] e' σ1' es') →
+      ∃ s' σ2' ss',
+      prim_step s σ2 [] s' σ2' ss' ∧
+      dwp_rel Σ (es1++(e'::es2)++es') (ss1++(s'::ss2)++ss') σ1' σ2' L Φ.
 Proof.
   intros HR.
   assert (length (es1 ++ e :: es2) = length ss) as Htmplen.
@@ -506,7 +506,7 @@ Definition R_pre Σ `{!invPreG Σ, !heapPreDG Σ} L x1 x2 : Prop :=
 Definition R Σ `{!invPreG Σ, !heapPreDG Σ} L : relation (list expr*state)
   := tc (R_pre Σ L).
 
-(** A strong-low bisimulation *)
+(** A strong low-bisimulation *)
 Definition strong_bisim (L : gset loc)
   (R : (list expr*state) → (list expr*state) → Prop) : Prop :=
   (** - is a PER *)
@@ -523,7 +523,7 @@ Definition strong_bisim (L : gset loc)
       R (es1++e::es2, σ1) (ss1++s::ss2, σ2) →
       ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
         ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
-        R (es1++(e'::es')++es2, σ1') (ss1++(s'::ss')++ss2, σ2')).
+        R (es1++(e'::es2)++es', σ1') (ss1++(s'::ss2)++ss', σ2')).
 
 
 Theorem R_strong_bisim Σ L `{!invPreG Σ, !heapPreDG Σ} : strong_bisim L (R Σ L).
@@ -578,7 +578,7 @@ Proof.
             ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1 ++ s::ss2 ∧
             ∀ e' σ1' es', prim_step e σ1 [] e' σ1' es' →
               ∃ s' ss' σ2', prim_step s σ2 [] s' σ2' ss' ∧
-              tc (R_pre Σ L) (es1 ++ (e' :: es') ++ es2, σ1') (ss1 ++ (s' :: ss') ++ ss2, σ2')).
+              tc (R_pre Σ L) (es1 ++ (e' :: es2) ++ es', σ1') (ss1 ++ (s' :: ss2) ++ ss', σ2')).
     enough (f (es1 ++ e :: es2, σ1) (ss1 ++ s :: ss2, σ2)) as Hf.
     { specialize (Hf es1 e es2 eq_refl).
       destruct Hf as (ss1' & s' & ss2' & Hlen2 & Heqss & Hf).
