@@ -6,8 +6,8 @@ From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang array proofmode.
 From iris.algebra Require Import excl.
 
-From iris_ni.logrel Require Import array typing.
-From iris_ni.examples Require Import lock.
+From iris_ni.logrel Require Import typing.
+From iris_ni.examples Require Import array lock.
 
 (** aux. function for copying contents from one array to another;
    kind of like Array.blit in ocaml, but slower *)

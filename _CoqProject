@@ -21,7 +21,6 @@ theories/program_logic/dwp_adequacy.v
 theories/proofmode/dwp_tactics.v
 theories/logrel/types.v
 theories/logrel/interp.v
-theories/logrel/array.v
 theories/logrel/typing.v
 theories/examples/value_dep.v
 theories/examples/rand.v
@@ -35,4 +34,5 @@ theories/examples/value_sensitivity_4.v
 theories/examples/various.v
 theories/examples/multiset.v
 # theories/examples/allocator.v
+theories/examples/array.v
 theories/examples/set.v
