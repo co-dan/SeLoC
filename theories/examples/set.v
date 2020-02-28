@@ -9,6 +9,8 @@ From iris.algebra Require Import excl.
 From iris_ni.logrel Require Import array typing.
 From iris_ni.examples Require Import lock.
 
+(** aux. function for copying contents from one array to another;
+   kind of like Array.blit in ocaml, but slower *)
 (* copy : (arr_t → arr_t → tint Low → tunit) *)
 Definition array_copy : expr := rec: "copy" "arr1" "arr2" "n" :=
   if: ("n" ≤ #0)
@@ -17,6 +19,7 @@ Definition array_copy : expr := rec: "copy" "arr1" "arr2" "n" :=
        "set" "arr2" "n" "x";;
        "copy" "arr1" "arr2" ("n"-#1).
 
+(** The set ADT that we are implementing *)
 Definition set_t : type :=
   ((tint High → tunit)
   * (tint High → tbool High))%ty.
