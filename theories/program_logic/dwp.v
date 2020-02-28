@@ -173,7 +173,7 @@ Proof.
   by iApply "IH".
 Qed.
 
-(** DF: The other bind rule does not hold.
+(** NB: The other bind rule does not hold.
 Counterexample K1 = [] + 1; K2 = []
 
 dwp (1+1) (1+1) Φ

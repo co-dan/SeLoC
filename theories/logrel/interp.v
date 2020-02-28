@@ -86,8 +86,6 @@ Section semtypes.
       ∧ (⌜¬ (l ⊑ ξ)⌝ → (⌜w1 = NONEV⌝ ∨ ∃ v1, ⌜w1 = SOMEV v1⌝ ∗ A ξ v1 v1)
                         ∗ (⌜w2 = NONEV⌝ ∨ ∃ v2, ⌜w2 = SOMEV v2⌝ ∗ A ξ v2 v2)))%I.
 
-  (* TODO: use the level `l`?
-     DF: we use it in the actual interpretation of arrows *)
   Definition lrel_arr (A1 A2 : lrel Σ) (l : slevel) : lrel Σ := LRel (λ ξ w1 w2,
     □ ∀ v1 v2, A1 ξ v1 v2 -∗ DWP (w1 v1) & (w2 v2) : A2 ξ)%I.
 
@@ -103,7 +101,6 @@ Section semtypes.
   interp (tintoption il l) := lrel_option (lrel_int il) l;
   interp (tarrow s t l) :=
     lrel_arr (interp s) (interp (stamp t l)) l;
-  (* TODO: is this stamp needed here? *)
   interp (tprod τ1 τ2) := lrel_prod (interp τ1) (interp τ2);
   interp (tref τ) := lrel_ref (interp τ).
   Next Obligation. lia. Qed.

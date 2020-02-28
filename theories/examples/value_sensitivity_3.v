@@ -62,7 +62,7 @@ Definition declassified := Excl' Declassified.
 Section helper_lemmas.
   Context `{!stateG Σ, !oneshotG Σ}.
 
-  (* TODO: move *)
+  (* Helper lemmas *)
   Lemma Some_None_not_included {A : cmraT} (x : A) :
     ¬ Some x ≼ None.
   Proof.
@@ -70,7 +70,6 @@ Section helper_lemmas.
     destruct Hfoo as [a [b [? [? ?]]]]. simplify_eq/=.
   Qed.
 
-  (* Helper lemmas *)
   Lemma current_state γ s1 s2 :
     own γ (◯ Some s2) -∗ own γ (● Some s1) -∗ ⌜s1 = s2⌝.
   Proof.
