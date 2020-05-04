@@ -2,6 +2,8 @@
 
 This is the Coq development for SeLoC: a relational separation logic for proving non-interference of concurrent stateful programs.
 
+Read [the paper](https://arxiv.org/abs/1910.00905) for more details.
+
 # Installation instructions
 
 This version is known to compile with:
