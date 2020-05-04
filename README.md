@@ -5,9 +5,9 @@ This is the Coq development for SeLoC: a relational separation logic for proving
 # Installation instructions
 
 This version is known to compile with:
-- Coq 8.9.1
-- Iris developement version [7ddea37a842878fa5a9eb53130e0f867aced2655](https://gitlab.mpi-sws.org/iris/iris/tree/7ddea37a842878fa5a9eb53130e0f867aced2655)
-- Equations 1.2+8.9
+- Coq 8.11
+- Iris developement version [4b6f5dc6c11791acba9e4cebce7aa310028d9a86](https://gitlab.mpi-sws.org/iris/iris/tree/4b6f5dc6c11791acba9e4cebce7aa310028d9a86)
+- Equations 1.2.1+8.11
 
 If you use [opam](https://opam.ocaml.org/), then you can install all the dependencies by running the following commands from the root directory:
 ```

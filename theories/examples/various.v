@@ -14,7 +14,7 @@ Section f_proof.
   Context `{!heapDG Σ}.
 
   Lemma f_proof ξ :
-    DWP f & f : ⟦ tarrow (tint High) (tint Low) Low ⟧ ξ.
+    ⊢ DWP f & f : ⟦ tarrow (tint High) (tint Low) Low ⟧ ξ.
   Proof.
     iApply dwp_value.
     iModIntro. rewrite interp_eq /=. iAlways.
@@ -75,7 +75,7 @@ Section awk_proof.
   Definition f_ty τ l : type := tarrow tunit τ l.
 
   Lemma awk_typing1 τ l2 ξ :
-    DWP awk & awk : ⟦ tarrow (tint Low)
+    ⊢ DWP awk & awk : ⟦ tarrow (tint Low)
                        (tarrow (f_ty τ l2) (tint Low) Low) Low ⟧ ξ.
   Proof.
     iApply logrel_lam. iAlways. iIntros (i1 i2) "#Hi". iSimpl.
@@ -98,7 +98,7 @@ Section awk_proof.
 
   Definition pending γ `{oneshotG Σ} := own γ (Cinl (Excl ())).
   Definition shot γ `{oneshotG Σ} := own γ (Cinr (to_agree ())).
-  Lemma new_pending `{oneshotG Σ} : (|==> ∃ γ, pending γ)%I.
+  Lemma new_pending `{oneshotG Σ} : ⊢ |==> ∃ γ, pending γ.
   Proof. by apply own_alloc. Qed.
   Lemma shoot γ `{oneshotG Σ} : pending γ ==∗ shot γ.
   Proof.
@@ -116,7 +116,7 @@ Section awk_proof.
   Qed.
 
   Lemma awk_typing2 l τ l2 ξ `{oneshotG Σ} :
-    DWP awk & awk : ⟦ tarrow (tint l)
+    ⊢ DWP awk & awk : ⟦ tarrow (tint l)
                        (tarrow (f_ty τ l2) (tint Low) Low) Low ⟧ ξ.
   Proof.
     iApply logrel_lam. iAlways. iIntros (i1 i2) "#Hi". iSimpl.

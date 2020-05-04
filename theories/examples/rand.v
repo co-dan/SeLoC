@@ -15,7 +15,7 @@ Section proof.
   Context `{!heapDG Σ}.
 
   Lemma rand_sec ξ :
-    DWP rand #() & rand #() : ⟦ tbool Low ⟧ ξ.
+    ⊢ DWP rand #() & rand #() : ⟦ tbool Low ⟧ ξ.
   Proof.
     unlock rand.
     dwp_pures. simpl.
@@ -60,7 +60,7 @@ Section proof.
   Qed.
 
   Lemma rand_sec_typing ξ :
-    DWP rand #() & rand #() : ⟦ tbool Low ⟧ ξ.
+    ⊢ DWP rand #() & rand #() : ⟦ tbool Low ⟧ ξ.
   Proof.
     unlock rand.
     dwp_pures. simpl.

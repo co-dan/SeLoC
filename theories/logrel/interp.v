@@ -126,7 +126,7 @@ Section semtypes.
   Lemma flat_type_interp τ ξ :
     (ξ ≠ High) →
     flat_type τ →
-    (∀ v1 v2 w1 w2, interp τ ξ v1 v2 -∗ interp τ ξ w1 w2 -∗ interp τ ξ v1 w2)%I.
+    ⊢ ∀ v1 v2 w1 w2, interp τ ξ v1 v2 -∗ interp τ ξ w1 w2 -∗ interp τ ξ v1 w2.
   Proof.
     intros ?. induction 1.
     - iIntros (v1 v2 w1 w2). rewrite interp_eq.
@@ -309,7 +309,7 @@ Section rules.
   Qed.
 
   Lemma logrel_int ξ (i : Z) l :
-    DWP #i & #i : ⟦ tint l ⟧ ξ.
+    ⊢ DWP #i & #i : ⟦ tint l ⟧ ξ.
   Proof.
     iApply dwp_value. iModIntro.
     iExists i, i. iPureIntro. naive_solver.
@@ -317,21 +317,21 @@ Section rules.
 
   Lemma logrel_int_high ξ (i1 i2 : Z) l :
     ¬ (l ⊑ ξ) →
-    DWP (of_val #i1) & (of_val #i2) : ⟦ tint l ⟧ ξ.
+    ⊢ DWP (of_val #i1) & (of_val #i2) : ⟦ tint l ⟧ ξ.
   Proof.
     iIntros (?). iApply dwp_value. iModIntro.
     iExists i1, i2. iPureIntro. naive_solver.
   Qed.
 
   Lemma logrel_unit ξ :
-    DWP (of_val #()) & (of_val #()) : ⟦ tunit ⟧ ξ.
+    ⊢ DWP (of_val #()) & (of_val #()) : ⟦ tunit ⟧ ξ.
   Proof.
     iApply dwp_value. iModIntro.
     iPureIntro. eauto.
   Qed.
 
   Lemma logrel_bool ξ (b : bool) l :
-    DWP #b & #b : ⟦ tbool l ⟧ ξ.
+    ⊢ DWP #b & #b : ⟦ tbool l ⟧ ξ.
   Proof.
     iApply dwp_value. iModIntro.
     iExists b, b. iPureIntro. naive_solver.
@@ -339,7 +339,7 @@ Section rules.
 
   Lemma logrel_bool_high ξ (b1 b2 : bool) l :
     ¬ (l ⊑ ξ) →
-    DWP (of_val #b1) & (of_val #b2) : ⟦ tbool l ⟧ ξ.
+    ⊢ DWP (of_val #b1) & (of_val #b2) : ⟦ tbool l ⟧ ξ.
   Proof.
     iIntros (?). iApply dwp_value. iModIntro.
     iExists b1, b2. iPureIntro. naive_solver.
@@ -518,7 +518,7 @@ Section rules.
   Qed.
 
   Lemma logrel_none il l ξ :
-    DWP NONEV & NONEV : ⟦ tintoption il l ⟧ ξ.
+    ⊢ DWP NONEV & NONEV : ⟦ tintoption il l ⟧ ξ.
   Proof.
     iApply dwp_value; eauto. iModIntro.
     iSplit; eauto.

@@ -299,16 +299,10 @@ Section typed.
     eapply If_typed'; [eauto with typed..|].
     eapply App_typed'.
     { eapply App_typed'; eauto 20 with typed. }
-      (* - eapply Sub_typed. (*XXX*) *)
-      (*   eauto with typed. apply (type_sub_int _ High). done. *)
-      (* - eauto 20 with typed. } *)
     eapply Rec_typed'.
     eapply Seq_typed; last eauto 50 with typed.
     eapply App_typed'; first eauto with typed.
     eapply App_typed'; eauto 20 with typed.
-    (* { eapply Sub_typed. (*XXX*) *)
-    (*   eauto with typed. apply (type_sub_int _ High). done. } *)
-    (* eauto 20 with typed. *)
   Qed.
 
   Lemma cap_typed Γ : has_type 𝔏 Low Γ cap (tint Low → tint Low).
@@ -347,7 +341,30 @@ Section typed.
     eapply If_typed';[eauto 10 with typed..|].
     eapply App_typed'; first eauto 10 with typed.
     eapply Rec_typed'.
-    eapply App_typed'; eauto 500 with typed.
+    eapply App_typed'; first eauto 50 with typed.
+    eapply Rec_typed'.
+    eapply App_typed'; first eauto 50 with typed.
+    eapply Rec_typed'.
+    eapply App_typed'; first eauto 50 with typed.
+    eapply Rec_typed'.
+    eapply App_typed'.
+    { eapply If_typed_flat'; try done.
+      (* TODO: eauto with typed should handle this *)
+      - econstructor.
+        apply elem_of_dom. rewrite !insert_empty_binder.
+        repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
+        eexists; done.
+      - econstructor.
+        apply elem_of_dom. rewrite !insert_empty_binder.
+        repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
+        eexists; done.
+      - eauto with typed.
+      - eauto with typed.
+      - eauto with typed.
+      - eauto 200 with typed. }
+    repeat (eapply Rec_typed';
+            eapply App_typed'; first eauto 50 with typed).
+    eauto 200 with typed.
   Qed.
 
   Lemma insert_loop_typed Γ :
@@ -381,7 +398,21 @@ Section typed.
       eapply Rec_typed'.
       eapply App_typed'; first eauto 50 with typed.
       eapply Rec_typed'.
-      eapply App_typed'; first eauto 50 with typed.
+      eapply App_typed'.
+      { eapply If_typed_flat'; try done.
+      (* TODO: eauto with typed should handle this *)
+        - econstructor.
+          apply elem_of_dom. rewrite !insert_empty_binder.
+          repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
+          eexists; done.
+        - econstructor.
+          apply elem_of_dom. rewrite !insert_empty_binder.
+          repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
+          eexists; done.
+        - eauto with typed.
+        - eauto with typed.
+        - eauto with typed.
+        - eauto 200 with typed. }
       eapply Rec_typed'.
       eapply App_typed'; first eauto 50 with typed.
       eapply Rec_typed'.
@@ -524,7 +555,7 @@ Section composed.
   Definition set : val := λ: "x", Snd "x".
 
   Lemma make_typed :
-    DWP make & make : ⟦ tint Low → tintoption High Low → arr_t ⟧ Low.
+    ⊢ DWP make & make : ⟦ tint Low → tintoption High Low → arr_t ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
     rewrite interp_eq. iAlways.
@@ -564,7 +595,7 @@ Section composed.
   Qed.
 
   Lemma get_typed :
-    DWP get & get : ⟦ arr_t → tint Low → tintoption High Low ⟧ Low.
+    ⊢ DWP get & get : ⟦ arr_t → tint Low → tintoption High Low ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
     rewrite interp_eq. iAlways.
@@ -576,7 +607,7 @@ Section composed.
   Qed.
 
   Lemma get__typed :
-    DWP get_ & get_ : ⟦ arr_t → tint High → tintoption High High ⟧ Low.
+    ⊢ DWP get_ & get_ : ⟦ arr_t → tint High → tintoption High High ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
     rewrite interp_eq. iAlways.
@@ -588,7 +619,7 @@ Section composed.
   Qed.
 
   Lemma set_typed :
-    DWP set & set : ⟦ arr_t → tint Low → tintoption High Low → tunit ⟧ Low.
+    ⊢ DWP set & set : ⟦ arr_t → tint Low → tintoption High Low → tunit ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
     rewrite interp_eq. iAlways.

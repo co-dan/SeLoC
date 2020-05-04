@@ -133,7 +133,7 @@ Section value_dep.
   Proof. apply _. Qed.
 
   Lemma classification_new α :
-    (|==> ∃ γ, classification_auth γ α ∗ classification γ α 1)%I.
+    ⊢ |==> ∃ γ, classification_auth γ α ∗ classification γ α 1.
   Proof.
     (* Why all the type annotations? *)
     rewrite /classification_auth /classification.

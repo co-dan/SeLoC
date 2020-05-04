@@ -118,7 +118,7 @@ Section semtyping.
   Context `{!heapDG Σ}.
 
   Lemma newlock_typed ξ :
-    DWP newlock #() & newlock #() : ⟦ tmutex ⟧ ξ.
+    ⊢ DWP newlock #() & newlock #() : ⟦ tmutex ⟧ ξ.
   Proof.
     rewrite tmutex_eq.
     unlock newlock. dwp_pures=>/=.
@@ -126,7 +126,7 @@ Section semtyping.
   Qed.
 
   Lemma acquire_typed ξ :
-    DWP acquire & acquire : ⟦ tarrow tmutex tunit Low ⟧ ξ.
+    ⊢ DWP acquire & acquire : ⟦ tarrow tmutex tunit Low ⟧ ξ.
   Proof.
     rewrite tmutex_eq.
     unfold acquire. dwp_pures. iApply dwp_value. iModIntro.
@@ -163,7 +163,7 @@ Section semtyping.
   Qed.
 
   Lemma release_typed ξ :
-    DWP release & release : ⟦ tarrow tmutex tunit Low ⟧ ξ.
+    ⊢ DWP release & release : ⟦ tarrow tmutex tunit Low ⟧ ξ.
   Proof.
     rewrite tmutex_eq.
     unfold release. dwp_pures. iApply dwp_value. iModIntro.

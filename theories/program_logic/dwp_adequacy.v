@@ -144,14 +144,14 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
   (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
   ∃ n, ∀ `{Hinv : !invG Σ},
-      (|={⊤, ∅}▷=>^n
+      ⊢ |={⊤, ∅}▷=>^n
          (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
                    (p1 p2 : proph_mapG proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
             I_L L ∗
             [∗ list] k↦e;s ∈ es;ss,
-                dwp ⊤ e s (if decide (k = O) then Φ else (λ _ _, True))))%I.
+                dwp ⊤ e s (if decide (k = O) then Φ else (λ _ _, True))).
 
 Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
@@ -228,7 +228,7 @@ Proof.
     intros x Hx. rewrite !interp_eq /=.
     iDestruct 1 as (l1 l2 Hl1 Hl2) "H". simplify_eq/=.
     iExists l1, l1. repeat iSplit; eauto.
-    iApply (invariants.inv_iff with "[] H").
+    iApply (invariants.inv_iff with "H").
     iNext. iAlways. iSplit.
     - iDestruct 1 as (v1 v2) "(Hl1 & Hl2 & Hv)".
       iExists v2, v1. iFrame. iDestruct "Hv" as (i1 i2 -> ->) "%".
