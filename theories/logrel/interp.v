@@ -752,9 +752,12 @@ Section rules.
     - rewrite /TWP1. wp_load. done.
     - rewrite /TWP2. wp_load. done.
     - iIntros (w1 w2) "Hl1 Hl2".
-      iDestruct (mapsto_agree with "Hl1 Hl1'") as %->.
+      rewrite /Φ1 /Φ2.
+      iDestruct (gen_heap.mapsto_agree with "Hl1 Hl1'") as %?.
+      simplify_eq/=.
       iCombine "Hl1 Hl1'" as "Hl1".
-      iDestruct (mapsto_agree with "Hl2 Hl2'") as %->.
+      iDestruct (gen_heap.mapsto_agree with "Hl2 Hl2'") as %?.
+      simplify_eq/=.
       iCombine "Hl2 Hl2'" as "Hl2".
       iNext. iMod ("Hcl" with "[-]") as "_".
       { iNext. iExists _,_. by iFrame. }

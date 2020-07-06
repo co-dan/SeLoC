@@ -25,7 +25,7 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
      |={E1,∅}=> ⌜reducible_no_obs e1 σ1⌝ ∗ ⌜reducible_no_obs e2 σ2⌝ ∗
      ∀ e1' σ1' efs1 e2' σ2' efs2, ⌜prim_step e1 σ1 [] e1' σ1' efs1⌝ -∗
                                    ⌜prim_step e2 σ2 [] e2' σ2' efs2⌝ -∗
-       |={∅,∅,E1}▷=>
+       |={∅}=> ▷ |={∅,E1}=>
          state_rel σ1' σ2' (κ1++κs1) (κ2++κs2) ∗ dwp E1 e1' e2' Φ ∗
          [∗ list] ef ; ef' ∈ efs1 ; efs2, dwp ⊤ ef ef' (λ _ _, True)
   end)%I.
@@ -66,11 +66,9 @@ Global Instance dwp_ne E1 e1 e2 n :
 Proof.
   revert e1 e2. induction (lt_wf n) as [n _ IH]=> e1 e2 Φ Ψ HΦ.
   rewrite !dwp_unfold /dwp_pre.
-  (* FIXME: figure out a way to properly automate this proof *)
   (* FIXME: reflexivity, as being called many times by f_equiv and f_contractive
   is very slow here *)
-  do 33 (f_contractive || f_equiv).
-  do 4 (f_contractive || f_equiv).
+  do 37 (f_contractive || f_equiv).
   apply IH; first lia.
   intros ??. eapply (dist_le (S n)); eauto with lia.
   apply HΦ.
@@ -192,7 +190,7 @@ Lemma dwp_step_fupd E1 E1' e1 e2 P Φ :
   to_val e1 = None →
   to_val e2 = None →
   E1' ⊆ E1 →
-  (|={E1,E1'}▷=> P) -∗
+  (|={E1}[E1']▷=> P) -∗
   dwp E1' e1 e2 (λ v1 v2, P ={E1}=∗ Φ v1 v2) -∗
   dwp E1 e1 e2 Φ.
 Proof.

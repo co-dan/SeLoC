@@ -3,7 +3,7 @@ From iris.proofmode Require Import tactics.
 Set Default Proof Using "Type".
 
 Section lifting.
-Context `{irisDG Λ Σ, invG Σ}.
+Context `{!irisDG Λ Σ, !invG Σ}.
 Implicit Types v : val Λ.
 Implicit Types e : expr Λ.
 Implicit Types σ : state Λ.
@@ -15,7 +15,7 @@ Lemma dwp_lift_pure_step `{Inhabited (state Λ)} E1 E1' Φ e1 e2 :
   (∀ κ σ1 e1' σ1' efs1, prim_step e1 σ1 κ e1' σ1' efs1 → κ = [] ∧ σ1' = σ1) →
   (∀ σ2, reducible e2 σ2) →
   (∀ κ σ2 e2' σ2' efs2, prim_step e2 σ2 κ e2' σ2' efs2 → κ = [] ∧ σ2' = σ2) →
-  (|={E1,E1'}▷=> ∀ κ1 κ2 e1' σ1 efs1 e2' σ2 efs2,
+  (|={E1}[E1']▷=> ∀ κ1 κ2 e1' σ1 efs1 e2' σ2 efs2,
     ⌜prim_step e1 σ1 κ1 e1' σ1 efs1⌝ →
     ⌜prim_step e2 σ2 κ2 e2' σ2 efs2⌝ →
     dwp E1 e1' e2' Φ ∗
@@ -52,13 +52,13 @@ Proof.
   iModIntro. iFrame.
 Qed.
 
-Lemma dwp_lift_pure_det_step `{Inhabited (state Λ)} {E1 E1' Φ}
+Lemma dwp_lift_pure_det_step `{!Inhabited (state Λ)} {E1 E1' Φ}
       e1 e1' e2 e2' efs1 efs2 :
   (∀ σ1, reducible e1 σ1) →
   (∀ κ σ1 e1'' σ1' efs1', prim_step e1 σ1 κ e1'' σ1' efs1' → κ = [] ∧ σ1' = σ1 ∧ e1'' = e1' ∧ efs1' = efs1) →
   (∀ σ2, reducible e2 σ2) →
   (∀ κ σ2 e2'' σ2' efs2', prim_step e2 σ2 κ e2'' σ2' efs2' → κ = [] ∧ σ2' = σ2 ∧ e2'' = e2' ∧ efs2' = efs2) →
-  (|={E1,E1'}▷=> dwp E1 e1' e2' Φ ∗
+  (|={E1}[E1']▷=> dwp E1 e1' e2' Φ ∗
     [∗ list] ef1;ef2 ∈ efs1;efs2, dwp ⊤ ef1 ef2 (λ _ _, True ))
   ⊢ dwp E1 e1 e2 Φ.
 Proof.
@@ -72,13 +72,13 @@ Proof.
   iApply "H".
 Qed.
 
-Lemma dwp_pure_step_fupd `{Inhabited (state Λ)} E1 E1' n
+Lemma dwp_pure_step_fupd `{!Inhabited (state Λ)} E1 E1' n
       e1 e1' e2 e2' φ1 φ2 Φ :
   PureExec φ1 n e1 e1' →
   PureExec φ2 n e2 e2' →
   φ1 →
   φ2 →
-  Nat.iter n (λ P, |={E1,E1'}▷=> P) (dwp E1 e1' e2' Φ)
+  Nat.iter n (λ P, |={E1}[E1']▷=> P) (dwp E1 e1' e2' Φ)
   ⊢ dwp E1 e1 e2 Φ.
 Proof.
   iIntros (Hexec1 Hexec2 Hφ1 Hφ2) "H".
@@ -102,7 +102,7 @@ Proof.
       by iApply "IH".
 Qed.
 
-Lemma dwp_pure_step_later `{Inhabited (state Λ)} E1
+Lemma dwp_pure_step_later `{!Inhabited (state Λ)} E1
       e1 e1' e2 e2' n φ1 φ2 Φ :
   PureExec φ1 n e1 e1' →
   PureExec φ2 n e2 e2' →

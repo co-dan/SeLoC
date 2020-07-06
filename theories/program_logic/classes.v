@@ -1,5 +1,5 @@
 From iris.program_logic Require Import language ectx_language.
-From iris.heap_lang Require Export lang lifting notation.
+From iris.heap_lang Require Export lang notation.
 
 (* NB: Basically, this file contains /a lot/ of boilerplate.
    For some DWP lemmas we want to easily discharge the side conditions:

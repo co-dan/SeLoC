@@ -2,7 +2,7 @@ From stdpp Require Import namespaces.
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.base_logic.lib Require Import wsat.
 From iris.proofmode Require Import tactics.
-From iris.heap_lang Require Import lang.
+From iris.heap_lang Require Import lang primitive_laws.
 From iris_ni.program_logic Require Export dwp lifting heap_lang_lifting.
 From iris_ni.logrel Require Export types interp.
 Import uPred.
@@ -12,7 +12,7 @@ Implicit Types L : gset loc.
 Implicit Types l : loc.
 
 Definition low_equiv L σ1 σ2 :=
-  (∀ l, l ∈ L → ∃ n : Z, σ1.(heap) !! l = Some #n ∧ σ2.(heap) !! l = Some #n).
+  (∀ l, l ∈ L → ∃ n : Z, σ1.(heap) !! l = Some $ Some #n ∧ σ2.(heap) !! l = Some $ Some #n).
 
 Instance low_equiv_transitive L : Transitive (low_equiv L).
 Proof.
@@ -27,65 +27,26 @@ Qed.
 Class heapPreDG Σ := HeapPreDG {
   heapPreDG_proph_mapG1 :> proph_mapPreG proph_id (val*val) Σ;
   heapPreDG_proph_mapG2 :> proph_mapPreG proph_id (val*val) Σ;
-  heapPreDG_gen_heapG1 :> gen_heapPreG loc val Σ;
-  heapPreDG_gen_heapG2 :> gen_heapPreG loc val Σ
+  heapPreDG_gen_heapG1 :> gen_heapPreG loc (option val) Σ;
+  heapPreDG_gen_heapG2 :> gen_heapPreG loc (option val) Σ;
+  heapPreDG_inv_heapG1 :> inv_heapPreG loc (option val) Σ;
+  heapPreDG_inv_heapG2 :> inv_heapPreG loc (option val) Σ
 }.
 
 (* BEGIN helper lemmas *)
-(* TODO Move to std++ eventually *)
 Section helper.
-
-(* NOTE: this is in std++ master *)
-Lemma dom_map_filter `{FinMapDom K M D} {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) X :
-  (∀ i, i ∈ X ↔ ∃ x, m !! i = Some x ∧ P (i, x)) →
-  dom D (filter P m) ≡ X.
-Proof.
-  intros HX i. rewrite elem_of_dom HX.
-  unfold is_Some. by setoid_rewrite map_filter_lookup_Some.
-Qed.
-Lemma dom_map_filter_L `{FinMapDom K M D} `{!LeibnizEquiv D} {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) X :
-  (∀ i, i ∈ X ↔ ∃ x, m !! i = Some x ∧ P (i, x)) →
-  dom D (filter P m) = X.
-Proof. unfold_leibniz. apply dom_map_filter. Qed.
-
-Context `{FinMap K M}.
-
-(* NOTE: this is in std++ master *)
-Lemma map_disjoint_filter {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) :
-  filter P m ##ₘ filter (λ v, ¬ P v) m.
-Proof.
-  apply map_disjoint_spec. intros i x y.
-  rewrite !map_filter_lookup_Some. naive_solver.
-Qed.
-Lemma map_union_filter {A} (P : K * A → Prop) `{!∀ x, Decision (P x)} (m : M A) :
-  filter P m ∪ filter (λ v, ¬ P v) m = m.
-Proof.
-  apply map_eq; intros i. apply option_eq; intros x.
-  rewrite lookup_union_Some; last by apply map_disjoint_filter.
-  rewrite !map_filter_lookup_Some.
-  destruct (decide (P (i,x))); naive_solver.
-Qed.
-
-Context {A} `{Inhabited A}.
-Context {D} `{FinMapDom K M D}.
-
-Definition extract_fn (m : M A) : K → A := fun x =>
-  match m !! x with
+Definition extract_fn (σ : gmap loc (option val)) : loc → val := fun x =>
+  match σ !!! x with
   | None => inhabitant
   | Some v => v
   end.
-Lemma extract_fn_spec' (m : M A) :
-  ∀ x, x ∈ dom D m → m !! x = Some (extract_fn m x).
-Proof. intros x. rewrite elem_of_dom /extract_fn. by intros [v ->]. Qed.
-Lemma extract_fn_spec (m : M A) (x : K) (v : A) :
-  m !! x = Some v → extract_fn m x = v.
+Lemma extract_fn_spec (σ : gmap loc (option val)) (l : loc) (v : val) :
+  σ !! l = Some (Some v) → extract_fn σ l = v.
 Proof.
-  intros Hx.
-  enough (m !! x = Some (extract_fn m x)); first by simplify_eq/=.
-  apply extract_fn_spec'. apply elem_of_dom. eauto.
+  intros Hx. rewrite /extract_fn.
+  by rewrite (lookup_total_correct _ _ _ Hx).
 Qed.
 End helper.
-(* TODO: helper lemmas *)
 Section relation_lemmas.
   Context {A : Type}.
   Implicit Types R : relation A.
@@ -115,8 +76,8 @@ Section relation_lemmas.
 End relation_lemmas.
 (* END helper lemmas *)
 
-Lemma allocator_helper σ L `{!invG Σ, !gen_heapG loc val Σ} :
-  (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some #n) →
+Lemma allocator_helper (σ : gmap loc (option val)) L `{!invG Σ, !gen_heapG loc (option val) Σ} :
+  (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some $ Some #n) →
   let σ' := filter ((.∉ L) ∘ fst) σ in
   gen_heap_ctx σ' ==∗ gen_heap_ctx σ ∗ [∗ set] l ∈ L, l ↦ (extract_fn σ l).
 Proof.
@@ -125,12 +86,12 @@ Proof.
   { apply map_disjoint_filter. }
   iDestruct "HL" as "[HL _]".
   rewrite map_union_filter. iFrame "Hσ".
-  iAssert ([∗ map] l↦_ ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ (extract_fn σ l))%I
+  iAssert ([∗ map] l↦d ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ (extract_fn σ l))%I
       with "[HL]" as "HL".
   { iApply (big_sepM_mono with "HL").
     intros l v. rewrite map_filter_lookup_Some=> [[Hlσ HlL]].
     destruct (HL l HlL) as [n Hl]. simplify_eq/=.
-    by rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hlσ). }
+    by rewrite (extract_fn_spec _ _ _ Hlσ). }
   rewrite big_sepM_dom.
   rewrite (dom_map_filter_L (λ x, x.1 ∈ L) σ L); first done.
   intros i. naive_solver.
@@ -144,8 +105,9 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
   (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
   ∃ n, ∀ `{Hinv : !invG Σ},
-      ⊢ |={⊤, ∅}▷=>^n
-         (|={⊤}=> ∃ (h1 h2 : gen_heapG loc val Σ)
+      ⊢ |={⊤}[∅]▷=>^n
+         (|={⊤}=> ∃ (h1 h2 : gen_heapG loc (option val) Σ)
+                    (hi1 hi2 : inv_heapG loc (option val) Σ)
                    (p1 p2 : proph_mapG proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
@@ -175,9 +137,11 @@ Proof.
   iMod (proph_map_init [] σ1.(used_proph_id)) as (pg1) "Hp1".
   iMod (proph_map_init [] σ2.(used_proph_id)) as (pg2) "Hp2".
 
-  pose (Hdheap := (HeapDG Σ Hinv pg1 pg2 hg1 hg2)).
+  iMod (inv_heap_init loc (option val) ⊤) as (ih1) "Hih1".
+  iMod (inv_heap_init loc (option val) ⊤) as (ih2) "Hih2".
 
-  iAssert (|={⊤}=> ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l))%I
+  pose (Hdheap := (HeapDG Σ Hinv pg1 pg2 hg1 hg2 ih1 ih2)).
+  iAssert (|={⊤}=> ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #(LitLoc l)))%I
           with "[HL1 HL2]" as "HI".
   { iApply big_sepS_fupd.
     iCombine "HL1 HL2" as "HL".
@@ -185,20 +149,20 @@ Proof.
     iApply (big_sepS_mono with "HL").
     iIntros (x Hx) "[Hx1 Hx2]".
     destruct (Hσ x Hx) as (n&Hn1&Hn2).
-    rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hn1).
-    rewrite (extract_fn_spec (D:=gset loc) _ _ _ Hn2).
+    rewrite (extract_fn_spec _ _ _ Hn1).
+    rewrite (extract_fn_spec _ _ _ Hn2).
     iApply (interp_ref_alloc Low x x #n #n (tint Low) with "[$Hx1] [$Hx2] []").
     rewrite interp_eq. iExists n,n; eauto. }
   iMod "HI" as "#HI".
-  iModIntro. iExists hg1,hg2,pg1,pg2.
+  iModIntro. iExists hg1,hg2,ih1,ih2,pg1,pg2.
   iFrame "Hh1 Hh2 Hp1 Hp2 HI".
   iSplit; last done.
   iApply (Hdwp with "HI").
 Qed.
 
 Lemma dwp_lift_bisim_singleton e1 e2 σ1 σ2 (out : loc) (n : Z) Σ `{!invPreG Σ, !heapPreDG Σ} :
-  σ1.(heap) !! out = Some #n →
-  σ2.(heap) !! out = Some #n →
+  σ1.(heap) !! out = Some (Some #n) →
+  σ2.(heap) !! out = Some (Some #n) →
   (∀ `{!heapDG Σ}, ⟦ tref (tint Low) ⟧ Low #out #out -∗ DWP e1 & e2 : I) →
   dwp_rel Σ [e1] [e2] σ1 σ2 {[out]} I.
 Proof.
@@ -218,8 +182,8 @@ Proof.
   iPoseProof (HR Hinv) as "H".
   iApply (step_fupdN_mono with "H").
   iIntros "H". iMod "H". iModIntro.
-  iDestruct "H" as (h1 h2 p1 p2) "[Hσ [Hout HDWP]]".
-  iExists h2, h1, p2, p1.
+  iDestruct "H" as (h1 h2 ih1 ih2 p1 p2) "[Hσ [Hout HDWP]]".
+  iExists h2, h1, ih2, ih1, p2, p1.
   rewrite /state_rel /=.
   iDestruct "Hσ" as "($&$&$&$)". clear HR.
   (* first we prove that we can get the symmetric version of the invariant *)
@@ -275,7 +239,7 @@ Proof.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
-  iMod "HR" as (h1 h2 p1 p2) "[HSR H]".
+  iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR H]".
   rewrite big_sepL2_cons. iDestruct "H" as "(_ & H & _)".
   rewrite decide_left.
   destruct (to_val e) as [v1|] eqn:He, (to_val s) as [v2|] eqn:Hs.
@@ -305,7 +269,7 @@ Proof.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
-  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv _]]".
+  iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR [Hinv _]]".
   iDestruct "HSR" as "(Hσ1 & _ & Hσ2 & _)".
   rewrite /I_L. rewrite (big_sepS_elem_of _ _ l) //.
   rewrite interp_eq. iDestruct "Hinv" as (o1 o2 ? ?) "#Hinv".
@@ -331,7 +295,7 @@ Proof.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
-  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
+  iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre He) in "H".
   simpl. destruct (to_val s) as [vs|] eqn:Hs.
@@ -349,7 +313,7 @@ Proof.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
-  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
+  iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR [Hinv H]]".
   rewrite big_sepL2_length. iFrame.
   iApply fupd_mask_weaken; eauto.
 Qed.
@@ -368,7 +332,7 @@ Proof.
   rewrite Nat_iter_S_r.
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
-  iMod "HR" as (h1 h2 p1 p2) "[HSR [Hinv H]]".
+  iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR [Hinv H]]".
   rewrite (big_sepL2_lookup _ _ _ i)=>//.
   iEval (rewrite dwp_unfold /dwp_pre) in "H".
   simpl.
@@ -396,8 +360,8 @@ Proof.
   rewrite Nat_iter_S_r.
   iPoseProof HR as "H".
   iApply (step_fupdN_mono with "H").
-  iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI [Hinv HWP]]".
-  iExists h1,h2,p1,p2.
+  iIntros "H". iMod "H" as (h1 h2 ih1 ih2 p1 p2) "[HI [Hinv HWP]]".
+  iExists h1,h2,ih1,ih2,p1,p2.
 
   rewrite big_sepL2_app_inv=>//. rewrite big_sepL2_cons.
   iDestruct "HWP" as "[H1 [HWP H2]]".
@@ -436,8 +400,8 @@ Proof.
   rewrite Nat_iter_S_r.
   iPoseProof HR as "H".
   iApply (step_fupdN_mono with "H").
-  iIntros "H". iMod "H" as (h1 h2 p1 p2) "[HI [Hinv HWP]]".
-  iExists h1,h2,p1,p2.
+  iIntros "H". iMod "H" as (h1 h2 ih1 ih2 p1 p2) "[HI [Hinv HWP]]".
+  iExists h1,h2,ih1,ih2,p1,p2.
 
   rewrite big_sepL2_app_inv=>//. rewrite big_sepL2_cons.
   iDestruct "HWP" as "[H1 [HWP H2]]".

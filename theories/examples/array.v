@@ -40,7 +40,7 @@ Section lookup_total.
     i < List.length l → <[i:=x]>l !!! i = x.
   Proof.
     intros Hlen.
-    rewrite list_lookup_total_alt list_lookup_insert //. lia.
+    rewrite list_lookup_total_alt list_lookup_insert //.
   Qed.
   Lemma list_lookup_total_insert_ne l (i j : nat) x :
     i ≠ j → <[i:=x]>l !!! j = l !!! j.
@@ -87,7 +87,7 @@ Section spec.
     DWP make #n v1 & make #n v2 : lrel_array τ ξ.
   Proof.
     iIntros "#Hv".
-    iAssert (∀ n : Z, ⌜ 0 ≤ n ⌝ →
+    iAssert (∀ n : Z, ⌜ (0 ≤ n)%Z ⌝ →
       DWP (AllocN #(1 + n) v1, #n) & (AllocN #(1 + n) v2, #n) : lrel_array τ ξ)%I as "H"; last first.
     { rewrite /make /maximum. dwp_pures.
       case_bool_decide; dwp_pures; iApply "H"; auto with lia. }
@@ -132,8 +132,8 @@ Section spec.
   Lemma array_get_both τ ξ l1 l2 i1 i2 n :
     pseudo_refl (⟦ stamp τ High ⟧) ξ →
     contractible (⟦ stamp τ High ⟧) ξ →
-    0 ≤ i1 < n →
-    0 ≤ i2 < n →
+    (0 ≤ i1 < n)%Z →
+    (0 ≤ i2 < n)%Z →
     array_inv τ ξ l1 l2 n -∗
     DWP !#(l1 +ₗ i1) & !#(l2 +ₗ i2) : ⟦ stamp τ High ⟧ ξ.
   Proof.
@@ -175,7 +175,7 @@ Section spec.
   Qed.
 
   Lemma array_get_same τ ξ l1 l2 i1 n :
-    0 ≤ i1 < n →
+    (0 ≤ i1 < n)%Z →
     array_inv τ ξ l1 l2 n -∗
     DWP !#(l1 +ₗ i1) & !#(l2 +ₗ i1) : ⟦ τ ⟧ ξ.
   Proof.
@@ -288,8 +288,8 @@ Section spec.
   Lemma array_set_both τ ξ v1 v2 l1 l2 i1 i2 n :
     pseudo_refl ⟦ τ ⟧ ξ →
     contractible ⟦ τ ⟧ ξ →
-    0 ≤ i1 < n →
-    0 ≤ i2 < n →
+    (0 ≤ i1 < n)%Z →
+    (0 ≤ i2 < n)%Z →
     ⟦ τ ⟧ ξ v1 v2 -∗
     array_inv τ ξ l1 l2 n -∗
     DWP #(l1 +ₗ i1) <- v1 & #(l2 +ₗ i2) <- v2 : ⟦ tunit ⟧ ξ.
@@ -324,7 +324,7 @@ Section spec.
   Qed.
 
   Lemma array_set_same τ ξ v1 v2 l1 l2 i1 n :
-    0 ≤ i1 < n →
+    (0 ≤ i1 < n)%Z →
     ⟦ τ ⟧ ξ v1 v2 -∗
     array_inv τ ξ l1 l2 n -∗
     DWP #(l1 +ₗ i1) <- v1 & #(l2 +ₗ i1) <- v2 : ⟦ tunit ⟧ ξ.

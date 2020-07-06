@@ -1,7 +1,7 @@
 From iris.base_logic Require Export gen_heap.
 From iris_ni.program_logic Require Export dwp classes ectx_lifting.
 From iris_ni.program_logic Require Export dwp classes.
-From iris.heap_lang Require Export lang lifting notation.
+From iris.heap_lang Require Export lang notation.
 From iris.heap_lang Require Import tactics proofmode.
 From iris.proofmode Require Import tactics.
 From stdpp Require Import fin_maps.
@@ -11,40 +11,44 @@ Class heapDG Σ := HeapDG {
   heapDG_invG :> invG Σ;
   heapDG_proph_mapG1 :> proph_mapG proph_id (val*val) Σ;
   heapDG_proph_mapG2 :> proph_mapG proph_id (val*val) Σ;
-  heapDG_gen_heapG1 :> gen_heapG loc val Σ;
-  heapDG_gen_heapG2 :> gen_heapG loc val Σ;
+  heapDG_gen_heapG1 :> gen_heapG loc (option val) Σ;
+  heapDG_gen_heapG2 :> gen_heapG loc (option val) Σ;
+  heapDG_inv_heapG1 :> inv_heapG loc (option val) Σ;
+  heapDG_inv_heapG2 :> inv_heapG loc (option val) Σ;
 }.
 
 (** heapG instanecs for both sides *)
 Definition heapG1 `{heapDG Σ} : heapG Σ :=
   {| heapG_invG := heapDG_invG;
      heapG_gen_heapG := heapDG_gen_heapG1;
+     heapG_inv_heapG := heapDG_inv_heapG1;
      heapG_proph_mapG := heapDG_proph_mapG1 |}.
 Definition heapG2 `{heapDG Σ} : heapG Σ :=
   {| heapG_invG := heapDG_invG;
      heapG_gen_heapG := heapDG_gen_heapG2;
+     heapG_inv_heapG := heapDG_inv_heapG2;
      heapG_proph_mapG := heapDG_proph_mapG2 |}.
 
 (** irisG instances for both sides *)
-Definition irisG1 `{heapDG Σ} : irisG heap_lang Σ :=
+Definition irisG1 `{!heapDG Σ} : irisG heap_lang Σ :=
   @heapG_irisG Σ heapG1.
-Definition irisG2 `{heapDG Σ} : irisG heap_lang Σ :=
+Definition irisG2 `{!heapDG Σ} : irisG heap_lang Σ :=
   @heapG_irisG Σ heapG2.
 
-Definition TWP1 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
+Definition TWP1 `{!heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
   @twp heap_lang (iProp Σ) stuckness
        (@twp' heap_lang Σ irisG1)
        NotStuck E e R.
 
-Definition TWP2 `{heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
+Definition TWP2 `{!heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
   @twp heap_lang (iProp Σ) stuckness
        (@twp' heap_lang Σ irisG2)
        NotStuck E e R.
 
-Definition mapsto1 `{heapDG Σ} (l : loc) (q : Qp) (v : val) :=
-  @mapsto loc _ _ val Σ heapDG_gen_heapG1 l q v.
-Definition mapsto2 `{heapDG Σ} (l : loc) (q : Qp) (v : val) :=
-  @mapsto loc _ _ val Σ heapDG_gen_heapG2 l q v.
+Definition mapsto1 `{!heapDG Σ} (l : loc) (q : Qp) (v : val) :=
+  @mapsto loc _ _ _ Σ heapDG_gen_heapG1 l q (Some v%V).
+Definition mapsto2 `{!heapDG Σ} (l : loc) (q : Qp) (v : val) :=
+  @mapsto loc _ _ _ Σ heapDG_gen_heapG2 l q (Some v%V).
 
 Notation "l ↦ₗ{ q } v" := (mapsto1 l q v%V)
   (at level 20, q at level 50, format "l  ↦ₗ{ q }  v") : bi_scope.
@@ -74,13 +78,13 @@ Notation "l ↦ᵣ∗ vs" := (array2 l vs)
 
 Definition meta1 `{heapDG Σ} {A} `{EqDecision A, Countable A}
            (l : loc) (N : namespace) (x : A) :=
-  @meta loc _ _ val Σ heapDG_gen_heapG1 A _ _ l N x.
+  @meta loc _ _ _ Σ heapDG_gen_heapG1 A _ _ l N x.
 Definition meta2 `{heapDG Σ} {A} `{EqDecision A, Countable A}
            (l : loc) (N : namespace) (x : A) :=
-  @meta loc _ _ val Σ heapDG_gen_heapG2 A _ _ l N x.
+  @meta loc _ _ _ Σ heapDG_gen_heapG2 A _ _ l N x.
 
 
-Instance heapDG_irisDG `{heapDG Σ} : irisDG heap_lang Σ := {
+Instance heapDG_irisDG `{!heapDG Σ} : irisDG heap_lang Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,
       @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
     ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)
@@ -89,7 +93,7 @@ Instance heapDG_irisDG `{heapDG Σ} : irisDG heap_lang Σ := {
 }.
 
 Section array_liftings.
-  Context `{heapDG Σ}.
+  Context `{!heapDG Σ}.
   Lemma array1_cons l v vs : l ↦ₗ∗ (v :: vs) ⊣⊢ l ↦ₗ v ∗ (l +ₗ 1) ↦ₗ∗ vs.
   Proof.
     rewrite /array1 /mapsto1 big_sepL_cons loc_add_0.
@@ -107,7 +111,7 @@ Section array_liftings.
 End array_liftings.
 
 Section lifting.
-Context `{heapDG Σ}.
+Context `{!heapDG Σ}.
 
 Local Hint Extern 0 (head_reducible _ _) => eexists _, _, _; simpl.
 

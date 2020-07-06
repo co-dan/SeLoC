@@ -1,7 +1,7 @@
 (* heap_lang with deterministic allocation *)
 From stdpp Require Import base gmap.
 From iris.proofmode Require Import base tactics classes.
-From iris.heap_lang Require Import lang lifting.
+From iris.heap_lang Require Import lang primitive_laws.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 
 (** A simple allocator only knows about the state.
@@ -9,12 +9,12 @@ From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 *)
 Module Type Allocator.
 Parameter oracle : state -> Z -> loc.
-Axiom oracle_fresh : ∀ σ n i, 0 ≤ i → i < n → (heap σ) !! (oracle σ n +ₗ i) = None.
+Axiom oracle_fresh : ∀ σ n (i : Z), (0 ≤ i)%Z → (i < n)%Z → (heap σ) !! (oracle σ n +ₗ i) = None.
 End Allocator.
 
 Module SimpleAllocator : Allocator.
   Definition oracle σ (n : Z) := fresh_locs (dom (gset loc) σ.(heap)).
-  Lemma oracle_fresh : ∀ σ n (i : Z), 0 ≤ i → i < n → (heap σ) !! (oracle σ n +ₗ i) = None.
+  Lemma oracle_fresh : ∀ σ n (i : Z), (0 ≤ i)%Z → (i < n)%Z → (heap σ) !! (oracle σ n +ₗ i) = None.
   Proof.
     intros σ n i Hi Hn. eapply (not_elem_of_dom (D:=gset loc)).
     by apply fresh_locs_fresh.
@@ -57,35 +57,41 @@ Inductive head_step : expr → state → list observation → expr → state →
      head_step (Fork e) σ [] (Val $ LitV LitUnit) σ [e]
   | AllocNS n v σ :
       let l := A.oracle σ n in
-     0 < n →
-     (∀ i, 0 ≤ i → i < n → σ.(heap) !! (l +ₗ i) = None) →
+     (0 < n)%Z →
+     (∀ i, (0 ≤ i)%Z → (i < n)%Z → σ.(heap) !! (l +ₗ i) = None) →
      head_step (AllocN (Val $ LitV $ LitInt n) (Val v)) σ
                []
                (Val $ LitV $ LitLoc l) (state_init_heap l n v σ)
                []
+  | FreeS l v σ :
+     σ.(heap) !! l = Some $ Some v →
+     head_step (Free (Val $ LitV $ LitLoc l)) σ
+               []
+               (Val $ LitV LitUnit) (state_upd_heap <[l:=None]> σ)
+               []
   | LoadS l v σ :
-     σ.(heap) !! l = Some v →
+     σ.(heap) !! l = Some $ Some v →
      head_step (Load (Val $ LitV $ LitLoc l)) σ [] (of_val v) σ []
-  | StoreS l v σ :
-     is_Some (σ.(heap) !! l) →
+  | StoreS l v0 v σ :
+     σ.(heap) !! l = Some $ Some v0 →
      head_step (Store (Val $ LitV $ LitLoc l) (Val v)) σ
                []
-               (Val $ LitV LitUnit) (state_upd_heap <[l:=v]> σ)
+               (Val $ LitV LitUnit) (state_upd_heap <[l:=Some v]> σ)
                []
   | CmpXchgS l v1 v2 vl σ b :
-     σ.(heap) !! l = Some vl →
+     σ.(heap) !! l = Some $ Some vl →
      (* Crucially, this compares the same way as [EqOp]! *)
      vals_compare_safe vl v1 →
      b = bool_decide (vl = v1) →
      head_step (CmpXchg (Val $ LitV $ LitLoc l) (Val v1) (Val v2)) σ
                []
-               (Val $ PairV vl (LitV $ LitBool b)) (if b then state_upd_heap <[l:=v2]> σ else σ)
+               (Val $ PairV vl (LitV $ LitBool b)) (if b then state_upd_heap <[l:=Some v2]> σ else σ)
                []
   | FaaS l i1 i2 σ :
-     σ.(heap) !! l = Some (LitV (LitInt i1)) →
+     σ.(heap) !! l = Some $ Some (LitV (LitInt i1)) →
      head_step (FAA (Val $ LitV $ LitLoc l) (Val $ LitV $ LitInt i2)) σ
                []
-               (Val $ LitV $ LitInt i1) (state_upd_heap <[l:=LitV (LitInt (i1 + i2))]>σ)
+               (Val $ LitV $ LitInt i1) (state_upd_heap <[l:=Some $ LitV (LitInt (i1 + i2))]>σ)
                []
   | NewProphS σ :
      let p := fresh σ.(used_proph_id) in
