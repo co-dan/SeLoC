@@ -438,7 +438,7 @@ Section rules.
   Proof.
     iIntros "He". dwp_bind e1 e2.
     iApply (dwp_wand with "He").
-    iIntros (? ?). rewrite interp_eq.
+    iIntros (z1 z2). rewrite interp_eq.
     iDestruct 1 as (v1 v2 w1 w2 -> ->) "[#Hv #Hw]".
     dwp_pures. by iApply dwp_value.
   Qed.
@@ -449,7 +449,7 @@ Section rules.
   Proof.
     iIntros "He". dwp_bind e1 e2.
     iApply (dwp_wand with "He").
-    iIntros (? ?). rewrite interp_eq.
+    iIntros (z1 z2). rewrite interp_eq.
     iDestruct 1 as (v1 v2 w1 w2 -> ->) "[#Hv #Hw]".
     dwp_pures. by iApply dwp_value.
   Qed.

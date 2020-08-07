@@ -93,7 +93,7 @@ Proof.
     destruct (HL l HlL) as [n Hl]. simplify_eq/=.
     by rewrite (extract_fn_spec _ _ _ Hlσ). }
   rewrite big_sepM_dom.
-  rewrite (dom_map_filter_L (λ x, x.1 ∈ L) σ L); first done.
+  rewrite (dom_filter_L (λ x, x.1 ∈ L) σ L); first done.
   intros i. naive_solver.
 Qed.
 

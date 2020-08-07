@@ -7,6 +7,6 @@ build: [make "-j%{jobs}%"]
 install: [make "install"]
 remove: ["rm" "-rf" "%{lib}%/coq/user-contrib/ni"]
 depends: [
-  "coq-iris" { (= "dev.2020-04-16.1.e2639ac1") | (= "dev") }
+  "coq-iris" { (= "dev.2020-04-16.1.9b804e35") | (= "dev") }
   "coq-equations" { (>= "1.2.1+8.11") }
 ]

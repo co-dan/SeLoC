@@ -583,7 +583,7 @@ Section proof.
 
       eauto with iFrame.
     - rewrite interp_eq /= /lrel_car /=. iAlways.
-      iIntros (??) "_". dwp_rec.
+      iIntros (z1 z2) "_". dwp_rec.
       dwp_bind (acquire _) (acquire _).
       iApply (acquire_spec with "Hlock").
       iIntros "Hlk Hls".

@@ -150,7 +150,7 @@ Section awk_proof.
     { iApply "Hf". rewrite (interp_eq tunit). eauto with iFrame. }
     iApply dwp_atomic. iInv N as "HN" "Hcl". iModIntro.
       iDestruct "HN" as "[HN|[_ [>Hr1 >Hr2]]]";
-        first iDestruct "HN" as (v1 v2) "[>Hγ' _]".
+        first iDestruct "HN" as (? ?) "[>Hγ' _]".
     { iExFalso. iApply (shot_not_pending with "Hγ Hγ'"). }
     iApply (dwp_load with "Hr1 Hr2").
     iIntros "Hr1 Hr2". iNext. iMod ("Hcl" with "[-]") as "_".

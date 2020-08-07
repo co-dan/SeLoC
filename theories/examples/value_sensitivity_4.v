@@ -158,8 +158,8 @@ Section proof.
     - (* Thread 1 *) iApply (thread1_spec with "HoutL HoutH Hvd Hinv Hp1").
     - (* Thread 2 *) iApply (thread2_spec with "HoutH Hvd Hinv Hp2 Hc2").
     - (* Finally *)
-      iIntros (????) "Hp1 [Hp2 Hc2]". iCombine "Hp1 Hp2" as "Hp".
-      iNext. dwp_pures.
+      iIntros (z1 z2 r1 r2) "Hp1 [Hp2 Hc2]". iCombine "Hp1 Hp2" as "Hp".
+      iNext. dwp_pures. clear z1 z2 r1 r2.
       iMod (cinv_cancel with "Hinv Hp") as (β) "[>Hc1 >Hi]"; first done.
       iDestruct "Hi" as "[[Htok2 %]|[_ %]]"; simplify_eq/=.
       { iExFalso. by iDestruct (classification_agree with "Hc1 Hc2") as %?. }

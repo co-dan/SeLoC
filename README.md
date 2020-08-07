@@ -8,7 +8,7 @@ Read [the preprint](https://arxiv.org/abs/1910.00905) for more details.
 
 This version is known to compile with:
 - Coq 8.11
-- Iris developement version [e2639ac15b9cdd60cfe26d644601a781e6c60511](https://gitlab.mpi-sws.org/iris/iris/tree/e2639ac15b9cdd60cfe26d644601a781e6c60511)
+- Iris developement version [9b804e35c15eafd938934d34d49c406cd305f5df](https://gitlab.mpi-sws.org/iris/iris/tree/9b804e35c15eafd938934d34d49c406cd305f5df)
 - Equations 1.2.1+8.11
 
 If you use [opam](https://opam.ocaml.org/), then you can install all the dependencies by running the following commands from the root directory:
