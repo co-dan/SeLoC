@@ -199,6 +199,15 @@ Inductive  flat_type : type → Prop :=
                     flat_type τ' →
                     flat_type (tprod τ τ').
 
+(* "Unboxed types" are types which values are unboxed *)
+Inductive  unboxed_type : type → Prop :=
+| tint_unboxed l : unboxed_type (tint l)
+| tbool_unboxed l : unboxed_type (tbool l)
+| tunit_unboxed : unboxed_type tunit
+| tintoption_unboxed il l : unboxed_type (tintoption il l)
+.
+
+
 Definition tmutex_aux : seal (tref (tbool Low)). by eexists. Qed.
 Definition tmutex : type := tmutex_aux.(unseal).
 Definition tmutex_eq : tmutex = tref (tbool Low) := tmutex_aux.(seal_eq).

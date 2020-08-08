@@ -123,6 +123,65 @@ Section semtypes.
     end.
   Proof. by funelim (interp τ). Qed.
 
+  Lemma unboxed_type_interp τ ξ :
+    unboxed_type τ →
+    ⊢ ∀ v1 v2, interp τ ξ v1 v2 -∗ ⌜val_is_unboxed v1 ∧ val_is_unboxed v2⌝.
+  Proof.
+    induction 1.
+    - iIntros (v1 v2). iDestruct 1 as (k1 k2 ? ?) "H1".
+      simplify_eq/=; eauto.
+    - iIntros (v1 v2). iDestruct 1 as (k1 k2 ? ?) "H1".
+      simplify_eq/=; eauto.
+    - iIntros (v1 v2). iDestruct 1 as "[-> ->]".
+      simplify_eq/=; eauto.
+    - iIntros (v1 v2). rewrite interp_eq /=.
+      destruct (decide (l ⊑ ξ)).
+      + iDestruct 1 as  "[H _]".
+        iSpecialize ("H" with "[%//]").
+        iDestruct "H" as "[[-> ->]|H]"; first by eauto.
+        iDestruct "H" as (k1 k2 -> ->) "H".
+        iDestruct "H" as (i1 i2 -> ->) "H".
+        simplify_eq/=; eauto.
+      + iDestruct 1 as  "[_ H]".
+        iSpecialize ("H" with "[%//]").
+        iDestruct "H" as "[H1 H2]".
+        iDestruct "H1" as "[->|H1]";
+        try iDestruct "H2" as "[->|H2]";
+        try iDestruct "H1" as (k1 ->) "H1";
+        try iDestruct "H2" as (k2 ->) "H2";
+        try iDestruct "H1" as (i1 ? -> ->) "?";
+        try iDestruct "H2" as (i2 ? -> ->) "?";
+        simplify_eq/=; eauto.
+  Qed.
+
+  Lemma unboxed_type_interp' τ ξ v1 v2 :
+    unboxed_type τ →
+    interp τ ξ v1 v2 ⊢ ⌜val_is_unboxed v1 ∧ val_is_unboxed v2⌝.
+  Proof. intros Hτ. by iApply unboxed_type_interp. Qed.
+
+  Lemma unboxed_type_eq τ ξ v1 v2 :
+    unboxed_type τ →
+    interp τ ξ v1 v2 ⊢ ⌜lbl τ ⊑ ξ → v1 = v2⌝.
+  Proof.
+    induction 1; simpl.
+    - iDestruct 1 as (i1 i2 -> ->) "%". iPureIntro. naive_solver.
+    - iDestruct 1 as (i1 i2 -> ->) "%". iPureIntro. naive_solver.
+    - iDestruct 1 as  "[-> ->]". eauto.
+    - rewrite interp_eq /=.
+      iIntros "H". iIntros (HH).
+      assert (l ⊑ ξ).
+      { etransitivity; last done.
+        eauto. eapply join_leq_r. }
+      iDestruct "H" as  "[H _]".
+      iSpecialize ("H" with "[%//]").
+      iDestruct "H" as "[[-> ->]|H]"; first by eauto.
+      iDestruct "H" as (k1 k2 -> ->) "H".
+      iDestruct "H" as (i1 i2 -> ->) "%".
+      iPureIntro. assert (il ⊑ ξ).
+      { by eapply (join_leq il l ξ). }
+      naive_solver.
+  Qed.
+
   Lemma flat_type_interp τ ξ :
     (ξ ≠ High) →
     flat_type τ →
@@ -298,10 +357,10 @@ Section rules.
   Local Hint Constructors flat_type.
   Local Hint Constructors type_sub.
 
-  Lemma logrel_sub ξ e1 e2 τ τ' :
+  Lemma logrel_sub ξ e1 e2 τ τ' E :
     τ <: τ' →
-    (DWP e1 & e2 : ⟦ τ ⟧ ξ) -∗
-    DWP e1 & e2 : ⟦ τ' ⟧ ξ.
+    (DWP e1 & e2 @ E: ⟦ τ ⟧ ξ) -∗
+    DWP e1 & e2 @ E : ⟦ τ' ⟧ ξ.
   Proof.
     iIntros (Hsub) "He".
     iApply (dwp_wand with "He").
@@ -432,9 +491,9 @@ Section rules.
     iExists _,_,_,_. repeat iSplit; eauto.
   Qed.
 
-  Lemma logrel_fst ξ e1 e2 τ τ' :
-    (DWP e1 & e2 : ⟦ τ * τ' ⟧ ξ) -∗
-    DWP Fst e1 & Fst e2 : ⟦ τ ⟧ ξ.
+  Lemma logrel_fst ξ e1 e2 τ τ' E :
+    (DWP e1 & e2 @ E : ⟦ τ * τ' ⟧ ξ) -∗
+    DWP Fst e1 & Fst e2 @ E : ⟦ τ ⟧ ξ.
   Proof.
     iIntros "He". dwp_bind e1 e2.
     iApply (dwp_wand with "He").
@@ -443,9 +502,9 @@ Section rules.
     dwp_pures. by iApply dwp_value.
   Qed.
 
-  Lemma logrel_snd ξ e1 e2 τ τ' :
-    (DWP e1 & e2 : ⟦ τ * τ' ⟧ ξ) -∗
-    DWP Snd e1 & Snd e2 : ⟦ τ' ⟧ ξ.
+  Lemma logrel_snd ξ e1 e2 τ τ' E :
+    (DWP e1 & e2 @ E : ⟦ τ * τ' ⟧ ξ) -∗
+    DWP Snd e1 & Snd e2 @ E : ⟦ τ' ⟧ ξ.
   Proof.
     iIntros "He". dwp_bind e1 e2.
     iApply (dwp_wand with "He").
@@ -789,6 +848,85 @@ Section rules.
       iNext. iMod ("Hcl" with "[-]") as "_".
       { iNext. iExists _,_. by iFrame. }
       iModIntro. eauto.
+  Qed.
+
+  Local Ltac helpme := repeat iExists _; repeat iSplit; eauto with iFrame.
+
+  Lemma logrel_cmpxchg e1 e2 e3 t1 t2 t3 τ E ξ :
+    unboxed_type τ →
+    flat_type τ →
+    ↑locsN ⊆ E →
+    (DWP e1 & t1 @ E : ⟦ tref τ ⟧ ξ) -∗
+    (DWP e2 & t2 @ E : ⟦ τ ⟧ ξ) -∗
+    (DWP e3 & t3 @ E : ⟦ τ ⟧ ξ) -∗
+    DWP CmpXchg e1 e2 e3 & CmpXchg t1 t2 t3 @ E : ⟦ τ * (tbool (lbl τ)) ⟧ ξ.
+  Proof.
+    iIntros (Hτ1 Hτ2 ?) "H1 H2 H3".
+    dwp_bind e3 t3. iApply (dwp_wand with "H3").
+    iIntros (v3 w3) "#H3".
+    dwp_bind e2 t2. iApply (dwp_wand with "H2").
+    iIntros (v2 w2) "#H2".
+    dwp_bind e1 t1. iApply (dwp_wand with "H1").
+    iIntros (? ?). rewrite (interp_eq (tref _)).
+    iDestruct 1 as (r1 r2 -> ->) "Hr".
+    iInv (locsN.@(r1, r2)) as (v1 w1) "(>Hr1 & >Hr2 & #Hv)".
+    iDestruct (unboxed_type_eq with "Hv") as ">%"; first done.
+    iDestruct (unboxed_type_eq with "H2") as %?; first done.
+    iDestruct (unboxed_type_eq with "H3") as %?; first done.
+    iDestruct (unboxed_type_interp' with "Hv") as ">%"; first done.
+    iDestruct (unboxed_type_interp' with "H2") as %?; first done.
+    iDestruct (unboxed_type_interp' with "H3") as %?; first done.
+    destruct_and!.
+    pose (Φ1 := (λ v, if decide (v1 = v2)
+                      then (⌜v = (v1, #true)%V⌝ ∧ r1 ↦ₗ v3)
+                      else (⌜v = (v1, #false)%V⌝ ∧ r1 ↦ₗ v1))%I).
+    pose (Φ2 := (λ v, if decide (w1 = w2)
+                      then (⌜v = (w1, #true)%V⌝ ∧ r2 ↦ᵣ w3)
+                      else (⌜v = (w1, #false)%V⌝ ∧ r2 ↦ᵣ w1))%I).
+    iApply (dwp_atomic_lift_wp Φ1 Φ2 with "[Hr1] [Hr2] [-]").
+    - rewrite /TWP1 /Φ1.
+      destruct (decide (v1 = v2)).
+      + wp_cmpxchg_suc; eauto.
+      + wp_cmpxchg_fail; eauto.
+    - rewrite /TWP2 /Φ2.
+      destruct (decide (w1 = w2)).
+      + wp_cmpxchg_suc. eauto.
+      + wp_cmpxchg_fail. eauto.
+    - iIntros (z1 z2) "Hz1 Hz2".
+      repeat iModIntro. rewrite /Φ1 /Φ2.
+      destruct (decide (v1 = v2));
+      destruct (decide (w1 = w2));
+      iDestruct "Hz1"  as "[-> Hr1]";
+      iDestruct "Hz2"  as "[-> Hr2]";
+      (iSplitL; [
+         iNext; iExists _,_; iFrame "Hr1 Hr2"; eauto 
+        |rewrite (interp_eq (tprod _ _)); repeat helpme|..]).
+      { destruct (decide (ξ = High)) as [->| ?].
+        + assert (lbl τ ⊑ High) by naive_solver.
+          assert (w1 = w3) as -> by naive_solver.
+          done.
+        + by iApply flat_type_interp. }
+      { iIntros (?). exfalso. naive_solver. }
+      { destruct (decide (ξ = High)) as [->| ?].
+        + assert (lbl τ ⊑ High) by naive_solver.
+          assert (w1 = w3) as -> by naive_solver.
+          done.
+        + by iApply flat_type_interp. }
+      { iIntros (?). exfalso. naive_solver. }
+  Qed.
+
+  Lemma logrel_cas e1 e2 e3 t1 t2 t3 τ E ξ :
+    unboxed_type τ →
+    flat_type τ →
+    ↑locsN ⊆ E →
+    (DWP e1 & t1 @ E : ⟦ tref τ ⟧ ξ) -∗
+    (DWP e2 & t2 @ E : ⟦ τ ⟧ ξ) -∗
+    (DWP e3 & t3 @ E : ⟦ τ ⟧ ξ) -∗
+    DWP CAS e1 e2 e3 & CAS t1 t2 t3 @ E : ⟦ tbool (lbl τ) ⟧ ξ.
+  Proof.
+    iIntros (? ? ?) "H1 H2 H3".
+    iApply logrel_snd.
+    by iApply (logrel_cmpxchg with "H1 H2 H3").
   Qed.
 
   Lemma logrel_faa e1 e2 t1 t2 α E ξ :

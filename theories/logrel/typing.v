@@ -114,6 +114,13 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e1 (tref τ) →
     has_type Γ e2 τ →
     has_type Γ (e1 <- e2) tunit
+| CAS_typed e1 e2 e3 τ :
+    unboxed_type τ →
+    flat_type τ →
+    has_type Γ e1 (tref τ) →
+    has_type Γ e2 τ →
+    has_type Γ e3 τ →
+    has_type Γ (CAS e1 e2 e3) (tbool (lbl τ))
 | FAA_typed e1 e2 χ :
     has_type Γ e1 (tref (tint χ)) →
     has_type Γ e2 (tint χ) →
@@ -306,6 +313,10 @@ Section fundamental.
     - iApply logrel_store; first done.
       + iApply (IHhas_type1 with "HΓ HI").
       + iApply (IHhas_type2 with "HΓ HI").
+    - iApply logrel_cas; try done.
+      + iApply (IHhas_type1 with "HΓ HI").
+      + iApply (IHhas_type2 with "HΓ HI").
+      + iApply (IHhas_type3 with "HΓ HI").
     - iApply logrel_faa; first done.
       + iApply (IHhas_type1 with "HΓ HI").
       + iApply (IHhas_type2 with "HΓ HI").
