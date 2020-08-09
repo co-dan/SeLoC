@@ -69,7 +69,7 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e (tbool High) →
     has_type Γ v1 τ →
     has_type Γ v2 τ →
-    has_type Γ (if: e then v1 else v2) τ
+    has_type Γ (if: e then v1 else v2) (stamp τ High)
 | Match_typed e e1 x e2 il τ' :
     has_type Γ e (tintoption il Low) →
     has_type Γ e1 τ' →
@@ -83,7 +83,7 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ e (tintoption il High) →
     has_type Γ t1 τ' →
     has_type (<[x:=(tint High)]>Γ) t2 τ' →
-    has_type Γ (match: e with NONE => t1 | SOME x => t2 end) τ'
+    has_type Γ (match: e with NONE => t1 | SOME x => t2 end) (stamp τ' High)
 (* math operations *)
 | BinOp_int_typed e1 e2 l1 l2 op :
     bin_op_int op →
@@ -117,7 +117,7 @@ Inductive has_type (Γ : stringmap type) :
 | CAS_typed e1 e2 e3 τ :
     unboxed_type τ →
     flat_type τ →
-    has_type Γ e1 (tref τ) →
+    has_type Γ e1 (tref (stamp τ (lbl τ))) →
     has_type Γ e2 τ →
     has_type Γ e3 τ →
     has_type Γ (CAS e1 e2 e3) (tbool (lbl τ))
@@ -292,7 +292,8 @@ Section fundamental.
         rewrite /γ'. rewrite /insert /insert_binder.
         rewrite !binder_insert_fmap.
         destruct x as [|x];
-          simpl; rewrite ?subst_map_insert; try iApply "H".
+          simpl; rewrite ?subst_map_insert;
+            try iApply (logrel_sub with "H"); eauto using stamp_sub.
     - iApply logrel_binop_int=>//.
       + by iApply IHhas_type1.
       + by iApply IHhas_type2.

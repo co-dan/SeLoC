@@ -92,6 +92,204 @@ Lemma join_leq (l1 l2 l3 : slevel) :
   l1 ⊔ l2 ⊑ l3 → l1 ⊑ l3 ∧ l2 ⊑ l3.
 Proof. by destruct l1,l2,l3; inversion 1. Qed.
 
+(**************************************************)
+(** Simple reflection for (⊔, ⊑) *)
+Section reflection.
+  Inductive btree :=
+  | bnode : btree → btree → btree
+  | bleaf : nat → btree. (* nat points to the slevel in the context *)
+
+  Fixpoint btree_interp (ctx : list slevel) (t : btree) : slevel :=
+    match t with
+    | bleaf i => ctx !!! i
+    | bnode t1 t2 => btree_interp ctx t1 ⊔ btree_interp ctx t2
+    end.
+
+  Fixpoint flatten_btree_aux (t acc : btree) :=
+    match t with
+    | bleaf i => bnode (bleaf i) acc
+    | bnode t1 t2 => flatten_btree_aux t1 (flatten_btree_aux t2 acc)
+    end.
+
+  Fixpoint flatten_btree (t : btree) :=
+    match t with
+    | bleaf i => bleaf i
+    | bnode t1 t2 => flatten_btree_aux t1 (flatten_btree t2)
+    end.
+
+  Fixpoint insert_btree (j : nat) (t : btree) :=
+    match t with
+    | bleaf i =>
+      if Nat.leb i j
+      then bnode (bleaf i) (bleaf j)
+      else bnode (bleaf j) (bleaf i)
+    | bnode (bleaf i) t2 =>
+      if Nat.leb i j
+      then bnode (bleaf i) (insert_btree j t2)
+      else bnode (bleaf j) (bnode (bleaf i) t2)
+    | _ => bnode (bleaf j) t
+    end.
+
+  Fixpoint sort_btree (t : btree) :=
+    match t with
+    | bleaf l => bleaf l
+    | bnode (bleaf l) t2 =>
+      insert_btree l (sort_btree t2)
+    | _ => t
+    end.
+
+  Fixpoint dedup_btree_aux (i : nat) (t : btree) :=
+    match t with
+    | bnode (bleaf j) t2 =>
+      let t2' := dedup_btree_aux i t2 in
+      if Nat.eqb i j then t2'
+      else bnode (bleaf j) t2'
+    | _ => t
+    end.
+
+  Fixpoint dedup_btree (t : btree) {struct t} :=
+    match t with
+    | bnode (bleaf i) t2 =>
+      bnode (bleaf i) (dedup_btree_aux i (dedup_btree t2))
+    | _ => t
+    end.
+
+  Lemma flatten_btree_aux_correct ctx t acc :
+    btree_interp ctx (flatten_btree_aux t acc) = btree_interp ctx t ⊔ btree_interp ctx acc.
+  Proof.
+    revert acc. induction t=>acc /=; try done.
+    rewrite IHt1 IHt2 -assoc //.
+  Qed.
+
+  Lemma flatten_btree_correct ctx t :
+    btree_interp ctx (flatten_btree t) = btree_interp ctx t.
+  Proof.
+    induction t; simpl; try done.
+    by rewrite flatten_btree_aux_correct IHt2.
+  Qed.
+
+  Lemma do_flatten_leq ctx1 ctx2 t1 t2 :
+    btree_interp ctx1 (flatten_btree t1) ⊑ btree_interp ctx2 (flatten_btree t2) →
+    btree_interp ctx1 t1 ⊑ btree_interp ctx2 t2.
+  Proof. by rewrite !flatten_btree_correct. Qed.
+
+  Lemma insert_btree_correct ctx n t :
+    btree_interp ctx (insert_btree n t) = (ctx !!! n) ⊔ btree_interp ctx t.
+  Proof.
+    induction t as [t1 t2|k]; simpl.
+    - induction t1 as [t1' t2'|j]; simpl; first done.
+      destruct (j <=? n); simpl; try done.
+      rewrite IHt1. rewrite !assoc (comm _ (ctx !!! j)) //.
+    - destruct (k <=? n); simpl; try done.
+      by apply slevel_join_comm.
+  Qed.
+
+  Lemma sort_btree_correct ctx t :
+    btree_interp ctx (sort_btree t) = btree_interp ctx t.
+  Proof.
+    induction t as [t1 t2|k]; simpl; try done.
+    induction t1 as [t1' t2'|j]; simpl; try done.
+    by rewrite insert_btree_correct IHt1.
+  Qed.
+
+  Lemma do_sort_leq ctx1 ctx2 t1 t2 :
+    btree_interp ctx1 (sort_btree t1) ⊑ btree_interp ctx2 (sort_btree t2) →
+    btree_interp ctx1 t1 ⊑ btree_interp ctx2 t2.
+  Proof. by rewrite !sort_btree_correct. Qed.
+
+  Lemma dedup_btree_aux_correct ctx i t :
+    ctx !!! i ⊔ btree_interp ctx (dedup_btree_aux i t) =
+    ctx !!! i ⊔ btree_interp ctx t.
+  Proof.
+    induction t as [t1 Ht1 t2 Ht2|k]; simpl; try done.
+    induction t1 as [|j]; simpl; try done.
+    destruct (decide (i = j)) as [->|?]; simpl.
+    - rewrite Nat.eqb_refl Ht2.
+      rewrite assoc idemp //.
+    - assert ((i =? j)%nat = false) as ->.
+      { by apply Nat.eqb_neq. }
+      simpl. rewrite !assoc (comm _ (ctx !!! i) (ctx !!! j)) -!assoc.
+      by rewrite Ht2.
+  Qed.
+
+  Lemma dedup_btree_correct ctx t :
+    btree_interp ctx (dedup_btree t) = btree_interp ctx t.
+  Proof.
+    induction t as [t1 Ht1 t2 Ht2|k]; simpl; try done.
+    induction t1 as [|j]; simpl; try done.
+    by rewrite dedup_btree_aux_correct Ht2.
+  Qed.
+
+  Lemma do_dedup_leq ctx1 ctx2 t1 t2 :
+    btree_interp ctx1 (dedup_btree t1) ⊑ btree_interp ctx2 (dedup_btree t2) →
+    btree_interp ctx1 t1 ⊑ btree_interp ctx2 t2.
+  Proof. by rewrite !dedup_btree_correct. Qed.
+
+End reflection.
+
+Ltac lookup_ctx_aux ctx n v :=
+  match ctx with
+  | ?x::?ctxr =>
+    let ctx := constr:(ctxr) in
+    match constr:(x = v) with
+    | (?z = ?z) => n
+    | _ => lookup_ctx_aux ctx (S n) v
+    end
+  end.
+
+Ltac lookup_ctx ctx v := lookup_ctx_aux ctx 0 v.
+
+Ltac model_contex ctx v :=
+  match v with
+  | (?α ⊔ ?β) =>
+    let ctx1 := model_contex ctx α in
+    model_contex ctx1 β
+  | ?α => (* if variable is already present *)
+    let n := lookup_ctx ctx α in
+    constr:(ctx)
+  | ?α => (* otherwise add a new one *)
+    constr:( α :: ctx )
+  end.
+
+Ltac model_aux ctx v :=
+  match v with
+  | (?α ⊔ ?β) =>
+    let r1 := model_aux ctx α in
+    let r2 := model_aux ctx β in
+    constr:(bnode r1 r2)
+  | ?α =>
+    let n := lookup_ctx ctx α in
+    constr:(bleaf n)
+  end.
+
+Ltac model v :=
+  let ctx := model_contex ([] : list slevel) v in
+  let t := model_aux ctx v in
+  constr:(pair ctx t).
+
+Ltac sl_lattice_switch_goal :=
+  match goal with
+  | [ |- (?α ⊑ ?β) ] =>
+    let ctx := model_contex ([] : list slevel) (α ⊔ β) in
+    let r1 := model_aux ctx α in
+    let r2 := model_aux ctx β in
+    change (btree_interp ctx r1 ⊑ btree_interp ctx r2);
+    apply do_flatten_leq;
+    apply do_sort_leq;
+    apply do_dedup_leq;
+    lazy beta iota zeta delta
+       [flatten_btree flatten_btree_aux
+        insert_btree sort_btree
+        dedup_btree dedup_btree_aux
+        Nat.leb Nat.eqb btree_interp lookup_total list_lookup_total]
+  end.
+
+Lemma test (l1 l2 l3 : slevel) :
+  l1 ⊔ l1 ⊔ l2 ⊑ l2 ⊔ l1 ⊔ (l2 ⊔ l1).
+Proof.
+  sl_lattice_switch_goal. auto.
+Qed.
+
 Section local.
 
 Local Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
@@ -192,8 +390,8 @@ sound:
     ⊢ if e then v else w : τ
 *)
 Inductive  flat_type : type → Prop :=
-| tint_flat : flat_type (tint High)
-| tbool_flat : flat_type (tbool High)
+| tint_flat l : flat_type (tint l)
+| tbool_flat l : flat_type (tbool l)
 | tunit_flat : flat_type tunit
 | tprod_flat τ τ' : flat_type τ →
                     flat_type τ' →
@@ -253,6 +451,27 @@ Fixpoint lbl (τ : type) : slevel :=
   | tref τ => lbl τ
   end.
 
+Lemma lbl_stamp_leq_general τ l : lbl (stamp τ (lbl τ ⊔ l)) ⊑ lbl τ ⊔ l.
+Proof.
+  revert l. induction τ=>α; simpl;
+                           try (by rewrite assoc idemp //);
+                           rewrite ?idemp //.
+  + sl_lattice_switch_goal. by rewrite idemp.
+  + rewrite -{1}(assoc _ (lbl τ1) (lbl τ2) α).
+    rewrite IHτ1.
+    rewrite (comm _ (lbl τ1) (lbl τ2)).
+    rewrite -{1}(assoc _ (lbl τ2) (lbl τ1) α).
+    rewrite IHτ2.
+    sl_lattice_switch_goal. by rewrite idemp.
+  + sl_lattice_switch_goal. by rewrite idemp.
+Qed.
+
+Lemma lbl_stamp_leq τ : lbl (stamp τ (lbl τ)) ⊑ lbl τ.
+Proof.
+  rewrite -(right_id Low (⊔) (lbl τ)).
+  apply lbl_stamp_leq_general.
+Qed.
+
 (** The subtyping relation <: *)
 Reserved Notation "τ '<:' σ" (at level 50).
 Inductive type_sub : type → type → Prop :=
@@ -304,6 +523,18 @@ Proof.
   induction τ; simpl; rewrite ?right_id; eauto;
   by (rewrite IHτ1 IHτ2 || rewrite IHτ).
 Qed.
+
+Lemma stamp_idemp τ l : stamp (stamp τ l) l = stamp τ l.
+Proof.
+  induction τ; simpl; rewrite -?assoc // ?(idemp (⊔) l) //.
+  by rewrite IHτ1 IHτ2.
+Qed.
+
+Lemma flat_type_stamp τ l : flat_type τ → flat_type (stamp τ l).
+Proof. induction 1; econstructor; eauto. Qed.
+
+Lemma unboxed_type_stamp τ l : unboxed_type τ → unboxed_type (stamp τ l).
+Proof. induction 1; econstructor; eauto. Qed.
 
 End local.
 

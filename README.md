@@ -55,6 +55,7 @@ We prove the following adequacy statement: if we have a double weakest precondit
 Secondly, our type system (and its interpretation) is parameterized by an attacker level `ξ`, and you can see that throughout the code.
 In our type system we also have an option type for integers.
 It is denoted as `toption il l` where `il` is the sensitivity label of the underlying integer, and `l` is the label for the option type (whether it is `SOME` or `NONE`); thus it roughly corresponds to `option^l (int^il)`.
+In the future work we would like to extend the typing rules to arbitrary sum types.
 
 Lastly, In Coq, we do not use the AWP proposition for atomic weakest preconditions we used in the paper.
 Rather, in the rule `dwp-awp` (in the formalization: `dwp_atomic_lift_wp`) we require the expressions `e1` and `e2` to be _atomic_ and produce no forked off threads.

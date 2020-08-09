@@ -168,7 +168,7 @@ Lemma If_typed_flat' 𝔏 ξ Γ e1 e2 e3 τ :
   flat_type τ →
   has_type 𝔏 ξ Γ e3 τ →
   has_type 𝔏 ξ Γ e1 (tbool High) →
-  has_type 𝔏 ξ Γ (if: e1 then e2 else e3) τ.
+  has_type 𝔏 ξ Γ (if: e1 then e2 else e3) (stamp τ High).
 Proof.
   intros. by apply If_typed_flat.
 Qed.
@@ -194,7 +194,7 @@ Lemma Match_typed_flat' 𝔏 ξ Γ e t1 t2 x il τ :
   has_type 𝔏 ξ Γ t1 τ →
   has_type 𝔏 ξ (<[x:=tint High]>Γ) t2 τ →
   flat_type τ →
-  has_type 𝔏 ξ Γ (match: e with InjL <> => t1 | InjR x => t2 end) τ.
+  has_type 𝔏 ξ Γ (match: e with InjL <> => t1 | InjR x => t2 end) (stamp τ High).
 Proof.
   intros. by eapply Match_typed_flat.
 Qed.
