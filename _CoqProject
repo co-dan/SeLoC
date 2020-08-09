@@ -19,6 +19,7 @@ theories/program_logic/classes.v
 theories/program_logic/heap_lang_lifting.v
 theories/program_logic/dwp_adequacy.v
 theories/proofmode/dwp_tactics.v
+theories/logrel/slevel.v
 theories/logrel/types.v
 theories/logrel/interp.v
 theories/logrel/typing.v

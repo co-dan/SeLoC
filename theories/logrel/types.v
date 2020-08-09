@@ -1,376 +1,7 @@
 From iris.algebra Require Import cmra.
 From iris.heap_lang Require Import lang metatheory.
 From stdpp Require Import fin_sets gmap stringmap.
-
-(** * Security lattice *)
-Inductive slevel := Low | High.
-Instance slevel_eqdec : EqDecision slevel.
-Proof. solve_decision. Qed.
-Instance slevel_inhabited: Inhabited slevel := populate Low.
-Canonical Structure slevelO := leibnizO slevel.
-
-Instance slevel_join : Join slevel := λ lv1 lv2,
-  match lv1, lv2 with
-  | High,_ => High
-  | _,High => High
-  | _,_ => Low
-  end.
-Instance slevel_meet : Meet slevel := λ lv1 lv2,
-  match lv1, lv2 with
-  | Low,_ => Low
-  | _,Low => Low
-  | High,High => High
-  end.
-
-Instance slevel_join_assoc : Assoc (=) slevel_join.
-Proof. by intros [] [] []. Qed.
-Instance slevel_join_comm : Comm (=) slevel_join.
-Proof. by intros [] []. Qed.
-Instance slevel_join_leftid : LeftId (=) Low slevel_join.
-Proof. by intros []. Qed.
-Instance slevel_join_rightid : RightId (=) Low slevel_join.
-Proof. by intros []. Qed.
-Instance slevel_join_idem : IdemP (=) slevel_join.
-Proof. by intros []. Qed.
-
-Instance slevel_meet_assoc : Assoc (=) slevel_meet.
-Proof. by intros [] [] []. Qed.
-Instance slevel_meet_comm : Comm (=) slevel_meet.
-Proof. by intros [] []. Qed.
-Instance slevel_meet_leftid : LeftId (=) High slevel_meet.
-Proof. by intros []. Qed.
-Instance slevel_meet_rightid : RightId (=) High slevel_meet.
-Proof. by intros []. Qed.
-Instance slevel_meet_idem : IdemP (=) slevel_meet.
-Proof. by intros []. Qed.
-
-Definition slevel_leb (lv1 lv2 : slevel) : bool :=
-  match lv2 with
-  | High => true
-  | Low => if lv1 is Low then true else false
-  end.
-Instance slevel_le : SqSubsetEq slevel := slevel_leb.
-Instance slevel_le_po : PreOrder slevel_le.
-Proof. split; by repeat intros []. Qed.
-
-Lemma join_mono_l (l1 l2 l3 : slevel) :
-  l1 ⊑ l2 → l1 ⊔ l3 ⊑ l2 ⊔ l3.
-Proof. by destruct l1,l2,l3. Qed.
-Lemma join_mono_r (l1 l2 l3 : slevel) :
-  l2 ⊑ l3 → l1 ⊔ l2 ⊑ l1 ⊔ l3.
-Proof. by destruct l1,l2,l3. Qed.
-Lemma meet_mono_l (l1 l2 l3 : slevel) :
-  l1 ⊑ l2 → l1 ⊓ l3 ⊑ l2 ⊓ l3.
-Proof. by destruct l1,l2,l3. Qed.
-Lemma meet_mono_r (l1 l2 l3 : slevel) :
-  l2 ⊑ l3 → l1 ⊓ l2 ⊑ l1 ⊓ l3.
-Proof. by destruct l1,l2,l3. Qed.
-Lemma join_leq_l (l1 l2 : slevel) : l1 ⊑ l1 ⊔ l2.
-Proof. by destruct l1,l2. Qed.
-Lemma join_leq_r (l1 l2 : slevel) : l1 ⊑ l2 ⊔ l1.
-Proof. by destruct l1,l2. Qed.
-Lemma meet_geq_l (l1 l2 : slevel) : l1 ⊓ l2 ⊑ l1.
-Proof. by destruct l1,l2. Qed.
-Lemma meet_geq_r (l1 l2 : slevel) : l1 ⊓ l2 ⊑ l2.
-Proof. by destruct l1,l2. Qed.
-
-Lemma leq_meet_min_1 (l1 l2 : slevel) :
-  l1 ⊑ l2 → l1 ⊓ l2 = l1.
-Proof. by destruct l1,l2; inversion 1. Qed.
-Lemma leq_meet_min_2 (l1 l2 : slevel) :
-  l2 ⊑ l1 → l1 ⊓ l2 = l2.
-Proof. by destruct l1,l2; inversion 1. Qed.
-
-Lemma leq_join_max_2 (l1 l2 : slevel) :
-  l1 ⊑ l2 → l1 ⊔ l2 = l2.
-Proof. by destruct l1,l2; inversion 1. Qed.
-Lemma leq_join_max_1 (l1 l2 : slevel) :
-  l2 ⊑ l1 → l1 ⊔ l2 = l1.
-Proof. by destruct l1,l2; inversion 1. Qed.
-
-Lemma join_leq (l1 l2 l3 : slevel) :
-  l1 ⊔ l2 ⊑ l3 → l1 ⊑ l3 ∧ l2 ⊑ l3.
-Proof. by destruct l1,l2,l3; inversion 1. Qed.
-
-(**************************************************)
-(** Simple reflection for (⊔, ⊑) *)
-Section reflection.
-  Inductive btree :=
-  | bnode : btree → btree → btree
-  | bleaf : nat → btree. (* nat points to the slevel in the context *)
-
-  Fixpoint btree_interp (ctx : list slevel) (t : btree) : slevel :=
-    match t with
-    | bleaf i => ctx !!! i
-    | bnode t1 t2 => btree_interp ctx t1 ⊔ btree_interp ctx t2
-    end.
-
-  Fixpoint flatten_btree_aux (t acc : btree) :=
-    match t with
-    | bleaf i => bnode (bleaf i) acc
-    | bnode t1 t2 => flatten_btree_aux t1 (flatten_btree_aux t2 acc)
-    end.
-
-  Fixpoint flatten_btree (t : btree) :=
-    match t with
-    | bleaf i => bleaf i
-    | bnode t1 t2 => flatten_btree_aux t1 (flatten_btree t2)
-    end.
-
-  Fixpoint insert_btree (j : nat) (t : btree) :=
-    match t with
-    | bleaf i =>
-      if Nat.leb i j
-      then bnode (bleaf i) (bleaf j)
-      else bnode (bleaf j) (bleaf i)
-    | bnode (bleaf i) t2 =>
-      if Nat.leb i j
-      then bnode (bleaf i) (insert_btree j t2)
-      else bnode (bleaf j) (bnode (bleaf i) t2)
-    | _ => bnode (bleaf j) t
-    end.
-
-  Fixpoint sort_btree (t : btree) :=
-    match t with
-    | bleaf l => bleaf l
-    | bnode (bleaf l) t2 =>
-      insert_btree l (sort_btree t2)
-    | _ => t
-    end.
-
-  Fixpoint dedup_btree_aux (i : nat) (t : btree) :=
-    match t with
-    | bnode (bleaf j) t2 =>
-      let t2' := dedup_btree_aux i t2 in
-      if Nat.eqb i j then t2'
-      else bnode (bleaf j) t2'
-    | _ => t
-    end.
-
-  Fixpoint dedup_btree (t : btree) {struct t} :=
-    match t with
-    | bnode (bleaf i) t2 =>
-      bnode (bleaf i) (dedup_btree_aux i (dedup_btree t2))
-    | _ => t
-    end.
-
-  Lemma flatten_btree_aux_correct ctx t acc :
-    btree_interp ctx (flatten_btree_aux t acc) = btree_interp ctx t ⊔ btree_interp ctx acc.
-  Proof.
-    revert acc. induction t=>acc /=; try done.
-    rewrite IHt1 IHt2 -assoc //.
-  Qed.
-
-  Lemma flatten_btree_correct ctx t :
-    btree_interp ctx (flatten_btree t) = btree_interp ctx t.
-  Proof.
-    induction t; simpl; try done.
-    by rewrite flatten_btree_aux_correct IHt2.
-  Qed.
-
-  Lemma do_flatten_leq ctx1 ctx2 t1 t2 :
-    btree_interp ctx1 (flatten_btree t1) ⊑ btree_interp ctx2 (flatten_btree t2) →
-    btree_interp ctx1 t1 ⊑ btree_interp ctx2 t2.
-  Proof. by rewrite !flatten_btree_correct. Qed.
-
-  Lemma insert_btree_correct ctx n t :
-    btree_interp ctx (insert_btree n t) = (ctx !!! n) ⊔ btree_interp ctx t.
-  Proof.
-    induction t as [t1 t2|k]; simpl.
-    - induction t1 as [t1' t2'|j]; simpl; first done.
-      destruct (j <=? n); simpl; try done.
-      rewrite IHt1. rewrite !assoc (comm _ (ctx !!! j)) //.
-    - destruct (k <=? n); simpl; try done.
-      by apply slevel_join_comm.
-  Qed.
-
-  Lemma sort_btree_correct ctx t :
-    btree_interp ctx (sort_btree t) = btree_interp ctx t.
-  Proof.
-    induction t as [t1 t2|k]; simpl; try done.
-    induction t1 as [t1' t2'|j]; simpl; try done.
-    by rewrite insert_btree_correct IHt1.
-  Qed.
-
-  Lemma do_sort_leq ctx1 ctx2 t1 t2 :
-    btree_interp ctx1 (sort_btree t1) ⊑ btree_interp ctx2 (sort_btree t2) →
-    btree_interp ctx1 t1 ⊑ btree_interp ctx2 t2.
-  Proof. by rewrite !sort_btree_correct. Qed.
-
-  Lemma dedup_btree_aux_correct ctx i t :
-    ctx !!! i ⊔ btree_interp ctx (dedup_btree_aux i t) =
-    ctx !!! i ⊔ btree_interp ctx t.
-  Proof.
-    induction t as [t1 Ht1 t2 Ht2|k]; simpl; try done.
-    induction t1 as [|j]; simpl; try done.
-    destruct (decide (i = j)) as [->|?]; simpl.
-    - rewrite Nat.eqb_refl Ht2.
-      rewrite assoc idemp //.
-    - assert ((i =? j)%nat = false) as ->.
-      { by apply Nat.eqb_neq. }
-      simpl. rewrite !assoc (comm _ (ctx !!! i) (ctx !!! j)) -!assoc.
-      by rewrite Ht2.
-  Qed.
-
-  Lemma dedup_btree_correct ctx t :
-    btree_interp ctx (dedup_btree t) = btree_interp ctx t.
-  Proof.
-    induction t as [t1 Ht1 t2 Ht2|k]; simpl; try done.
-    induction t1 as [|j]; simpl; try done.
-    by rewrite dedup_btree_aux_correct Ht2.
-  Qed.
-
-  Lemma do_dedup_leq ctx1 ctx2 t1 t2 :
-    btree_interp ctx1 (dedup_btree t1) ⊑ btree_interp ctx2 (dedup_btree t2) →
-    btree_interp ctx1 t1 ⊑ btree_interp ctx2 t2.
-  Proof. by rewrite !dedup_btree_correct. Qed.
-
-End reflection.
-
-Ltac lookup_ctx_aux ctx n v :=
-  match ctx with
-  | ?x::?ctxr =>
-    let ctx := constr:(ctxr) in
-    match constr:(x = v) with
-    | (?z = ?z) => n
-    | _ => lookup_ctx_aux ctx (S n) v
-    end
-  end.
-
-Ltac lookup_ctx ctx v := lookup_ctx_aux ctx 0 v.
-
-Ltac model_contex ctx v :=
-  match v with
-  | (?α ⊔ ?β) =>
-    let ctx1 := model_contex ctx α in
-    model_contex ctx1 β
-  | ?α => (* if variable is already present *)
-    let n := lookup_ctx ctx α in
-    constr:(ctx)
-  | ?α => (* otherwise add a new one *)
-    constr:( α :: ctx )
-  end.
-
-Ltac model_aux ctx v :=
-  match v with
-  | (?α ⊔ ?β) =>
-    let r1 := model_aux ctx α in
-    let r2 := model_aux ctx β in
-    constr:(bnode r1 r2)
-  | ?α =>
-    let n := lookup_ctx ctx α in
-    constr:(bleaf n)
-  end.
-
-Ltac model v :=
-  let ctx := model_contex ([] : list slevel) v in
-  let t := model_aux ctx v in
-  constr:(pair ctx t).
-
-Ltac sl_lattice_switch_goal :=
-  match goal with
-  | [ |- (?α ⊑ ?β) ] =>
-    let ctx := model_contex ([] : list slevel) (α ⊔ β) in
-    let r1 := model_aux ctx α in
-    let r2 := model_aux ctx β in
-    change (btree_interp ctx r1 ⊑ btree_interp ctx r2);
-    apply do_flatten_leq;
-    apply do_sort_leq;
-    apply do_dedup_leq;
-    lazy beta iota zeta delta
-       [flatten_btree flatten_btree_aux
-        insert_btree sort_btree
-        dedup_btree dedup_btree_aux
-        Nat.leb Nat.eqb btree_interp lookup_total list_lookup_total]
-  end.
-
-Lemma test (l1 l2 l3 : slevel) :
-  l1 ⊔ l1 ⊔ l2 ⊑ l2 ⊔ l1 ⊔ (l2 ⊔ l1).
-Proof.
-  sl_lattice_switch_goal. auto.
-Qed.
-
-Section local.
-
-Local Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
-Local Hint Resolve leq_join_max_1 leq_join_max_2.
-Local Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
-
-Global Instance slevel_leb_rewriterelation : RewriteRelation ((⊑) : relation slevel) := _.
-
-Global Instance slevel_join_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (join (A:=slevel)).
-Proof.
-  intros l1 l1' H1 l2 l2' H2.
-  etrans; [ apply join_mono_l | ]; eauto.
-Qed.
-Global Instance slevel_join_proper_flip :
-  Proper (flip (⊑) ==> flip (⊑) ==> flip (⊑)) (join (A:=slevel)).
-Proof.
-  intros l1 l1' H1 l2 l2' H2.
-  etrans; [ apply join_mono_l | apply join_mono_r ]; done.
-Qed.
-Global Instance slevel_meet_proper : Proper ((⊑) ==> (⊑) ==> (⊑)) (meet (A:=slevel)).
-Proof.
-  intros l1 l1' H1 l2 l2' H2.
-  etrans; [ apply meet_mono_l | apply meet_mono_r ]; done.
-Qed.
-Global Instance slevel_meet_proper_flip :
-  Proper (flip (⊑) ==> flip (⊑) ==> flip (⊑)) (meet (A:=slevel)).
-Proof.
-  intros l1 l1' H1 l2 l2' H2.
-  etrans; [ apply meet_mono_l | apply meet_mono_r ]; done.
-Qed.
-
-
-Section slevelR_cmra.
-  Implicit Types l : slevelO.
-  Instance slevelO_valid : Valid slevelO := λ x, True.
-  Instance slevelO_validN : ValidN slevelO := λ n x, True.
-  Instance slevelO_pcore : PCore slevelO := Some.
-  Instance slevelO_op : Op slevelO := slevel_meet.
-  Definition slevelO_op_meet l1 l2 : l1 ⋅ l2 = l1 ⊓ l2 := eq_refl.
-
-  Instance slevelO_equiv : Equiv slevelO := (=).
-  Instance slevelO_leibniz_equiv : LeibnizEquiv slevelO.
-  Proof. intros ???. eauto. Qed.
-
-  Lemma slevelR_included l1 l2 : l1 ≼ l2 ↔ l2 ⊑ l1.
-  Proof.
-    split.
-    - intros [σ ->]. eauto.
-    - exists l2. rewrite slevelO_op_meet.
-      fold_leibniz. symmetry. eauto.
-  Qed.
-
-  Lemma slevelO_ra_mixin : RAMixin slevelO.
-  Proof.
-    apply ra_total_mixin; try by eauto; try apply _.
-    - intros x. apply idemp. apply _.
-  Qed.
-
-  Canonical Structure slevelR : cmraT := discreteR slevelO slevelO_ra_mixin.
-
-  Global Instance slevelR_cmra_discrete : CmraDiscrete slevelR.
-  Proof. apply discrete_cmra_discrete. Qed.
-
-  Global Instance slevelR_core_id (l : slevelR) : CoreId l.
-  Proof. by constructor. Qed.
-
-  Global Instance slevelR_cmra_total : CmraTotal slevelR.
-  Proof. intro x. compute. eauto. Qed.
-
-  Global Instance slevelO_unit : Unit slevelO := High.
-
-  Lemma slevelO_ucmra_mixin : UcmraMixin slevelO.
-  Proof.
-    split; try done.
-    intro x. destruct x; cbv; done.
-  Qed.
-
-  Canonical Structure slevelUR : ucmraT := UcmraT slevelO slevelO_ucmra_mixin.
-
-End slevelR_cmra.
-
+From iris_ni.logrel Require Export slevel.
 
 (** * Types *)
 Inductive type :=
@@ -381,6 +12,29 @@ Inductive type :=
 | tprod (t1 t2 : type)
 | tintoption (il l : slevel)
 | tref (t : type).
+
+Fixpoint type_measure (τ : type) : nat :=
+  match τ with
+  | tunit => 0
+  | tint _ => 0
+  | tbool _ => 0
+  | tarrow s t _ => type_measure s + type_measure t + 1
+  | tprod τ1 τ2 => type_measure τ1 + type_measure τ2 + 1
+  | tintoption _ _ => 0
+  | tref τ => type_measure τ + 1
+  end.
+
+(* stamp τ l = τ ⊔ l *)
+Fixpoint stamp (τ : type) (l : slevel) : type :=
+  match τ with
+  | tunit => tunit
+  | tint l2 => tint (l2 ⊔ l)
+  | tbool l2 => tbool (l2 ⊔ l)
+  | tprod τ1 τ2 => tprod (stamp τ1 l) (stamp τ2 l)
+  | tarrow s t l2 => tarrow s t (l2 ⊔ l)
+  | tintoption il l2 => tintoption il (l2 ⊔ l)
+  | tref τ => tref τ
+  end.
 
 (* "Flat types" are types τ for which the following typing rule is
 sound:
@@ -410,35 +64,6 @@ Definition tmutex_aux : seal (tref (tbool Low)). by eexists. Qed.
 Definition tmutex : type := tmutex_aux.(unseal).
 Definition tmutex_eq : tmutex = tref (tbool Low) := tmutex_aux.(seal_eq).
 
-Global Instance type_eqdec : EqDecision type.
-Proof. solve_decision. Qed.
-
-Fixpoint type_measure (τ : type) : nat :=
-  match τ with
-  | tunit => 0
-  | tint _ => 0
-  | tbool _ => 0
-  | tarrow s t _ => type_measure s + type_measure t + 1
-  | tprod τ1 τ2 => type_measure τ1 + type_measure τ2 + 1
-  | tintoption _ _ => 0
-  | tref τ => type_measure τ + 1
-  end.
-
-(* stamp τ l = τ ⊔ l *)
-Fixpoint stamp (τ : type) (l : slevel) : type :=
-  match τ with
-  | tunit => tunit
-  | tint l2 => tint (l2 ⊔ l)
-  | tbool l2 => tbool (l2 ⊔ l)
-  | tprod τ1 τ2 => tprod (stamp τ1 l) (stamp τ2 l)
-  | tarrow s t l2 => tarrow s t (l2 ⊔ l)
-  | tintoption il l2 => tintoption il (l2 ⊔ l)
-  | tref τ => tref τ
-  end.
-Lemma stamp_measure (τ : type) (l : slevel) :
-  type_measure τ = type_measure (stamp τ l).
-Proof. induction τ; naive_solver. Qed.
-
 (* [lbl τ] is a "level approximation" of a type *)
 Fixpoint lbl (τ : type) : slevel :=
   match τ with
@@ -451,26 +76,6 @@ Fixpoint lbl (τ : type) : slevel :=
   | tref τ => lbl τ
   end.
 
-Lemma lbl_stamp_leq_general τ l : lbl (stamp τ (lbl τ ⊔ l)) ⊑ lbl τ ⊔ l.
-Proof.
-  revert l. induction τ=>α; simpl;
-                           try (by rewrite assoc idemp //);
-                           rewrite ?idemp //.
-  + sl_lattice_switch_goal. by rewrite idemp.
-  + rewrite -{1}(assoc _ (lbl τ1) (lbl τ2) α).
-    rewrite IHτ1.
-    rewrite (comm _ (lbl τ1) (lbl τ2)).
-    rewrite -{1}(assoc _ (lbl τ2) (lbl τ1) α).
-    rewrite IHτ2.
-    sl_lattice_switch_goal. by rewrite idemp.
-  + sl_lattice_switch_goal. by rewrite idemp.
-Qed.
-
-Lemma lbl_stamp_leq τ : lbl (stamp τ (lbl τ)) ⊑ lbl τ.
-Proof.
-  rewrite -(right_id Low (⊔) (lbl τ)).
-  apply lbl_stamp_leq_general.
-Qed.
 
 (** The subtyping relation <: *)
 Reserved Notation "τ '<:' σ" (at level 50).
@@ -501,7 +106,67 @@ Inductive type_sub : type → type → Prop :=
     tprod τ₁ σ₁ <: tprod τ₂ σ₂
 where "τ '<:' σ" := (type_sub τ σ).
 
+(* Typing for binary operations *)
+Inductive bin_op_int : bin_op → Prop :=
+| bin_op_int_plus : bin_op_int PlusOp
+| bin_op_int_mult : bin_op_int MultOp
+| bin_op_int_sub : bin_op_int MinusOp
+| bin_op_int_div : bin_op_int QuotOp.
+
+Inductive bin_op_int_bool : bin_op → Prop :=
+| bin_op_int_lt : bin_op_int_bool LtOp
+| bin_op_int_le : bin_op_int_bool LeOp
+| bin_op_int_eq : bin_op_int_bool EqOp.
+
+Inductive bin_op_bool : bin_op → Prop :=
+| bin_op_bool_and : bin_op_bool AndOp
+| bin_op_bool_or : bin_op_bool OrOp.
+
+
+Inductive almost_val : gset string → expr → Prop :=
+| is_a_value Γ v : almost_val Γ (Val v)
+| is_a_variable (x : string) Γ :
+    x ∈ Γ →
+    almost_val Γ (Var x).
+
+
+(**********************************************************************)
+(***** Properties *)
+
+Section local.
+
+Local Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
+Local Hint Resolve leq_join_max_1 leq_join_max_2.
+Local Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
 Local Hint Constructors type_sub.
+
+Global Instance type_eqdec : EqDecision type.
+Proof. solve_decision. Qed.
+
+Lemma stamp_measure (τ : type) (l : slevel) :
+  type_measure τ = type_measure (stamp τ l).
+Proof. induction τ; naive_solver. Qed.
+
+Lemma lbl_stamp_leq_general τ l : lbl (stamp τ (lbl τ ⊔ l)) ⊑ lbl τ ⊔ l.
+Proof.
+  revert l. induction τ=>α; simpl;
+                           try (by rewrite assoc idemp //);
+                           rewrite ?idemp //.
+  + sl_lattice_switch_goal. done.
+  + rewrite -{1}(assoc _ (lbl τ1) (lbl τ2) α).
+    rewrite IHτ1.
+    rewrite (comm _ (lbl τ1) (lbl τ2)).
+    rewrite -{1}(assoc _ (lbl τ2) (lbl τ1) α).
+    rewrite IHτ2.
+    sl_lattice_switch_goal. done.
+  + sl_lattice_switch_goal. done.
+Qed.
+
+Lemma lbl_stamp_leq τ : lbl (stamp τ (lbl τ)) ⊑ lbl τ.
+Proof.
+  rewrite -(right_id Low (⊔) (lbl τ)).
+  apply lbl_stamp_leq_general.
+Qed.
 
 Global Instance type_sub_reflexive : Reflexive type_sub.
 Proof. by constructor. Qed.
@@ -538,11 +203,30 @@ Proof. induction 1; econstructor; eauto. Qed.
 
 End local.
 
-Inductive almost_val : gset string → expr → Prop :=
-| is_a_value Γ v : almost_val Γ (Val v)
-| is_a_variable (x : string) Γ :
-    x ∈ Γ →
-    almost_val Γ (Var x).
+(**********************************************************************)
+
+Lemma bin_op_int_safe (i1 i2 : Z) op :
+  bin_op_int op →
+  ∃ (z : Z), bin_op_eval op (LitV (LitInt i1)) (LitV (LitInt i2)) = Some (LitV (LitInt z)).
+Proof.
+  destruct op; inversion 1; eauto.
+Qed.
+
+Lemma bin_op_int_bool_safe (i1 i2 : Z) op :
+  bin_op_int_bool op →
+  ∃ (b : bool), bin_op_eval op (LitV (LitInt i1)) (LitV (LitInt i2)) = Some (LitV (LitBool b)).
+Proof.
+  destruct op; inversion 1; eauto.
+Qed.
+
+Lemma bin_op_bool_safe (b1 b2 : bool) op :
+  bin_op_bool op →
+  ∃ (b : bool), bin_op_eval op (LitV (LitBool b1)) (LitV (LitBool b2)) = Some (LitV (LitBool b)).
+Proof.
+  destruct op; inversion 1; eauto.
+Qed.
+
+(****** almost_val and its properties *)
 
 Lemma almost_val_mono Γ Γ' e :
   Γ ⊆ Γ' →
@@ -574,43 +258,6 @@ Proof.
   econstructor. apply (not_elem_of_dom (D:=stringset)) in Hx.
   set_solver.
 Qed.
-
-Inductive bin_op_int : bin_op → Prop :=
-| bin_op_int_plus : bin_op_int PlusOp
-| bin_op_int_mult : bin_op_int MultOp
-| bin_op_int_sub : bin_op_int MinusOp
-| bin_op_int_div : bin_op_int QuotOp.
-
-Lemma bin_op_int_safe (i1 i2 : Z) op :
-  bin_op_int op →
-  ∃ (z : Z), bin_op_eval op (LitV (LitInt i1)) (LitV (LitInt i2)) = Some (LitV (LitInt z)).
-Proof.
-  destruct op; inversion 1; eauto.
-Qed.
-
-Inductive bin_op_int_bool : bin_op → Prop :=
-| bin_op_int_lt : bin_op_int_bool LtOp
-| bin_op_int_le : bin_op_int_bool LeOp
-| bin_op_int_eq : bin_op_int_bool EqOp.
-
-Lemma bin_op_int_bool_safe (i1 i2 : Z) op :
-  bin_op_int_bool op →
-  ∃ (b : bool), bin_op_eval op (LitV (LitInt i1)) (LitV (LitInt i2)) = Some (LitV (LitBool b)).
-Proof.
-  destruct op; inversion 1; eauto.
-Qed.
-
-Inductive bin_op_bool : bin_op → Prop :=
-| bin_op_bool_and : bin_op_bool AndOp
-| bin_op_bool_or : bin_op_bool OrOp.
-
-Lemma bin_op_bool_safe (b1 b2 : bool) op :
-  bin_op_bool op →
-  ∃ (b : bool), bin_op_eval op (LitV (LitBool b1)) (LitV (LitBool b2)) = Some (LitV (LitBool b)).
-Proof.
-  destruct op; inversion 1; eauto.
-Qed.
-
 
 Delimit Scope FType_scope with ty.
 Bind Scope FType_scope with type.

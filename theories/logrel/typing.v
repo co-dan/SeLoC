@@ -12,6 +12,7 @@ Instance insert_binder (A : Type): Insert binder A (stringmap A) :=
   binder_insert.
 Existing Instance singleton_binder.
 
+(* Main typing relation *)
 Inductive has_type (Γ : stringmap type) :
   expr → type → Prop :=
 (* structural *)
