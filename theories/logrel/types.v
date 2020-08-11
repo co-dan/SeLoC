@@ -56,7 +56,8 @@ Inductive  unboxed_type : type → Prop :=
 | tint_unboxed l : unboxed_type (tint l)
 | tbool_unboxed l : unboxed_type (tbool l)
 | tunit_unboxed : unboxed_type tunit
-| tintoption_unboxed il l : unboxed_type (tintoption il l)
+| tref_unboxed τ : unboxed_type (tref τ)
+(* | tintoption_unboxed il l : unboxed_type (tintoption il l) *)
 .
 
 
@@ -73,7 +74,7 @@ Fixpoint lbl (τ : type) : slevel :=
   | tprod τ1 τ2 => lbl τ1 ⊔ lbl τ2
   | tarrow s t β => lbl t ⊔ β
   | tintoption il α => il ⊔ α
-  | tref τ => lbl τ
+  | tref τ => Low
   end.
 
 
@@ -200,6 +201,9 @@ Proof. induction 1; econstructor; eauto. Qed.
 
 Lemma unboxed_type_stamp τ l : unboxed_type τ → unboxed_type (stamp τ l).
 Proof. induction 1; econstructor; eauto. Qed.
+
+Lemma unboxed_type_stamp_lbl τ : unboxed_type τ → τ = stamp τ (lbl τ).
+Proof. by induction 1; simpl; rewrite ?idemp_L //. Qed.
 
 End local.
 
