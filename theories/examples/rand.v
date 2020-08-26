@@ -67,7 +67,7 @@ Section proof.
     change (tbool Low) with (stamp (tbool Low) Low).
     iApply (logrel_app with "[] []").
     - dwp_pures. iApply (logrel_lam _ _ _ _ (tref (tbool Low)) with "[]").
-      iAlways. iIntros (v1 v2) "#Hvv". simpl.
+      iModIntro. iIntros (v1 v2) "#Hvv". simpl.
       iApply logrel_seq.
       + iApply logrel_fork. iApply logrel_store; eauto.
         * iApply (dwp_value with "Hvv").

@@ -205,7 +205,7 @@ Section fundamental.
       { by iApply IHhas_type. }
       iIntros (v1 v2) "#Hv". dwp_pures. iApply logrel_some.
       by iApply dwp_value.
-    - dwp_pures. iApply logrel_rec. iAlways. rewrite (interp_eq (tarrow _ _ _)).
+    - dwp_pures. iApply logrel_rec. iModIntro. rewrite (interp_eq (tarrow _ _ _)).
       iIntros (f1 f2 v1 v2) "#Hf #Hv".
       pose (γ' := <[f:=(f1,f2)]>(<[x:=(v1,v2)]>γ)).
       iDestruct (IHhas_type γ' with "[-] HI") as "H".

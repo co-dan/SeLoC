@@ -558,12 +558,12 @@ Section composed.
     ⊢ DWP make & make : ⟦ tint Low → tintoption High Low → arr_t ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
-    rewrite interp_eq. iAlways.
+    rewrite interp_eq. iModIntro.
     iIntros (? ?). iDestruct 1 as (sz0 sz -> ->) "%".
     assert (sz0 = sz) as -> by eauto.
     dwp_rec. dwp_pures.
     iApply dwp_value. iModIntro.
-    rewrite (interp_eq (tarrow _ _ _)). iAlways.
+    rewrite (interp_eq (tarrow _ _ _)). iModIntro.
     iIntros (d1 d2) "#Hd".
     dwp_rec. dwp_bind (array.make _ _) (array.make _ _).
     iApply dwp_wand.
@@ -575,7 +575,7 @@ Section composed.
     rewrite (interp_eq (tprod _ _)).
     iExists _,_,_,_. repeat iSplit; eauto.
     - rewrite (interp_eq (tarrow _ _ _)).
-      iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
+      iModIntro. iIntros (v1 v2) "#Hv". dwp_pures.
       rewrite !right_id.
       (* rewrite (interp_sub_mono (tintoption High Low) (tintoption High High)); last by constructor. *)
       iApply (get_spec with "Ha"); eauto with iFrame;
@@ -583,14 +583,14 @@ Section composed.
       apply option_pseudo_refl.
       apply option_contractible.
     - rewrite (interp_eq (tarrow _ _ _)).
-      iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
+      iModIntro. iIntros (v1 v2) "#Hv". dwp_pures.
       rewrite !right_id.
       iApply get_spec_low; eauto.
     - rewrite (interp_eq (tarrow _ _ _)).
-      iAlways. iIntros (v1 v2) "#Hv". dwp_pures.
+      iModIntro. iIntros (v1 v2) "#Hv". dwp_pures.
       iApply dwp_value. iModIntro.
       rewrite (interp_eq (tarrow _ _ _)).
-      iAlways. iIntros (w1 w2) "#Hw". dwp_pures.
+      iModIntro. iIntros (w1 w2) "#Hw". dwp_pures.
       iApply set_spec_low; eauto.
   Qed.
 
@@ -598,7 +598,7 @@ Section composed.
     ⊢ DWP get & get : ⟦ arr_t → tint Low → tintoption High Low ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
-    rewrite interp_eq. iAlways.
+    rewrite interp_eq. iModIntro.
     iIntros (a1 a2). rewrite /arr_t interp_eq.
     iDestruct 1 as (r1 r2 set1 set2 -> ->) "[H Hset]".
     iDestruct "H" as (get_1 get_2 get1 get2 -> ->) "[Hget_ Hget]".
@@ -610,7 +610,7 @@ Section composed.
     ⊢ DWP get_ & get_ : ⟦ arr_t → tint High → tintoption High High ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
-    rewrite interp_eq. iAlways.
+    rewrite interp_eq. iModIntro.
     iIntros (a1 a2). rewrite /arr_t interp_eq.
     iDestruct 1 as (r1 r2 set1 set2 -> ->) "[H Hset]".
     iDestruct "H" as (get_1 get_2 get1 get2 -> ->) "[Hget_ Hget]".
@@ -622,7 +622,7 @@ Section composed.
     ⊢ DWP set & set : ⟦ arr_t → tint Low → tintoption High Low → tunit ⟧ Low.
   Proof.
     iApply dwp_value. iModIntro.
-    rewrite interp_eq. iAlways.
+    rewrite interp_eq. iModIntro.
     iIntros (a1 a2). rewrite /arr_t interp_eq.
     iDestruct 1 as (r1 r2 set1 set2 -> ->) "[H Hset]".
     iDestruct "H" as (get_1 get_2 get1 get2 -> ->) "[Hget_ Hget]".

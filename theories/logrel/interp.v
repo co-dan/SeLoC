@@ -409,7 +409,7 @@ Section semtypes.
       repeat iSplit; eauto with iFrame. iPureIntro.
       intros ?. apply HH. transitivity (l ⊔ l2); auto.
       by apply join_mono_r.
-    - iIntros "#H". iAlways. iIntros (w1 w2) "Hw".
+    - iIntros "#H". iModIntro. iIntros (w1 w2) "Hw".
       iSpecialize ("H" with "Hw").
       iApply (dwp_wand with "H").
       iIntros (x1 x2) "H". iApply (IHτ2 with "H").
@@ -473,7 +473,7 @@ Section semtypes.
       apply interp_label_mono.
       transitivity l2'; eauto using join_leq_r.
     - (* Arrow *)
-      rewrite !interp_eq /=. iIntros "#IH". iAlways.
+      rewrite !interp_eq /=. iIntros "#IH". iModIntro.
       iIntros (w1 w2) "Hw".
       replace ((interp τ'₁) ξ w1 w2) with ((interp (stamp τ'₁ Low)) ξ w1 w2)
         by by rewrite stamp_low.

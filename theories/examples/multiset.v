@@ -570,7 +570,7 @@ Section proof.
 
     dwp_pures. iApply dwp_value. iModIntro.
     iApply "HΦ".
-    - iAlways. iIntros (b v1 v2) "Hv".
+    - iModIntro. iIntros (b v1 v2) "Hv".
       dwp_pures. dwp_bind (acquire _) (acquire _).
       iApply (acquire_spec with "Hlock").
       iIntros "Hlk Hls".
@@ -582,7 +582,7 @@ Section proof.
       dwp_pures. iApply (release_spec with "Hlock Hlk Hls").
 
       eauto with iFrame.
-    - rewrite interp_eq /= /lrel_car /=. iAlways.
+    - rewrite interp_eq /= /lrel_car /=. iModIntro.
       iIntros (z1 z2) "_". dwp_rec.
       dwp_bind (acquire _) (acquire _).
       iApply (acquire_spec with "Hlock").

@@ -193,7 +193,7 @@ Proof.
     iDestruct 1 as (l1 l2 Hl1 Hl2) "H". simplify_eq/=.
     iExists l1, l1. repeat iSplit; eauto.
     iApply (invariants.inv_iff with "H").
-    iNext. iAlways. iSplit.
+    iNext. iModIntro. iSplit.
     - iDestruct 1 as (v1 v2) "(Hl1 & Hl2 & Hv)".
       iExists v2, v1. iFrame. iDestruct "Hv" as (i1 i2 -> ->) "%".
       iExists i2, i1. repeat iSplit; eauto with iFrame.
@@ -204,11 +204,11 @@ Proof.
       iPureIntro. naive_solver. }
   rewrite big_sepL2_flip.
   iApply (big_sepL2_impl with "HDWP []").
-  iAlways. iIntros (k s e Hs He) "HDWP".
+  iModIntro. iIntros (k s e Hs He) "HDWP".
   (* now we do Löb induction *)
   (* ugly context manipulations incoming *)
   iAssert (□ ∀ v1 v2 : val, Φ v1 v2 -∗ Φ v2 v1)%I as "#HΦ".
-  { iAlways. iIntros (v1 v2). by iApply HΦ. }
+  { iModIntro. iIntros (v1 v2). by iApply HΦ. }
   clear HΦ. iRevert "HΦ". clear Hs He.
   iLöb as "IH" forall (e s k Φ). iIntros "#HΦ".
   rewrite !dwp_unfold /dwp_pre /=.
@@ -225,7 +225,7 @@ Proof.
   - by iApply ("IH" with "Hdwp HΦ").
   - rewrite big_sepL2_flip.
     iApply (big_sepL2_impl with "Hefs").
-    iAlways. iIntros (m e1 e2 ??) "Hdwp".
+    iModIntro. iIntros (m e1 e2 ??) "Hdwp".
     iApply ("IH" $! _ _ 1 Φ with "Hdwp HΦ").
 Qed.
 (* Transitivity is still infeasible! *)

@@ -17,7 +17,7 @@ Section f_proof.
     ⊢ DWP f & f : ⟦ tarrow (tint High) (tint Low) Low ⟧ ξ.
   Proof.
     iApply dwp_value.
-    iModIntro. rewrite interp_eq /=. iAlways.
+    iModIntro. rewrite interp_eq /=. iModIntro.
     iIntros (v1 v2). iDestruct 1 as (x1 x2 -> ->) "%".
     dwp_rec. dwp_pures. rewrite !Z.mul_0_r. iApply dwp_value.
     rewrite left_id. iModIntro. iExists 0,0. eauto with iFrame.
@@ -78,11 +78,11 @@ Section awk_proof.
     ⊢ DWP awk & awk : ⟦ tarrow (tint Low)
                        (tarrow (f_ty τ l2) (tint Low) Low) Low ⟧ ξ.
   Proof.
-    iApply logrel_lam. iAlways. iIntros (i1 i2) "#Hi". iSimpl.
+    iApply logrel_lam. iModIntro. iIntros (i1 i2) "#Hi". iSimpl.
     dwp_bind (ref _)%E (ref _)%E. iApply dwp_wand.
     { iApply logrel_alloc. iApply (dwp_value with "Hi"). }
     iIntros (r1 r2) "#Hr". dwp_pures.
-    iApply logrel_lam. iAlways.
+    iApply logrel_lam. iModIntro.
     rewrite /f_ty (interp_eq (tarrow _ _ _)). iIntros (f1 f2) "#Hf". iSimpl.
     dwp_bind (_ <- _)%E (_ <- _)%E. iApply dwp_wand.
     { iApply logrel_store; first solve_ndisj.
@@ -119,7 +119,7 @@ Section awk_proof.
     ⊢ DWP awk & awk : ⟦ tarrow (tint l)
                        (tarrow (f_ty τ l2) (tint Low) Low) Low ⟧ ξ.
   Proof.
-    iApply logrel_lam. iAlways. iIntros (i1 i2) "#Hi". iSimpl.
+    iApply logrel_lam. iModIntro. iIntros (i1 i2) "#Hi". iSimpl.
     dwp_bind (ref _)%E (ref _)%E. iApply dwp_alloc.
     iIntros (r1 r2) "Hr1 Hr2". iNext. dwp_pures.
     iMod new_pending as (γ) "Hγ".
@@ -128,7 +128,7 @@ Section awk_proof.
                            ∨ (shot γ ∗ r1 ↦ₗ #1 ∗ r2 ↦ᵣ #1))%I
             with "[Hr1 Hr2 Hγ]") as "#Hinv".
     { iNext. iLeft. iExists _,_. by iFrame. }
-    iApply logrel_lam. iAlways.
+    iApply logrel_lam. iModIntro.
     rewrite /f_ty (interp_eq (tarrow _ _ _)). iIntros (f1 f2) "#Hf". iSimpl.
     dwp_bind (_ <- _)%E (_ <- _)%E.
     iApply (dwp_wand _ _ _ (λ v1 v2, ⟦ tunit ⟧ ξ v1 v2 ∗ shot γ)%I).

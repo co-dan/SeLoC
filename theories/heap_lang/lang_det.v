@@ -301,7 +301,7 @@ Proof.
   iSplitL "HWP".
   - by iApply "IH".
   - iApply (big_sepL_impl with "Hefs []").
-    iAlways. iIntros (???). iApply "IH".
+    iModIntro. iIntros (???). iApply "IH".
 Qed.
 End lifting.
 
@@ -340,7 +340,7 @@ Proof.
   iSplitL "HWP".
   - by iApply "IH".
   - iApply (big_sepL2_impl with "Hefs []").
-    iAlways. iIntros (?????). iApply "IH".
+    iModIntro. iIntros (?????). iApply "IH".
 Qed.
 
 End dwp_lifting.

@@ -130,7 +130,7 @@ Section semtyping.
   Proof.
     rewrite tmutex_eq.
     unfold acquire. dwp_pures. iApply dwp_value. iModIntro.
-    rewrite interp_eq. iAlways. iIntros (lk1 lk2) "#Hlk".
+    rewrite interp_eq. iModIntro. iIntros (lk1 lk2) "#Hlk".
     dwp_pures. iLöb as "IH".
     rewrite {5 7}/try_acquire. dwp_pures.
     dwp_bind (CmpXchg _ _ _) (CmpXchg _ _ _).
@@ -167,7 +167,7 @@ Section semtyping.
   Proof.
     rewrite tmutex_eq.
     unfold release. dwp_pures. iApply dwp_value. iModIntro.
-    rewrite interp_eq. iAlways. iIntros (lk1 lk2) "#Hlk".
+    rewrite interp_eq. iModIntro. iIntros (lk1 lk2) "#Hlk".
     dwp_pures. iApply logrel_store; eauto.
     - rewrite /tmutex. iApply dwp_value. iApply "Hlk".
     - iApply logrel_bool.
