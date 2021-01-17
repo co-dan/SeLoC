@@ -79,10 +79,10 @@ End relation_lemmas.
 Lemma allocator_helper (σ : gmap loc (option val)) L `{!invG Σ, !gen_heapG loc (option val) Σ} :
   (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some $ Some #n) →
   let σ' := filter ((.∉ L) ∘ fst) σ in
-  gen_heap_ctx σ' ==∗ gen_heap_ctx σ ∗ [∗ set] l ∈ L, l ↦ (extract_fn σ l).
+  gen_heap_interp σ' ==∗ gen_heap_interp σ ∗ [∗ set] l ∈ L, l ↦ (extract_fn σ l).
 Proof.
   iIntros (HL) "Hσ'".
-  iMod (gen_heap_alloc_gen with "Hσ'") as "(Hσ & HL)".
+  iMod (gen_heap_alloc_big with "Hσ'") as "(Hσ & HL)".
   { apply map_disjoint_filter. }
   iDestruct "HL" as "[HL _]".
   rewrite map_union_filter. iFrame "Hσ".
@@ -127,11 +127,11 @@ Proof.
   exists 0. intros Hinv. simpl.
   pose (σ1' := filter ((.∉ L) ∘ fst) (σ1.(heap))).
   pose (σ2' := filter ((.∉ L) ∘ fst) (σ2.(heap))).
-  iMod (gen_heap_init σ1') as (hg1) "Hh1".
-  iMod (allocator_helper σ1.(heap) L with "Hh1") as "[Hh1 HL1]".
+  iMod (gen_heap_init σ1') as (hg1) "[Hh1 _]".
+  iMod (allocator_helper _ L with "Hh1") as "[Hh1 HL1]".
   { unfold low_equiv in Hσ; naive_solver. }
-  iMod (gen_heap_init σ2') as (hg2) "Hh2".
-  iMod (allocator_helper σ2.(heap) L with "Hh2") as "[Hh2 HL2]".
+  iMod (gen_heap_init σ2') as (hg2) "[Hh2 _]".
+  iMod (allocator_helper _ L with "Hh2") as "[Hh2 HL2]".
   { unfold low_equiv in Hσ; naive_solver. }
 
   iMod (proph_map_init [] σ1.(used_proph_id)) as (pg1) "Hp1".

@@ -107,10 +107,10 @@ Section value_dep.
 
   (** ** Definitions and properties of tokens *)
   Definition classification γ (α : slevel) (q : frac) : iProp Σ :=
-    (own γ (◯ (Some (q, to_agree α))))%I.
+    (own γ (◯ (Some (q, to_agree α)) : authR (optionUR (prodR fracR (agreeR slevelO)))))%I.
 
   Definition classification_auth γ (α : slevel) : iProp Σ :=
-    (own γ (● (Some (1%Qp, to_agree α))))%I.
+    (own γ (● (Some (1%Qp, to_agree α)) : authR (optionUR (prodR fracR (agreeR slevelO)))))%I.
 
   Global Instance classification_fractional γ α :
     Fractional (classification γ α).
@@ -137,9 +137,10 @@ Section value_dep.
   Proof.
     (* Why all the type annotations? *)
     rewrite /classification_auth /classification.
-    iMod (own_alloc (● (Some (1%Qp, to_agree α))⋅
-            ◯ (Some (1%Qp, to_agree α)))) as (γ) "H".
-    { apply auth_both_valid. split; done. }
+    iMod (own_alloc ((● (Some (1%Qp, to_agree α)) ⋅
+                        ◯ (Some (1%Qp, to_agree α)))
+                     : authR (optionUR (prodR fracR (agreeR slevelO))) )) as (γ) "H".
+    { apply auth_both_valid_discrete. split; done. }
     iModIntro. iExists γ. by rewrite -own_op.
   Qed.
 
@@ -160,7 +161,7 @@ Section value_dep.
     apply bi.wand_intro_r. rewrite /classification /classification_auth - !own_op.
     iIntros "H". iDestruct (own_valid with "H") as %Hfoo.
     iPureIntro; revert Hfoo.
-    rewrite auth_both_valid.
+    rewrite auth_both_valid_discrete.
     intros [[_ foo%to_agree_included]%Some_pair_included_total_2 _].
     by unfold_leibniz.
   Qed.
@@ -172,9 +173,8 @@ Section value_dep.
     iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hfoo.
     iPureIntro. revert Hfoo.
-    rewrite -auth_frag_op -Some_op -pair_op.
-    rewrite auth_frag_valid Some_valid.
-    by intros [_ foo%agree_op_invL']%pair_valid.
+    rewrite auth_frag_op_valid Some_valid.
+    by intros [_ foo%to_agree_op_inv_L]%pair_valid.
   Qed.
 
   Lemma classification_1_exclusive γ β β' q :

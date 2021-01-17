@@ -166,14 +166,14 @@ Section semtypes.
     ▷l ↦ₗ v1 -∗ ▷l ↦ₗ v2 ={E}=∗ False.
   Proof.
     iIntros "Hl1 Hl2".
-    iDestruct (gen_heap.mapsto_valid_2 with "Hl1 Hl2") as ">%".
+    iDestruct (gen_heap.mapsto_ne with "Hl1 Hl2") as ">%".
     exfalso. eauto.
   Qed.
   Lemma mapsto_2_bad_r l v1 v2 E :
     ▷l ↦ᵣ v1 -∗ ▷l ↦ᵣ v2 ={E}=∗ False.
   Proof.
     iIntros "Hl1 Hl2".
-    iDestruct (gen_heap.mapsto_valid_2 with "Hl1 Hl2") as ">%".
+    iDestruct (gen_heap.mapsto_ne with "Hl1 Hl2") as ">%".
     exfalso. eauto.
   Qed.
   Ltac aaaaa i :=  (by (iMod (mapsto_2_bad_l with i))
@@ -534,6 +534,7 @@ Section rules.
     iDestruct (unboxed_type_interp' with "H2") as %?; first done.
     iMod (unboxed_type_upd_eq with "H1 H2") as %?; try done.
     destruct_and!.
+    
     dwp_pures. iApply dwp_value. iModIntro.
     helpme. iPureIntro.
     repeat case_bool_decide; naive_solver.

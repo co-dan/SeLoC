@@ -33,7 +33,7 @@ Section proof.
   Lemma locked_exclusive (γ : gname) : locked γ -∗ locked γ -∗ False.
   Proof.
     iDestruct 1 as (o1) "H1". iDestruct 1 as (o2) "H2".
-    iDestruct (own_valid_2 with "H1 H2") as %[[] _].
+    iDestruct (own_valid_2 with "H1 H2") as %[[] _]%auth_frag_op_valid_1.
   Qed.
 
   Lemma newlock_spec (R : iProp Σ) Φ :
@@ -84,7 +84,7 @@ Section proof.
         iApply ("HΦ" with "[Ho] HR").
         rewrite /locked. eauto.
       + iNext.
-        iDestruct (own_valid_2 with "Ht Haown") as % [_ ?%gset_disj_valid_op].
+        iDestruct (own_valid_2 with "Ht Haown") as % [_ ?%gset_disj_valid_op]%auth_frag_op_valid_1.
         set_solver.
     - iNext. iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Ha".
       { iNext. iExists o, n. by iFrame. }
@@ -151,7 +151,7 @@ Section proof.
     iInv N as (o' n) "(>Hlo1 & >Hln1 & >Hlo2 & >Hln2 & >Hauth & Haown)".
     iApply (dwp_load with "Hlo1 Hlo2"). iIntros "Hlo1 Hlo2". iNext.
     iDestruct (own_valid_2 with "Hauth Hγo") as
-      %[[<-%Excl_included%leibniz_equiv _]%prod_included _]%auth_both_valid.
+      %[[<-%Excl_included%leibniz_equiv _]%prod_included _]%auth_both_valid_discrete.
     iModIntro. iSplitL "Hlo1 Hln1 Hlo2 Hln2 Hauth Haown".
     { iNext. iExists o, n. by iFrame. }
     dwp_pures.
@@ -159,9 +159,9 @@ Section proof.
     iApply dwp_fupd. iApply (dwp_store with "Hlo1 Hlo2").
     iIntros "Hlo1 Hlo2". iNext. iModIntro.
     iDestruct (own_valid_2 with "Hauth Hγo") as
-      %[[<-%Excl_included%leibniz_equiv _]%prod_included _]%auth_both_valid.
+      %[[<-%Excl_included%leibniz_equiv _]%prod_included _]%auth_both_valid_discrete.
     iDestruct "Haown" as "[[Hγo' _]|Haown]".
-    { iDestruct (own_valid_2 with "Hγo Hγo'") as %[[] ?]. }
+    { iDestruct (own_valid_2 with "Hγo Hγo'") as %[[] ?]%auth_frag_op_valid_1. }
     iMod (own_update_2 with "Hauth Hγo") as "[Hauth Hγo]".
     { apply auth_update, prod_local_update_1.
       by apply option_local_update, (exclusive_local_update _ (Excl (S o))). }

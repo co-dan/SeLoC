@@ -12,16 +12,17 @@ Lemma tac_dwp_bind `{!heapDG Σ} K1 K2 Δ E Φ e1 e2 f1 f2 :
 
 Proof. rewrite envs_entails_eq=> -> -> ->. by apply: dwp_bind. Qed.
 
-Lemma tac_dwp_pure `{!heapDG Σ} Δ Δ' E e1 e2 e1' e2' φ1 φ2 n Φ :
+Lemma tac_dwp_pure `{!heapDG Σ} Δ Δ' E e1 e2 K1 K2 e1' e2' φ1 φ2 n Φ :
   PureExec φ1 n e1 e1' →
   PureExec φ2 n e2 e2' →
   φ1 →
   φ2 →
   MaybeIntoLaterNEnvs n Δ Δ' →
-  envs_entails Δ' (dwp E e1' e2' Φ) →
-  envs_entails Δ (dwp E e1 e2 Φ).
+  envs_entails Δ' (dwp E (fill K1 e1') (fill K2 e2') Φ) →
+  envs_entails Δ (dwp E (fill K1 e1) (fill K2 e2) Φ).
 Proof.
   rewrite envs_entails_eq=> ????? HΔ'. rewrite into_laterN_env_sound /=.
+  pose proof @pure_exec_fill.
   rewrite HΔ' -dwp_pure_step_later //.
 Qed.
 
@@ -60,7 +61,7 @@ Tactic Notation "dwp_pure" open_constr(efoc1) open_constr(efoc2) :=
       unify e1' efoc1;
       reshape_expr e2 ltac:(fun K2 e2' =>
         unify e2' efoc2;
-        eapply (tac_dwp_pure _ _ _ (fill K1 e1') (fill K2 e2'));
+        eapply (tac_dwp_pure _ _ _ e1' e2' K1 K2);
         [iSolveTC                       (* PureExec *)
         |iSolveTC                       (* PureExec *)
         |try solve_vals_compare_safe    (* The pure condition for PureExec *)

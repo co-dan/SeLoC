@@ -274,7 +274,7 @@ Section lifting.
 Instance heapG_irisG_det `{!heapG Σ} : irisG heap_lang_det Σ := {
   iris_invG := heapG_invG;
   state_interp σ κs _ :=
-    (gen_heap_ctx σ.(heap) ∗ proph_map_ctx κs σ.(used_proph_id))%I;
+    (gen_heap_interp σ.(heap) ∗ proph_map_interp κs σ.(used_proph_id))%I;
   fork_post _ := True%I;
 }.
 
@@ -309,10 +309,10 @@ Section dwp_lifting.
 
 Instance heapDG_irisDG_det `{heapDG Σ} : irisDG heap_lang_det Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,
-      @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
-    ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)
-    ∗ @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG2 σ2.(heap)
-    ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG2 κs2 σ2.(used_proph_id))%I
+      @gen_heap_interp _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
+    ∗ @proph_map_interp _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)
+    ∗ @gen_heap_interp _ _ _ _ _ heapDG_gen_heapG2 σ2.(heap)
+    ∗ @proph_map_interp _ _ _ _ _ heapDG_proph_mapG2 κs2 σ2.(used_proph_id))%I
 }.
 
 Context `{!heapDG Σ}.

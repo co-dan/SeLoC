@@ -329,11 +329,11 @@ Section proofmode_classes.
   Global Instance elim_acc_wp {X} E1 E2 α β γ e1 e2 Φ :
     Atomic StronglyAtomic e1 →
     Atomic StronglyAtomic e2 →
-    ElimAcc (X:=X) (fupd E1 E2) (fupd E2 E1)
+    ElimAcc True (X:=X) (fupd E1 E2) (fupd E2 E1)
             α β γ (dwp E1 e1 e2 Φ)
             (λ x, dwp E2 e1 e2 (λ v1 v2, |={E2}=> β x ∗ (γ x -∗? Φ v1 v2)))%I.
   Proof.
-    intros ??. rewrite /ElimAcc.
+    intros ???.
     iIntros "Hinner >Hacc". iDestruct "Hacc" as (x) "[Hα Hclose]".
     iApply (dwp_wand with "[Hinner Hα]"); first by iApply "Hinner".
     iIntros (v1 v2) ">[Hβ HΦ]". iApply "HΦ". by iApply "Hclose".

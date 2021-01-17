@@ -46,9 +46,9 @@ Definition TWP2 `{!heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
        NotStuck E e R.
 
 Definition mapsto1 `{!heapDG Σ} (l : loc) (q : Qp) (v : val) :=
-  @mapsto loc _ _ _ Σ heapDG_gen_heapG1 l q (Some v%V).
+  @mapsto loc _ _ _ Σ heapDG_gen_heapG1 l (DfracOwn q) (Some v%V).
 Definition mapsto2 `{!heapDG Σ} (l : loc) (q : Qp) (v : val) :=
-  @mapsto loc _ _ _ Σ heapDG_gen_heapG2 l q (Some v%V).
+  @mapsto loc _ _ _ Σ heapDG_gen_heapG2 l (DfracOwn q) (Some v%V).
 
 Notation "l ↦ₗ{ q } v" := (mapsto1 l q v%V)
   (at level 20, q at level 50, format "l  ↦ₗ{ q }  v") : bi_scope.
@@ -86,10 +86,10 @@ Definition meta2 `{heapDG Σ} {A} `{EqDecision A, Countable A}
 
 Instance heapDG_irisDG `{!heapDG Σ} : irisDG heap_lang Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,
-      @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
-    ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)
-    ∗ @gen_heap_ctx _ _ _ _ _ heapDG_gen_heapG2 σ2.(heap)
-    ∗ @proph_map_ctx _ _ _ _ _ heapDG_proph_mapG2 κs2 σ2.(used_proph_id))%I
+      @gen_heap_interp _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
+    ∗ @proph_map_interp _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)
+    ∗ @gen_heap_interp _ _ _ _ _ heapDG_gen_heapG2 σ2.(heap)
+    ∗ @proph_map_interp _ _ _ _ _ heapDG_proph_mapG2 κs2 σ2.(used_proph_id))%I
 }.
 
 Section array_liftings.
@@ -167,7 +167,7 @@ Proof.
   destruct (to_val e2') as [v2|] eqn:Hv2; last first.
   { exfalso. destruct (atomic _ _ _ _ _ Hstep2). naive_solver. }
   rewrite -(of_to_val _ _ Hv1) -(of_to_val _ _ Hv2).
-  rewrite !twp_value_inv'. iMod "HTWP1".
+  rewrite !twp_value_fupd. iMod "HTWP1".
   rewrite (fupd_mask_mono ∅ E2); last by set_solver.
   iMod "HTWP2". iFrame "Hh1 Hp1 Hh2 Hp2".
   iApply step_fupd_intro; first set_solver.
@@ -189,8 +189,8 @@ Proof.
     (λ v, ⌜v = v1⌝ ∗ l1 ↦ₗ v1)%I
     (λ v, ⌜v = v2⌝ ∗ l2 ↦ᵣ v2)%I
     with "[Hl1] [Hl2] [HΦ]").
-  { iApply (twp_load  _ _ l1 1 v1 with "[Hl1]"); eauto. }
-  { iApply (twp_load  _ _ l2 1 v2 with "[Hl2]"); eauto. }
+  { iApply (twp_load  _ _ l1 _ v1 with "[Hl1]"); eauto. }
+  { iApply (twp_load  _ _ l2 _ v2 with "[Hl2]"); eauto. }
   iIntros (? ?) "[% Hl1] [% Hl2]". simplify_eq.
   iApply ("HΦ" with "Hl1 Hl2").
 Qed.

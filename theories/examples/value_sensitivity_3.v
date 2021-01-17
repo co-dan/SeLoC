@@ -51,6 +51,7 @@ Inductive state :=
 Canonical Structure stateO := leibnizO state.
 Instance state_inhabited : Inhabited state := populate Declassified.
 
+Definition stateR := authR (optionUR (exclR stateO)).
 Class stateG Σ := StateG {
    state_stateG :> authG Σ (optionUR (exclR stateO));
 }.
@@ -70,20 +71,21 @@ Section helper_lemmas.
     destruct Hfoo as [a [b [? [? ?]]]]. simplify_eq/=.
   Qed.
 
-  Lemma current_state γ s1 s2 :
-    own γ (◯ Some s2) -∗ own γ (● Some s1) -∗ ⌜s1 = s2⌝.
+  Lemma current_state γ s1 s2  :
+    own γ (◯ Some s2 : stateR) -∗ own γ (● Some s1 : stateR) -∗ ⌜s1 = s2⌝.
   Proof.
     iIntros "Hf Ha".
     iPoseProof (own_valid_2 with "Ha Hf") as "H".
-    iDestruct "H" as %[Hfoo Hh]%auth_both_valid. iPureIntro.
+    iDestruct "H" as %[Hfoo Hh]%auth_both_valid_discrete. iPureIntro.
     revert Hfoo. rewrite Some_included.
     intros [Hfoo|Hfoo]; eauto.
     + by unfold_leibniz.
     + exfalso. eapply (exclusive_included _ _ Hfoo). done.
   Qed.
 
-  Lemma excl_change_state s2 s1 γ :
-    own γ (● Excl' s1) -∗ own γ (◯ Excl' s1) ==∗ own γ (● Excl' s2) ∗ own γ (◯ Excl' s2).
+  Lemma excl_change_state (s2 s1 : state) γ :
+    own γ (● Excl' s1 : stateR) -∗ own γ (◯ Excl' s1 : stateR) ==∗
+    own γ (● Excl' s2 : stateR) ∗ own γ (◯ Excl' s2 : stateR).
   Proof.
     apply bi.wand_intro_r. rewrite - !own_op.
     apply own_update. apply auth_update.
@@ -108,15 +110,15 @@ Section ghost_state.
 
   Definition in_state γ (s : state) :=
     match s with
-    | Classified   => own γ.1 (● classified)   ∗ pending γ.2
-    | Intermediate => own γ.1 (● intermediate) ∗ pending γ.2
-    | Declassifed  => own γ.1 (● declassified) ∗ shot γ.2
+    | Classified   => own γ.1 (● classified : stateR)   ∗ pending γ.2
+    | Intermediate => own γ.1 (● intermediate : stateR) ∗ pending γ.2
+    | Declassifed  => own γ.1 (● declassified : stateR) ∗ shot γ.2
     end%I.
 
   Definition state_token γ (s : state) :=
     match s with
-    | Classified   => own γ.1 (◯ classified)
-    | Intermediate => own γ.1 (◯ intermediate)
+    | Classified   => own γ.1 (◯ classified : stateR)
+    | Intermediate => own γ.1 (◯ intermediate : stateR)
     | Declassifed  => shot γ.2
     end%I.
 
@@ -300,7 +302,7 @@ Section proof.
 
     iMod new_pending as (γs) "Hstt".
     iMod (own_alloc (● classified ⋅ ◯ classified)) as (γ) "[Hstate Htoken]".
-    { by apply auth_both_valid_2. }
+    { by apply (auth_both_valid_2 classified). }
     iMod (inv_alloc N _
            (inv_body (is_classified1,rd1) (is_classified2,rd2) γ γs ξ) with "[-Htoken]")
       as "#Hinv".
