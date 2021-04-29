@@ -273,9 +273,11 @@ Section lifting.
 
 Instance heapG_irisG_det `{!heapG Σ} : irisG heap_lang_det Σ := {
   iris_invG := heapG_invG;
-  state_interp σ κs _ :=
+  state_interp σ _ κs _ :=
     (gen_heap_interp σ.(heap) ∗ proph_map_interp κs σ.(used_proph_id))%I;
   fork_post _ := True%I;
+  num_laters_per_step := λ _, 0;
+  state_interp_mono _ _ _ _ := fupd_intro _ _;
 }.
 
 
@@ -289,14 +291,15 @@ Proof.
   iLöb as "IH" forall (e E Φ).
   rewrite !wp_unfold /wp_pre /=.
   destruct (to_val e) as [v|]; first by eauto.
-  iIntros "H". iIntros (σ1 κ κs n) "[Hσ Hp]".
-  iMod ("H" $! σ1 κ κs n with "[$Hσ $Hp]") as "[% H]".
+  iIntros "H". iIntros (σ1 m κ κs n) "[Hσ Hp]".
+  iMod ("H" $! σ1 m κ κs n with "[$Hσ $Hp]") as "[% H]".
   iModIntro. iSplitR.
   { iPureIntro. by apply reducible_nondet_det. }
   iIntros (e2 σ2 efs Hst_det).
   iSpecialize ("H" $! e2 σ2 efs with "[%]").
   { by apply prim_step_det_nondet. }
   iMod "H" as "H". iModIntro. iNext.
+  iMod "H" as "H". iModIntro.
   iMod "H" as "($&HWP&Hefs)". iModIntro.
   iSplitL "HWP".
   - by iApply "IH".

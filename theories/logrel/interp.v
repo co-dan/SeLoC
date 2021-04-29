@@ -25,7 +25,7 @@ Section lrel_ofe.
   Instance lrel_dist : Dist (lrel Σ) := λ n A B, ∀ ξ w1 w2, A ξ w1 w2 ≡{n}≡ B ξ w1 w2.
   Lemma lrel_ofe_mixin : OfeMixin (lrel Σ).
   Proof. by apply (iso_ofe_mixin (lrel_car : lrel Σ → (slevel -d> val -d> val -d> iPropO Σ))). Qed.
-  Canonical Structure lrelC := OfeT (lrel Σ) lrel_ofe_mixin.
+  Canonical Structure lrelC := Ofe (lrel Σ) lrel_ofe_mixin.
 
   Global Instance lrel_cofe : Cofe lrelC.
   Proof.

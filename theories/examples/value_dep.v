@@ -23,7 +23,7 @@ security level. That is, if it returns [false], then you know that the
 data is surely declassified. But if it returns [true] you cannot be
 certain. *)
 
-From iris.base_logic Require Import invariants lib.auth.
+From iris.base_logic Require Import invariants.
 From iris.proofmode Require Import tactics.
 From iris.heap_lang Require Import lang proofmode.
 From iris.algebra Require Export auth frac excl.
@@ -91,7 +91,7 @@ There are three possible states:
 *)
 
 Class valueDepG Σ := ValueDepG {
-   value_dep_slelveG :> authG Σ (optionUR (prodR fracR (agreeR slevelO)));
+   value_dep_slelveG :> inG Σ (authR $ optionUR (prodR fracR (agreeR slevelO)));
 }.
 
 Section value_dep.

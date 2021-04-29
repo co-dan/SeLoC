@@ -32,7 +32,7 @@ Proof.
     eapply val_stuck; eauto. }
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hrel".
   iMod "H" as "H".
-  iMod fupd_intro_mask' as "Hclose"; last iModIntro; first by set_solver.
+  iMod fupd_mask_subseteq as "Hclose"; last iModIntro; first by set_solver.
   iSplit; first iPureIntro.
   { destruct (Hsafe1 σ1) as (xxx&?&?&?&Hst).
     assert (xxx = []) as ->. { by eapply Hdet1. }

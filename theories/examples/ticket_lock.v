@@ -52,7 +52,7 @@ Section proof.
     iNext.
 
     iMod (own_alloc (● (Excl' 0%nat, GSet ∅) ⋅ ◯ (Excl' 0%nat, GSet ∅))) as (γ) "[Hγ Hγ']".
-    { by apply auth_both_valid. }
+    { by apply auth_both_valid_discrete. }
     iMod (inv_alloc N _ (lock_inv γ lo1 ln1 lo2 ln2 R) with "[-HΦ]") as "Hinv".
     { iNext. rewrite /lock_inv.
       iExists 0%nat, 0%nat. iFrame. iLeft. by iFrame. }

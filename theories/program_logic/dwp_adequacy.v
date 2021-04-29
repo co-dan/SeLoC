@@ -97,6 +97,33 @@ Proof.
   intros i. naive_solver.
 Qed.
 
+(* Useful version of [step_fupdN_soundnes'] *)
+Lemma step_fupdN_soundness'' `{!invPreG Σ} φ n :
+  (∀ `{Hinv: !invG Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤}=> ⌜ φ ⌝) →
+  φ.
+Proof.
+  iIntros (Hiter). eapply (step_fupdN_soundness' _ (S n))=>Hinv.
+  rewrite Nat_iter_S_r.
+  iPoseProof (Hiter Hinv) as "H".
+  iApply (step_fupdN_mono with "H").
+  iIntros "H". iMod "H".
+  iApply (fupd_mask_weaken ∅); first set_solver.
+  iIntros "H2". iModIntro. iNext. iMod "H2" as "_".
+  done.
+Qed.
+Lemma step_fupdN_soundness''' `{!invPreG Σ} φ n :
+  (∀ `{Hinv: !invG Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤, ∅}=> ⌜ φ ⌝) →
+  φ.
+Proof.
+  iIntros (Hiter).
+  eapply (step_fupdN_soundness'' _ n)=>Hinv.
+  iPoseProof (Hiter Hinv) as "H".
+  iApply (step_fupdN_mono with "H").
+  iIntros "H". iApply fupd_plainly_mask_empty.
+  iMod "H" as "%Hfoo". done.
+Qed.
+
+
 Definition I_L (L : gset loc) `{!heapDG Σ} :=
   ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l)%I.
 
@@ -235,22 +262,21 @@ Lemma dwp_rel_hd_to_val Σ `{!invPreG Σ, !heapPreDG Σ} e s es ss σ1 σ2 L :
   to_val e = to_val s.
 Proof.
   intros [n HR].
-  eapply (step_fupdN_soundness _ n)=>Hinv.
+  eapply (step_fupdN_soundness'' _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR H]".
   rewrite big_sepL2_cons. iDestruct "H" as "(_ & H & _)".
   rewrite decide_left.
-  destruct (to_val e) as [v1|] eqn:He, (to_val s) as [v2|] eqn:Hs.
+  destruct (to_val e) as [v1|] eqn:He, (to_val s) as [v2|] eqn:Hs; try done.
   - rewrite -(of_to_val e v1)// -(of_to_val s v2)//.
     rewrite dwp_value_inv'. iMod "H" as %?. simplify_eq/=.
-      by iApply fupd_mask_weaken.
+    done.
   - rewrite !dwp_unfold /dwp_pre /= ?He ?Hs.
     by iMod "H".
   - rewrite !dwp_unfold /dwp_pre /= ?He ?Hs.
     by iMod "H".
-  - by iApply fupd_mask_weaken.
 Qed.
 
 Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
@@ -265,7 +291,7 @@ Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
   low_equiv L σ1 σ2.
 Proof.
   intros [n HR] l Hl.
-  eapply (step_fupdN_soundness _ n)=>Hinv.
+  eapply (step_fupdN_soundness'' _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
@@ -274,13 +300,18 @@ Proof.
   rewrite /I_L. rewrite (big_sepS_elem_of _ _ l) //.
   rewrite interp_eq. iDestruct "Hinv" as (o1 o2 ? ?) "#Hinv".
   simplify_eq/=.
-  iInv (locsN.@(o1, o1)) as (v1 v2) "(>Ho1 & >Ho2 & >Hv)" "_".
-  iApply fupd_mask_weaken; first set_solver.
+
+  iInv (locsN.@(o1, o1)) as (v1 v2) "(>Ho1 & >Ho2 & >Hv)" "Hcl".
+
   iDestruct "Hv" as (i1 i2 -> ->) "%".
   assert (i1 = i2) as -> by eauto.
   iDestruct (gen_heap_valid with "Hσ1 Ho1") as %->.
   iDestruct (gen_heap_valid with "Hσ2 Ho2") as %->.
-  iPureIntro. eauto.
+
+  iMod ("Hcl" with "[-]") as "_".
+  { iNext. iExists _,_. iFrame "Ho1 Ho2".
+    iExists _,_. eauto with iFrame. }
+  iModIntro. iPureIntro. eauto.
 Qed.
 
 Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 L Φ :
@@ -291,7 +322,7 @@ Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 
   reducible_no_obs e σ1 ∧ reducible_no_obs s σ2.
 Proof.
   intros Hes Hss He [n HR].
-  eapply (step_fupdN_soundness _ n)=>Hinv.
+  eapply (step_fupdN_soundness''' _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
@@ -309,13 +340,12 @@ Lemma dwp_rel_tp_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
   length es = length ss.
 Proof.
   intros [n HR].
-  eapply (step_fupdN_soundness _ n)=>Hinv.
+  eapply (step_fupdN_soundness'' _ n)=>Hinv.
   iPoseProof (HR Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR [Hinv H]]".
-  rewrite big_sepL2_length. iFrame.
-  iApply fupd_mask_weaken; eauto.
+  rewrite big_sepL2_length. done.
 Qed.
 
 Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 L Φ :
@@ -327,9 +357,9 @@ Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e'
   length efs1 = length efs2.
 Proof.
   intros Hes Hss [n HR1] Hstep1 Hstep2.
-  eapply (step_fupdN_soundness _ (S n))=>Hinv.
-  iPoseProof (HR1 Hinv) as "HR".
+  eapply (step_fupdN_soundness' _ (S n))=>Hinv.
   rewrite Nat_iter_S_r.
+  iPoseProof (HR1 Hinv) as "HR".
   iApply (step_fupdN_mono with "HR").
   iIntros "HR".
   iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR [Hinv H]]".
@@ -344,7 +374,7 @@ Proof.
   iSpecialize ("H" with "[//]").
   iSpecialize ("H" with "[//]"). iMod "H".
   iModIntro. iNext. iMod "H" as "[_ [_ Hefs]]".
-  iModIntro. iApply fupd_mask_weaken; first set_solver.
+  iModIntro.
   iApply (big_sepL2_length with "Hefs").
 Qed.
 
@@ -363,7 +393,9 @@ Proof.
   iIntros "H". iMod "H" as (h1 h2 ih1 ih2 p1 p2) "[HI [Hinv HWP]]".
   iExists h1,h2,ih1,ih2,p1,p2.
 
-  rewrite big_sepL2_app_inv=>//. rewrite big_sepL2_cons.
+  rewrite big_sepL2_app_inv; last first.
+  { naive_solver. }
+  rewrite big_sepL2_cons.
   iDestruct "HWP" as "[H1 [HWP H2]]".
   iEval (rewrite dwp_unfold /dwp_pre) in "HWP".
   assert (language.to_val e = None) as ->.
@@ -403,7 +435,8 @@ Proof.
   iIntros "H". iMod "H" as (h1 h2 ih1 ih2 p1 p2) "[HI [Hinv HWP]]".
   iExists h1,h2,ih1,ih2,p1,p2.
 
-  rewrite big_sepL2_app_inv=>//. rewrite big_sepL2_cons.
+  rewrite big_sepL2_app_inv; last naive_solver.
+  rewrite big_sepL2_cons.
   iDestruct "HWP" as "[H1 [HWP H2]]".
   rewrite (dwp_unfold _ e s) /dwp_pre.
   assert (language.to_val e = None) as ->.

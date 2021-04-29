@@ -344,7 +344,7 @@ Section slevelR_cmra.
     - intros x. apply idemp. apply _.
   Qed.
 
-  Canonical Structure slevelR : cmraT := discreteR slevelO slevelO_ra_mixin.
+  Canonical Structure slevelR : cmra := discreteR slevelO slevelO_ra_mixin.
 
   Global Instance slevelR_cmra_discrete : CmraDiscrete slevelR.
   Proof. apply discrete_cmra_discrete. Qed.
@@ -363,7 +363,7 @@ Section slevelR_cmra.
     intro x. destruct x; cbv; done.
   Qed.
 
-  Canonical Structure slevelUR : ucmraT := UcmraT slevelO slevelO_ucmra_mixin.
+  Canonical Structure slevelUR : ucmra := Ucmra slevelO slevelO_ucmra_mixin.
 
 End slevelR_cmra.
 

@@ -105,7 +105,7 @@ Proof.
   { rewrite (fupd_mask_mono E1 E1'); last assumption.
     iMod "H". by iApply "HΦ". }
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
-  iMod (fupd_intro_mask' E1' E1) as "Hclose"; first done.
+  iMod (fupd_mask_subseteq E1) as "Hclose"; first done.
   iMod ("H" with "Hσ") as "[% [% H]]".
   iModIntro. iSplit; [by eauto|]. iSplit; [by eauto|].
   iIntros (e1' σ1' efs1 e2' σ2' efs2 Hstep1 Hstep2).

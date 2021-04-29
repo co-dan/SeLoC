@@ -148,8 +148,8 @@ Proof.
   iIntros (σ1 σ2 κ1 κs1 κ2 κs2) "Hσ".
   iDestruct "Hσ" as "(Hσ1 & Hκs1 & Hσ2 & Hκs2)".
   rewrite /TWP1 /TWP2 !twp_unfold /twp_pre /= !He1 !He2.
-  iSpecialize ("HTWP1" $! σ1 (κ1++κs1) 0%nat with "[$Hσ1 $Hκs1]").
-  iSpecialize ("HTWP2" $! σ2 (κ2++κs2) 0%nat with "[$Hσ2 $Hκs2]").
+  iSpecialize ("HTWP1" $! σ1 0 (κ1++κs1) 0 with "[$Hσ1 $Hκs1]").
+  iSpecialize ("HTWP2" $! σ2 0 (κ2++κs2) 0%nat with "[$Hσ2 $Hκs2]").
   iMod "HTWP1" as (Hred1) "HTWP1".
   iMod "HTWP2" as (Hred2) "HTWP2".
   destruct Hred1 as (? & ? & ? & Hred1).

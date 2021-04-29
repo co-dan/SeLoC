@@ -8,7 +8,6 @@ From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp.
 From iris_ni.examples Require Import lock par various (* for oneshot *).
 From iris.algebra Require Import auth agree csum frac excl cmra.
-From iris.base_logic Require Import auth.
 
 (** * The example program.
 Note that a record
@@ -53,7 +52,7 @@ Instance state_inhabited : Inhabited state := populate Declassified.
 
 Definition stateR := authR (optionUR (exclR stateO)).
 Class stateG Σ := StateG {
-   state_stateG :> authG Σ (optionUR (exclR stateO));
+   state_stateG :> inG Σ stateR;
 }.
 
 Definition classified := Excl' Classified.
@@ -64,7 +63,7 @@ Section helper_lemmas.
   Context `{!stateG Σ, !oneshotG Σ}.
 
   (* Helper lemmas *)
-  Lemma Some_None_not_included {A : cmraT} (x : A) :
+  Lemma Some_None_not_included {A : cmra} (x : A) :
     ¬ Some x ≼ None.
   Proof.
     rewrite option_included. intros [?|Hfoo]; simplify_eq/=.
