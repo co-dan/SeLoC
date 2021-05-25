@@ -44,6 +44,9 @@ The typing rules and the fundamental property are in [logrel/typing.v](theories/
 - The modular specifications for dynamically classified references are given in [examples/value_dep.v](theories/examples/value_dep.v). The example clients that use those specification are in [examples/value_sensitivity_2.v](theories/examples/value_sensitivity_2.v) and [examples/value_sensitivity_4.v](theories/examples/value_sensitivity_4.v).
 - The bisimulation is constructed in [program_logic/dwp_adequacy.v](theories/program_logic/dwp_adequacy.v).
 
+There are some additional examples that did not make the paper.
+See, in particular, [examples/calendar.v](theories/examples/calendar.v) for an example of how to handle delimited information release.
+
 # Differences with the paper
 
 There are some differences between the Coq formalization and the presentation in the paper.

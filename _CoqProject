@@ -37,3 +37,4 @@ theories/examples/multiset.v
 # theories/examples/allocator.v
 theories/examples/array.v
 theories/examples/set.v
+theories/examples/calendar.v

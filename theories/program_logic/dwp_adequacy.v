@@ -33,6 +33,18 @@ Class heapPreDG Σ := HeapPreDG {
   heapPreDG_inv_heapG2 :> inv_heapPreG loc (option val) Σ
 }.
 
+Definition heapDΣ := #[invΣ;
+                 (gen_heapΣ loc (option val));
+                 (inv_heapΣ loc (option val));
+                 (proph_mapΣ (proph_id) (val*val))].
+Global Instance heapDΣ_heapPreDG Σ :
+  subG heapDΣ Σ → heapPreDG Σ.
+Proof.
+  rewrite /heapDΣ.
+  intros [? [? [? [? ?]%subG_inv]%subG_inv]%subG_inv]%subG_inv.
+  split; apply _.
+Qed.
+
 (* BEGIN helper lemmas *)
 Section helper.
 Definition extract_fn (σ : gmap loc (option val)) : loc → val := fun x =>
