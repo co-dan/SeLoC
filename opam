@@ -7,6 +7,6 @@ build: [make "-j%{jobs}%"]
 install: [make "install"]
 remove: ["rm" "-rf" "%{lib}%/coq/user-contrib/ni"]
 depends: [
-  "coq-iris-heap-lang" { (= "dev.2021-04-22.1.35e8d8d7") | (= "dev") }
+  "coq-iris-heap-lang" { (= "dev.2021-05-20.3.96191ed7") | (= "dev") }
   "coq-equations" { (>= "1.2.3+8.12") }
 ]

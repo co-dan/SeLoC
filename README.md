@@ -2,15 +2,14 @@
 
 This is the Coq development for SeLoC: a relational separation logic for proving non-interference of concurrent stateful programs.
 
-Read [the preprint](https://arxiv.org/abs/1910.00905) for more details.
+See [the paper](https://arxiv.org/abs/1910.00905) for more details.
 
 # Installation instructions
 
 This version is known to compile with:
-- Coq 8.12
-- Iris developement version [35e8d8d75a6d8941d0a309388708dff7d081bbe9](https://gitlab.mpi-sws.org/iris/iris/tree/35e8d8d75a6d8941d0a309388708dff7d081bbe9)
-  (or a later one, hopefuly)
-- Equations 1.2.3+8.12
+- Coq 8.12 or later
+- Iris developement version [96191ed7ef792478c86890a0ebdbbbea0dc9c9ab](https://gitlab.mpi-sws.org/iris/iris/tree/96191ed7ef792478c86890a0ebdbbbea0dc9c9ab)
+- Equations 1.2.3 or later
 
 If you use [opam](https://opam.ocaml.org/), then you can install all the dependencies by running the following commands from the root directory:
 ```

@@ -12,7 +12,7 @@ Implicit Types σ : state Λ.
 Implicit Types P Q : iProp Σ.
 Implicit Types Φ : val Λ → val Λ → iProp Σ.
 Hint Resolve head_prim_reducible head_reducible_prim_step.
-Hint Resolve (reducible_not_val _ inhabitant).
+Hint Resolve reducible_not_val.
 Hint Resolve head_stuck_stuck.
 
 Lemma dwp_lift_pure_det_head_step {E1 E1' Φ} e1 e1' e2 e2' efs1 efs2 :

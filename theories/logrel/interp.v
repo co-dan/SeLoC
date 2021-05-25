@@ -48,7 +48,7 @@ Section lrel_ofe.
     | |- Proper _ _ => intros ???
     | |- (_ ==> _)%signature _ _ => intros ???
     | |- pointwise_relation _ _ _ _ => intros ?
-    end; simplify_eq;
+    end; simplify_eq/=;
     solve [repeat first [done | eassumption | apply equiv_dist=>? |
                          match goal with
                          | [H : _ ≡ _ |- _] => setoid_rewrite equiv_dist in H; rewrite H
@@ -225,7 +225,7 @@ Section semtypes.
       aaaaa "Hl2 Hk2".
   Qed.
 
-  Global Instance is_tref_decision : Decision (∃ τ' : type, τ = tref τ').
+  Global Instance is_tref_decision τ : Decision (∃ τ' : type, τ = tref τ').
   Proof.
     rewrite /Decision.
     destruct τ; try by (right; intros [? HH]; inversion HH).
@@ -952,7 +952,8 @@ Section rules.
     inversion 1; simplify_eq/=.
     - exists v0. destruct x; eauto.
     - apply elem_of_singleton_binder in H0.
-      rewrite H0. exists v. simpl. rewrite decide_left. done.
+      rewrite H0. exists v. simpl.
+      by rewrite decide_True //.
   Qed.
 
   Lemma logrel_match_flat ξ il τ (x1 x2 : binder)

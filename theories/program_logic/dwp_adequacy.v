@@ -268,7 +268,7 @@ Proof.
   iIntros "HR".
   iMod "HR" as (h1 h2 ih1 ih2 p1 p2) "[HSR H]".
   rewrite big_sepL2_cons. iDestruct "H" as "(_ & H & _)".
-  rewrite decide_left.
+  rewrite decide_True_pi.
   destruct (to_val e) as [v1|] eqn:He, (to_val s) as [v2|] eqn:Hs; try done.
   - rewrite -(of_to_val e v1)// -(of_to_val s v2)//.
     rewrite dwp_value_inv'. iMod "H" as %?. simplify_eq/=.

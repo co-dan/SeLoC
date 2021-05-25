@@ -78,6 +78,12 @@ Inductive head_step : expr → state → list observation → expr → state →
                []
                (Val $ LitV LitUnit) (state_upd_heap <[l:=Some v]> σ)
                []
+  | XchgS l v1 v2 σ :
+     σ.(heap) !! l = Some $ Some v1 →
+     head_step (Xchg (Val $ LitV $ LitLoc l) (Val v2)) σ
+               []
+               (Val v1) (state_upd_heap <[l:=Some v2]> σ)
+               []
   | CmpXchgS l v1 v2 vl σ b :
      σ.(heap) !! l = Some $ Some vl →
      (* Crucially, this compares the same way as [EqOp]! *)
