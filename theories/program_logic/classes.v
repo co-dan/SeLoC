@@ -16,7 +16,7 @@ evaluation context that can trigger the reduction.
 Class NotVal (e : expr) :=
   not_val : to_val e = None.
 
-Hint Extern 1 (NotVal _) => fast_done : typeclass_instances.
+#[global] Hint Extern 1 (NotVal _) => fast_done : typeclass_instances.
 
 Class NoFork (e1 : expr) :=
   nofork : (∀ σ1 κ σ1' e1' efs, prim_step e1 σ1 κ e1' σ1' efs → efs = []).
@@ -335,5 +335,3 @@ Instance faa_noobs e1 e2 v1 v2 :
   IntoVal e2 v2 →
   NoObs (FAA e1 e2).
 Proof. solve_nofork faa_fill. Qed.
-
-

@@ -143,7 +143,7 @@ Definition I_L (L : gset loc) `{!heapDG Σ} :=
 Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
   (es ss : list expr)
   (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
-  ∃ n, ∀ `{Hinv : !invG Σ},
+  ∃ n, ∀ (Hinv : invG Σ),
       ⊢ |={⊤}[∅]▷=>^n
          (|={⊤}=> ∃ (h1 h2 : gen_heapG loc (option val) Σ)
                     (hi1 hi2 : inv_heapG loc (option val) Σ)

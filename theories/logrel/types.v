@@ -136,10 +136,10 @@ Inductive almost_val : gset string → expr → Prop :=
 
 Section local.
 
-Local Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r.
-Local Hint Resolve leq_join_max_1 leq_join_max_2.
-Local Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2.
-Local Hint Constructors type_sub.
+Local Hint Resolve join_leq_l join_leq_r join_mono_l join_mono_r : core.
+Local Hint Resolve leq_join_max_1 leq_join_max_2 : core.
+Local Hint Resolve meet_geq_l meet_geq_r leq_meet_min_1 leq_meet_min_2 : core.
+Local Hint Constructors type_sub : core.
 
 Global Instance type_eqdec : EqDecision type.
 Proof. solve_decision. Qed.

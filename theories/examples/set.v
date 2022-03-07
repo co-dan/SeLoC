@@ -235,52 +235,52 @@ Lemma insert_string_binder (m : stringmap type) (x : string) τ :
 Proof. done. Qed.
 
 Create HintDb typed.
-Hint Constructors has_type : typed.
-Hint Constructors bin_op_int : typed.
-Hint Constructors bin_op_bool : typed.
-Hint Constructors bin_op_int_bool : typed.
-Hint Constructors flat_type : typed.
-Hint Constructors almost_val : typed.
+#[global] Hint Constructors has_type : typed.
+#[global] Hint Constructors bin_op_int : typed.
+#[global] Hint Constructors bin_op_bool : typed.
+#[global] Hint Constructors bin_op_int_bool : typed.
+#[global] Hint Constructors flat_type : typed.
+#[global] Hint Constructors almost_val : typed.
 
-Hint Extern 10 (<[_:=_]>_ !! _ = Some _) =>
+#[global] Hint Extern 10 (<[_:=_]>_ !! _ = Some _) =>
   rewrite ?insert_empty_binder ?insert_string_binder ;
   eapply lookup_insert : typed.
-Hint Extern 20 (<[_:=_]>_ !! _ = Some _) =>
+#[global] Hint Extern 20 (<[_:=_]>_ !! _ = Some _) =>
   rewrite ?insert_empty_binder ?insert_string_binder ;
   rewrite lookup_insert_ne; last done : typed.
 
-Hint Extern 20 (_ ∈ _) =>
+#[global] Hint Extern 20 (_ ∈ _) =>
   rewrite ?insert_empty_binder ?insert_string_binder ;
   (apply elem_of_union_l || apply elem_of_union_r) ;
   set_solver : typed.
 
-Hint Extern 1 (_ ∈ dom _ _) =>
+#[global] Hint Extern 1 (_ ∈ dom _ _) =>
   (* rewrite ?insert_empty_binder ?insert_string_binder; *)
   apply elem_of_dom ; simplify_map_eq ; eexists ; done : typed.
 
-Hint Extern 10 (_ ⊔ _ ⊑ _) => rewrite (left_id Low); reflexivity.
-Hint Extern 10 (_ ⊔ _ ⊑ _) => rewrite (right_id Low); reflexivity.
-Hint Extern 20 (_ ⊑ _) => reflexivity.
+#[global] Hint Extern 10 (_ ⊔ _ ⊑ _) => rewrite (left_id Low); reflexivity : typed.
+#[global] Hint Extern 10 (_ ⊔ _ ⊑ _) => rewrite (right_id Low); reflexivity : typed.
+#[global] Hint Extern 20 (_ ⊑ _) => reflexivity : typed.
 
-Remove Hints Sub_typed : typed.
-Remove Hints BinOp_int_typed : typed.
-Hint Resolve BinOp_int_typed' : typed.
-Remove Hints BinOp_bool_typed : typed.
-Hint Resolve BinOp_bool_typed' : typed.
-Remove Hints BinOp_int_bool_typed : typed.
-Hint Resolve BinOp_int_bool_typed' : typed.
-Remove Hints If_typed : typed.
-Hint Resolve If_typed' | 20 : typed.
-Remove Hints If_typed_flat : typed.
-Hint Resolve If_typed_flat' : typed.
-Remove Hints Match_typed_flat : typed.
-Hint Resolve Match_typed_flat' : typed.
-Remove Hints App_typed : typed.
-Hint Resolve App_typed' : typed.
-Remove Hints Rec_typed : typed.
-Hint Resolve Rec_typed' : typed.
+#[global] Remove Hints Sub_typed : typed.
+#[global] Remove Hints BinOp_int_typed : typed.
+#[global] Hint Resolve BinOp_int_typed' : typed.
+#[global] Remove Hints BinOp_bool_typed : typed.
+#[global] Hint Resolve BinOp_bool_typed' : typed.
+#[global] Remove Hints BinOp_int_bool_typed : typed.
+#[global] Hint Resolve BinOp_int_bool_typed' : typed.
+#[global] Remove Hints If_typed : typed.
+#[global] Hint Resolve If_typed' | 20 : typed.
+#[global] Remove Hints If_typed_flat : typed.
+#[global] Hint Resolve If_typed_flat' : typed.
+#[global] Remove Hints Match_typed_flat : typed.
+#[global] Hint Resolve Match_typed_flat' : typed.
+#[global] Remove Hints App_typed : typed.
+#[global] Hint Resolve App_typed' : typed.
+#[global] Remove Hints Rec_typed : typed.
+#[global] Hint Resolve Rec_typed' : typed.
 
-Hint Resolve Seq_typed : typed.
+#[global] Hint Resolve Seq_typed : typed.
 
 Section typed.
 

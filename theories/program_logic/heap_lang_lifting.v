@@ -113,9 +113,9 @@ End array_liftings.
 Section lifting.
 Context `{!heapDG Σ}.
 
-Local Hint Extern 0 (head_reducible _ _) => eexists _, _, _; simpl.
+Local Hint Extern 0 (head_reducible _ _) => eexists _, _, _; simpl : core.
 
-Local Hint Constructors head_step.
+Local Hint Constructors head_step : core.
 
 Lemma dwp_fork E e1 e2 Φ :
   ▷ dwp ⊤ e1 e2 (λ _ _, True)%I -∗
