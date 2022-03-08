@@ -95,9 +95,9 @@ Lemma allocator_helper (σ : gmap loc (option val)) L `{!invGS Σ, !gen_heapGS l
 Proof.
   iIntros (HL) "Hσ'".
   iMod (gen_heap_alloc_big with "Hσ'") as "(Hσ & HL)".
-  { apply map_disjoint_filter. }
+  { apply map_disjoint_filter_complement. }
   iDestruct "HL" as "[HL _]".
-  rewrite map_union_filter. iFrame "Hσ".
+  rewrite map_filter_union_complement. iFrame "Hσ".
   iAssert ([∗ map] l↦d ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ (extract_fn σ l))%I
       with "[HL]" as "HL".
   { iApply (big_sepM_mono with "HL").

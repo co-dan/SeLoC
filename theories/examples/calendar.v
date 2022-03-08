@@ -105,7 +105,7 @@ Section calendar.
     destruct xs1 as [|x1 xs1], xs2 as [|x2 xs2]; iSimpl in "Hlst"; try by iExFalso.
     - iDestruct "Hlst" as "[-> ->]". dwp_pures. iApply logrel_unit.
     - iDestruct "Hlst" as (l1 l2 hd1' hd2' -> ->) "(Hl1 & Hl2 & Hlst)".
-      apply Forall2_cons_inv in Hxs. destruct Hxs.
+      apply Forall2_cons_1 in Hxs. destruct Hxs.
       dwp_pures. dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2"). iIntros "Hl1 Hl2". iNext.
       dwp_pures. dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2"). iIntros "Hl1 Hl2". iNext.
       dwp_pures. dwp_bind (f1 #i x1) (f2 #i x2). iApply (dwp_wand with "[Hf]").
