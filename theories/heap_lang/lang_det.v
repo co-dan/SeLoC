@@ -145,7 +145,7 @@ Proof.
 Qed.
 
 (** Basic properties *)
-Instance fill_item_inj Ki : Inj (=) (=) (fill_item Ki).
+#[local] Instance fill_item_inj Ki : Inj (=) (=) (fill_item Ki).
 Proof. induction Ki; intros ???; simplify_eq/=; auto with f_equal. Qed.
 
 Lemma fill_item_val Ki e :
@@ -277,8 +277,8 @@ Qed.
 
 Section lifting.
 
-Instance heapG_irisG_det `{!heapGS Σ} : irisGS heap_lang_det Σ := {
-  iris_invGS := heapG_invG;
+#[local] Instance heapG_irisG_det `{!heapGS Σ} : irisGS heap_lang_det Σ := {
+  iris_invGS := heapGS_invGS;
   state_interp σ _ κs _ :=
     (gen_heap_interp σ.(heap) ∗ proph_map_interp κs σ.(used_proph_id))%I;
   fork_post _ := True%I;
@@ -291,8 +291,8 @@ Context `{!heapGS Σ}.
 Implicit Types Φ Ψ : val → iProp Σ.
 
 Lemma wp_simul e E Φ :
-  (wp (Λ := heap_lang) NotStuck E e Φ) -∗
-  (wp (Λ := heap_lang_det) NotStuck E e Φ).
+  (wp (EXPR := language.expr heap_lang    ) (VAL := language.val heap_lang    ) NotStuck E e Φ) -∗
+  (wp (EXPR := language.expr heap_lang_det) (VAL := language.val heap_lang_det) NotStuck E e Φ).
 Proof.
   iLöb as "IH" forall (e E Φ).
   rewrite !wp_unfold /wp_pre /=.
@@ -316,7 +316,7 @@ End lifting.
 
 Section dwp_lifting.
 
-Instance heapDG_irisDG_det `{heapDG Σ} : irisDG heap_lang_det Σ := {
+#[local] Instance heapDG_irisDG_det `{heapDG Σ} : irisDG heap_lang_det Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,
       @gen_heap_interp _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
     ∗ @proph_map_interp _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)

@@ -19,29 +19,29 @@ Class heapDG Σ := HeapDG {
 
 (** heapGS instanecs for both sides *)
 Definition heapG1 `{heapDG Σ} : heapGS Σ :=
-  {| heapG_invG := heapDG_invG;
-     heapG_gen_heapG := heapDG_gen_heapG1;
-     heapG_inv_heapG := heapDG_inv_heapG1;
-     heapG_proph_mapG := heapDG_proph_mapG1 |}.
+  {| heapGS_invGS := heapDG_invG;
+     heapGS_gen_heapGS := heapDG_gen_heapG1;
+     heapGS_inv_heapGS := heapDG_inv_heapG1;
+     heapGS_proph_mapGS := heapDG_proph_mapG1 |}.
 Definition heapG2 `{heapDG Σ} : heapGS Σ :=
-  {| heapG_invG := heapDG_invG;
-     heapG_gen_heapG := heapDG_gen_heapG2;
-     heapG_inv_heapG := heapDG_inv_heapG2;
-     heapG_proph_mapG := heapDG_proph_mapG2 |}.
+  {| heapGS_invGS := heapDG_invG;
+     heapGS_gen_heapGS := heapDG_gen_heapG2;
+     heapGS_inv_heapGS := heapDG_inv_heapG2;
+     heapGS_proph_mapGS := heapDG_proph_mapG2 |}.
 
 (** irisGS instances for both sides *)
 Definition irisG1 `{!heapDG Σ} : irisGS heap_lang Σ :=
-  @heapG_irisG Σ heapG1.
+  @heapGS_irisGS Σ heapG1.
 Definition irisG2 `{!heapDG Σ} : irisGS heap_lang Σ :=
-  @heapG_irisG Σ heapG2.
+  @heapGS_irisGS Σ heapG2.
 
 Definition TWP1 `{!heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
-  @twp heap_lang (iProp Σ) stuckness
+  @twp (iProp Σ) expr val stuckness
        (@twp' heap_lang Σ irisG1)
        NotStuck E e R.
 
 Definition TWP2 `{!heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=
-  @twp heap_lang (iProp Σ) stuckness
+  @twp (iProp Σ) expr val stuckness
        (@twp' heap_lang Σ irisG2)
        NotStuck E e R.
 
@@ -84,7 +84,7 @@ Definition meta2 `{heapDG Σ} {A} `{EqDecision A, Countable A}
   @meta loc _ _ _ Σ heapDG_gen_heapG2 A _ _ l N x.
 
 
-Instance heapDG_irisDG `{!heapDG Σ} : irisDG heap_lang Σ := {
+#[global] Instance heapDG_irisDG `{!heapDG Σ} : irisDG heap_lang Σ := {
   state_rel := (λ σ1 σ2 κs1 κs2,
       @gen_heap_interp _ _ _ _ _ heapDG_gen_heapG1 σ1.(heap)
     ∗ @proph_map_interp _ _ _ _ _ heapDG_proph_mapG1 κs1 σ1.(used_proph_id)

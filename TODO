@@ -1,0 +1,2 @@
+Several typeclasses ending in *G that must be global singletons (such as irisDG, heapDG, ...) should be renamed to *GS. Their corresponding preG class should be renamed to GpreS.
+This is to conform with https://gitlab.mpi-sws.org/iris/iris/-/merge_requests/678
