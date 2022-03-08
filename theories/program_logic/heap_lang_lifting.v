@@ -3,36 +3,36 @@ From iris_ni.program_logic Require Export dwp classes ectx_lifting.
 From iris_ni.program_logic Require Export dwp classes.
 From iris.heap_lang Require Export lang notation.
 From iris.heap_lang Require Import tactics proofmode.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From stdpp Require Import fin_maps.
 Set Default Proof Using "Type".
 
 Class heapDG Σ := HeapDG {
-  heapDG_invG :> invG Σ;
-  heapDG_proph_mapG1 :> proph_mapG proph_id (val*val) Σ;
-  heapDG_proph_mapG2 :> proph_mapG proph_id (val*val) Σ;
-  heapDG_gen_heapG1 :> gen_heapG loc (option val) Σ;
-  heapDG_gen_heapG2 :> gen_heapG loc (option val) Σ;
-  heapDG_inv_heapG1 :> inv_heapG loc (option val) Σ;
-  heapDG_inv_heapG2 :> inv_heapG loc (option val) Σ;
+  heapDG_invG :> invGS Σ;
+  heapDG_proph_mapG1 :> proph_mapGS proph_id (val*val) Σ;
+  heapDG_proph_mapG2 :> proph_mapGS proph_id (val*val) Σ;
+  heapDG_gen_heapG1 :> gen_heapGS loc (option val) Σ;
+  heapDG_gen_heapG2 :> gen_heapGS loc (option val) Σ;
+  heapDG_inv_heapG1 :> inv_heapGS loc (option val) Σ;
+  heapDG_inv_heapG2 :> inv_heapGS loc (option val) Σ;
 }.
 
-(** heapG instanecs for both sides *)
-Definition heapG1 `{heapDG Σ} : heapG Σ :=
+(** heapGS instanecs for both sides *)
+Definition heapG1 `{heapDG Σ} : heapGS Σ :=
   {| heapG_invG := heapDG_invG;
      heapG_gen_heapG := heapDG_gen_heapG1;
      heapG_inv_heapG := heapDG_inv_heapG1;
      heapG_proph_mapG := heapDG_proph_mapG1 |}.
-Definition heapG2 `{heapDG Σ} : heapG Σ :=
+Definition heapG2 `{heapDG Σ} : heapGS Σ :=
   {| heapG_invG := heapDG_invG;
      heapG_gen_heapG := heapDG_gen_heapG2;
      heapG_inv_heapG := heapDG_inv_heapG2;
      heapG_proph_mapG := heapDG_proph_mapG2 |}.
 
-(** irisG instances for both sides *)
-Definition irisG1 `{!heapDG Σ} : irisG heap_lang Σ :=
+(** irisGS instances for both sides *)
+Definition irisG1 `{!heapDG Σ} : irisGS heap_lang Σ :=
   @heapG_irisG Σ heapG1.
-Definition irisG2 `{!heapDG Σ} : irisG heap_lang Σ :=
+Definition irisG2 `{!heapDG Σ} : irisGS heap_lang Σ :=
   @heapG_irisG Σ heapG2.
 
 Definition TWP1 `{!heapDG Σ} (e : expr) (E : coPset) (R : val → iProp Σ) :=

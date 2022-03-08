@@ -1,6 +1,6 @@
 (* heap_lang with deterministic allocation *)
 From stdpp Require Import base gmap.
-From iris.proofmode Require Import base tactics classes.
+From iris.proofmode Require Import base proofmode classes.
 From iris.heap_lang Require Import lang primitive_laws.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
 
@@ -277,8 +277,8 @@ Qed.
 
 Section lifting.
 
-Instance heapG_irisG_det `{!heapG Σ} : irisG heap_lang_det Σ := {
-  iris_invG := heapG_invG;
+Instance heapG_irisG_det `{!heapGS Σ} : irisGS heap_lang_det Σ := {
+  iris_invGS := heapG_invG;
   state_interp σ _ κs _ :=
     (gen_heap_interp σ.(heap) ∗ proph_map_interp κs σ.(used_proph_id))%I;
   fork_post _ := True%I;
@@ -287,7 +287,7 @@ Instance heapG_irisG_det `{!heapG Σ} : irisG heap_lang_det Σ := {
 }.
 
 
-Context `{!heapG Σ}.
+Context `{!heapGS Σ}.
 Implicit Types Φ Ψ : val → iProp Σ.
 
 Lemma wp_simul e E Φ :

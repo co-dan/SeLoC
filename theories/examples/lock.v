@@ -1,7 +1,7 @@
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types interp.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang proofmode.
 From iris.algebra Require Import excl.

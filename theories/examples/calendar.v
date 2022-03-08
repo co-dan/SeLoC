@@ -5,7 +5,7 @@ It is based on the example from  "A Separation Logic for Enforcing DeclarativeIn
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.heap_lang Require Import lang proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp.

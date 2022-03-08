@@ -1,19 +1,19 @@
 From iris.base_logic.lib Require Export fancy_updates.
 From iris.program_logic Require Export language weakestpre.
-From iris.proofmode Require Import base tactics classes.
+From iris.proofmode Require Import base proofmode classes.
 Set Default Proof Using "Type".
 Import uPred.
 
 (* We define irisDG only for languages for which we already have
 weakest precondition calculus. This makes our lives easier in some
 places because we don't need to care about two different instances of
-`invG` whenever we have _both_ irisG and irisDG. *)
+`invGS` whenever we have _both_ irisGS and irisDG. *)
 Class irisDG' (Λstate Λobs : Type) (Σ : gFunctors) := IrisDG {
   state_rel : Λstate → Λstate → list Λobs → list Λobs → iProp Σ;
 }.
 Notation irisDG Λ Σ := (irisDG' (state Λ) (observation Λ) Σ).
 
-Definition dwp_pre `{invG Σ, irisDG Λ Σ}
+Definition dwp_pre `{invGS Σ, irisDG Λ Σ}
     (dwp : coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iPropO Σ) -d> iPropO Σ) :
     coPset -d> expr Λ -d> expr Λ -d> (val Λ -d> val Λ -d> iPropO Σ) -d> iPropO Σ := λ E1 e1 e2 Φ,
  (match to_val e1,to_val e2 with
@@ -30,7 +30,7 @@ Definition dwp_pre `{invG Σ, irisDG Λ Σ}
          [∗ list] ef ; ef' ∈ efs1 ; efs2, dwp ⊤ ef ef' (λ _ _, True)
   end)%I.
 
-Local Instance dwp_pre_contractive `{invG Σ, irisDG Λ Σ} : Contractive dwp_pre.
+Local Instance dwp_pre_contractive `{invGS Σ, irisDG Λ Σ} : Contractive dwp_pre.
 Proof.
   rewrite /dwp_pre=> n dwp dwp' Hwp E1 e1 e2 Φ.
   repeat case_match; [ reflexivity.. | ].
@@ -43,15 +43,15 @@ Proof.
   repeat (f_contractive || f_equiv); apply Hwp.
 Qed.
 
-Definition dwp_def `{irisDG Λ Σ, invG Σ} :
+Definition dwp_def `{irisDG Λ Σ, invGS Σ} :
   coPset → expr Λ → expr Λ → (val Λ → val Λ → iProp Σ) → iProp Σ :=
   fixpoint dwp_pre.
-Definition dwp_aux `{invG Σ, irisDG Λ Σ} : seal (@dwp_def Λ Σ _ _). by eexists. Qed.
-Definition dwp `{irisDG Λ Σ, invG Σ} := dwp_aux.(unseal).
-Definition dwp_eq `{irisDG Λ Σ, invG Σ} : dwp = @dwp_def Λ Σ _ _ := dwp_aux.(seal_eq).
+Definition dwp_aux `{invGS Σ, irisDG Λ Σ} : seal (@dwp_def Λ Σ _ _). by eexists. Qed.
+Definition dwp `{irisDG Λ Σ, invGS Σ} := dwp_aux.(unseal).
+Definition dwp_eq `{irisDG Λ Σ, invGS Σ} : dwp = @dwp_def Λ Σ _ _ := dwp_aux.(seal_eq).
 
 Section dwp.
-Context `{irisDG Λ Σ, invG Σ}.
+Context `{irisDG Λ Σ, invGS Σ}.
 Implicit Types P : iProp Σ.
 Implicit Types Φ : val Λ → val Λ → iProp Σ.
 Implicit Types v : val Λ.
@@ -283,7 +283,7 @@ End dwp.
 
 (** Proofmode class instances *)
 Section proofmode_classes.
-  Context `{irisDG Λ Σ, invG Σ}.
+  Context `{irisDG Λ Σ, invGS Σ}.
   Implicit Types P Q : iProp Σ.
   Implicit Types Φ : val Λ → val Λ → iProp Σ.
 

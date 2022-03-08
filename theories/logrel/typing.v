@@ -189,7 +189,7 @@ Section fundamental.
     induction 1; iIntros (γ) "#HΓ #HI"; iSimpl.
     - iApply logrel_sub=>//. by iApply IHhas_type.
     - rewrite !lookup_fmap /subst_valid.
-      rewrite big_sepM2_lookup_1//. iDestruct "HΓ" as ([v1 v2] ->) "Hv".
+      rewrite big_sepM2_lookup_l//. iDestruct "HΓ" as ([v1 v2] ->) "Hv".
       iSimpl. by iApply dwp_value.
     - iApply dwp_value. iModIntro.
       iApply (big_sepS_elem_of _ 𝔏 l with "HI")=>//.

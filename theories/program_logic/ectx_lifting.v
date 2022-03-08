@@ -1,11 +1,11 @@
 (** Some derived lemmas for ectx-based languages *)
 From iris_ni.program_logic Require Export dwp lifting.
 From iris.program_logic Require Export ectx_language weakestpre.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 Set Default Proof Using "Type".
 
 Section lifting.
-Context {Λ : ectxLanguage} `{!irisDG Λ Σ, !invG Σ} {Hinh : Inhabited (state Λ)}.
+Context {Λ : ectxLanguage} `{!irisDG Λ Σ, !invGS Σ} {Hinh : Inhabited (state Λ)}.
 Implicit Types v : val Λ.
 Implicit Types e : expr Λ.
 Implicit Types σ : state Λ.

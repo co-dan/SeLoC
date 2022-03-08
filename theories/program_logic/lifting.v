@@ -1,9 +1,9 @@
 From iris_ni.program_logic Require Export dwp.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 Set Default Proof Using "Type".
 
 Section lifting.
-Context `{!irisDG Λ Σ, !invG Σ}.
+Context `{!irisDG Λ Σ, !invGS Σ}.
 Implicit Types v : val Λ.
 Implicit Types e : expr Λ.
 Implicit Types σ : state Λ.
