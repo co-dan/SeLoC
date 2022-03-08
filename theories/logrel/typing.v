@@ -149,7 +149,7 @@ Proof.
             rewrite (IHe2 Γ1 Γ2) //
           | idtac ];
     try by (destruct f, x; simpl; eauto).
-  { apply bool_decide_iff.
+  { apply bool_decide_ext.
     by rewrite HΓ. }
 Qed.
 
