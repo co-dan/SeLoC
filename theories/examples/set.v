@@ -353,11 +353,9 @@ Section typed.
       - econstructor.
         apply elem_of_dom. rewrite !insert_empty_binder.
         repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
-        eexists; done.
       - econstructor.
         apply elem_of_dom. rewrite !insert_empty_binder.
         repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
-        eexists; done.
       - eauto with typed.
       - eauto with typed.
       - eauto with typed.
@@ -404,11 +402,9 @@ Section typed.
         - econstructor.
           apply elem_of_dom. rewrite !insert_empty_binder.
           repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
-          eexists; done.
         - econstructor.
           apply elem_of_dom. rewrite !insert_empty_binder.
           repeat (rewrite lookup_insert // || rewrite lookup_insert_ne //).
-          eexists; done.
         - eauto with typed.
         - eauto with typed.
         - eauto with typed.

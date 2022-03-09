@@ -1,2 +1,8 @@
-Several typeclasses ending in *G that must be global singletons (such as irisDG, heapDG, ...) should be renamed to *GS. Their corresponding preG class should be renamed to GpreS.
-This is to conform with https://gitlab.mpi-sws.org/iris/iris/-/merge_requests/678
+-	Several typeclasses ending in *G that must be global singletons
+	(such as irisDG, heapDG, heapG1/heapG2, ...) should be renamed
+	to *GS. Their corresponding preG class should be renamed to GpreS.
+	This is to conform with
+	https://gitlab.mpi-sws.org/iris/iris/-/merge_requests/678
+
+-	I don't know why examples/value_sensitivity_3.v line 303 doesn't
+	work anymore. I removed it from the _CoqProject for now.
