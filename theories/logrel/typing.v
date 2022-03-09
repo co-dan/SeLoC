@@ -135,24 +135,6 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ (release lk) tunit
 .
 
-Instance is_closed_expr_proper :
-  Proper ((≡ₚ) ==> (=) ==> (=)) is_closed_expr.
-Proof.
-  intros Γ1 Γ2 HΓ ? e ->.
-  revert Γ1 Γ2 HΓ. induction e=>Γ1 Γ2 HΓ; simpl;
-    first [ done
-          | apply IHe; eauto
-          | rewrite (IHe1 Γ1 Γ2) //;
-            rewrite (IHe2 Γ1 Γ2) //;
-            rewrite (IHe3 Γ1 Γ2) //
-          | rewrite (IHe1 Γ1 Γ2) //;
-            rewrite (IHe2 Γ1 Γ2) //
-          | idtac ];
-    try by (destruct f, x; simpl; eauto).
-  { apply bool_decide_ext.
-    by rewrite HΓ. }
-Qed.
-
 Section fundamental.
   Context `{!heapDG Σ}.
 
