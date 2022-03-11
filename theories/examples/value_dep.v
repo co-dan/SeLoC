@@ -24,7 +24,7 @@ data is surely declassified. But if it returns [true] you cannot be
 certain. *)
 
 From iris.base_logic Require Import invariants.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.heap_lang Require Import lang proofmode.
 From iris.algebra Require Export auth frac excl.
 From iris.bi.lib Require Export fractional.

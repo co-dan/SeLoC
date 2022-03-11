@@ -135,24 +135,6 @@ Inductive has_type (Γ : stringmap type) :
     has_type Γ (release lk) tunit
 .
 
-Instance is_closed_expr_proper :
-  Proper ((≡ₚ) ==> (=) ==> (=)) is_closed_expr.
-Proof.
-  intros Γ1 Γ2 HΓ ? e ->.
-  revert Γ1 Γ2 HΓ. induction e=>Γ1 Γ2 HΓ; simpl;
-    first [ done
-          | apply IHe; eauto
-          | rewrite (IHe1 Γ1 Γ2) //;
-            rewrite (IHe2 Γ1 Γ2) //;
-            rewrite (IHe3 Γ1 Γ2) //
-          | rewrite (IHe1 Γ1 Γ2) //;
-            rewrite (IHe2 Γ1 Γ2) //
-          | idtac ];
-    try by (destruct f, x; simpl; eauto).
-  { apply bool_decide_iff.
-    by rewrite HΓ. }
-Qed.
-
 Section fundamental.
   Context `{!heapDG Σ}.
 
@@ -189,7 +171,7 @@ Section fundamental.
     induction 1; iIntros (γ) "#HΓ #HI"; iSimpl.
     - iApply logrel_sub=>//. by iApply IHhas_type.
     - rewrite !lookup_fmap /subst_valid.
-      rewrite big_sepM2_lookup_1//. iDestruct "HΓ" as ([v1 v2] ->) "Hv".
+      rewrite big_sepM2_lookup_l//. iDestruct "HΓ" as ([v1 v2] ->) "Hv".
       iSimpl. by iApply dwp_value.
     - iApply dwp_value. iModIntro.
       iApply (big_sepS_elem_of _ 𝔏 l with "HI")=>//.

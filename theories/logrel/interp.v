@@ -1,7 +1,7 @@
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Export dwp heap_lang_lifting.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris_ni.logrel Require Import types.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang proofmode.
@@ -391,7 +391,7 @@ Section semtypes.
       iSplitL "Ha1 Hb1"; iExists _,_,_,_; eauto with iFrame.
   Qed.
 
-  Local Hint Constructors flat_type.
+  Local Hint Constructors flat_type : core.
 
   Lemma interp_label_mono τ l1 l2 ξ v1 v2 :
     l1 ⊑ l2 →
@@ -510,8 +510,8 @@ Section rules.
   Implicit Types e t s : expr.
   Implicit Types v w : val.
 
-  Local Hint Constructors flat_type.
-  Local Hint Constructors type_sub.
+  Local Hint Constructors flat_type : core.
+  Local Hint Constructors type_sub : core.
 
 
   Local Ltac helpme :=

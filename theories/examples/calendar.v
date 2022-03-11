@@ -5,7 +5,7 @@ It is based on the example from  "A Separation Logic for Enforcing DeclarativeIn
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.heap_lang Require Import lang proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp.
@@ -105,7 +105,7 @@ Section calendar.
     destruct xs1 as [|x1 xs1], xs2 as [|x2 xs2]; iSimpl in "Hlst"; try by iExFalso.
     - iDestruct "Hlst" as "[-> ->]". dwp_pures. iApply logrel_unit.
     - iDestruct "Hlst" as (l1 l2 hd1' hd2' -> ->) "(Hl1 & Hl2 & Hlst)".
-      apply Forall2_cons_inv in Hxs. destruct Hxs.
+      apply Forall2_cons_1 in Hxs. destruct Hxs.
       dwp_pures. dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2"). iIntros "Hl1 Hl2". iNext.
       dwp_pures. dwp_bind (! _)%E (! _)%E. iApply (dwp_load with "Hl1 Hl2"). iIntros "Hl1 Hl2". iNext.
       dwp_pures. dwp_bind (f1 #i x1) (f2 #i x2). iApply (dwp_wand with "[Hf]").

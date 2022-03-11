@@ -1,7 +1,7 @@
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types interp.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris.heap_lang Require Import lang array proofmode lib.arith.
 
@@ -153,9 +153,9 @@ Section spec.
     pose (Ψ2 := (λ v, ⌜v = vs2 !!! i2'⌝ ∗ l2 ↦ᵣ∗ vs2)%I).
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
     { rewrite /TWP1 /Ψ1.
-      iApply (twp_load_offset (heapG0:=heapG1) with "Hl1"); eauto. }
+      iApply (twp_load_offset (heapGS0:=heapG1) with "Hl1"); eauto. }
     { rewrite /TWP2 /Ψ2.
-      iApply (twp_load_offset (heapG0:=heapG2) with "Hl2"); eauto. }
+      iApply (twp_load_offset (heapGS0:=heapG2) with "Hl2"); eauto. }
     iDestruct 1 as (->) "Hl1"; iDestruct 1 as (->) "Hl2". iNext.
     iAssert (⟦ τ ⟧ ξ (vs1 !!! i1') (vs2 !!! i1')) as "#HvsA".
     { by iApply (big_sepL2_lookup with "HAs"). }
@@ -192,9 +192,9 @@ Section spec.
     pose (Ψ2 := (λ v, ⌜v = vs2 !!! i1'⌝ ∗ l2 ↦ᵣ∗ vs2)%I).
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
     { rewrite /TWP1 /Ψ1.
-      iApply (twp_load_offset (heapG0:=heapG1) with "Hl1"); eauto. }
+      iApply (twp_load_offset (heapGS0:=heapG1) with "Hl1"); eauto. }
     { rewrite /TWP2 /Ψ2.
-      iApply (twp_load_offset (heapG0:=heapG2) with "Hl2"); eauto. }
+      iApply (twp_load_offset (heapGS0:=heapG2) with "Hl2"); eauto. }
     iDestruct 1 as (->) "Hl1"; iDestruct 1 as (->) "Hl2". iNext.
     iAssert (⟦ τ ⟧ ξ (vs1 !!! i1') (vs2 !!! i1')) as "#H".
     { by iApply (big_sepL2_lookup with "HAs"). }
@@ -309,9 +309,9 @@ Section spec.
     pose (Ψ2 v := (⌜v = #()⌝ ∗ l2 ↦ᵣ∗ <[i2':=v2]>vs2)%I).
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
     { rewrite /TWP1 /Ψ1.
-     iApply (twp_store_offset (heapG0:=heapG1) with "Hl1"); eauto. }
+     iApply (twp_store_offset (heapGS0:=heapG1) with "Hl1"); eauto. }
     { rewrite /TWP2 /Ψ2.
-      iApply (twp_store_offset (heapG0:=heapG2) with "Hl2"); eauto. }
+      iApply (twp_store_offset (heapGS0:=heapG2) with "Hl2"); eauto. }
     iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2". iNext.
 
     iDestruct (lrel_list_update_both _ _ _ _ i1' i2' with "Hv HAs") as "HAs";
@@ -341,9 +341,9 @@ Section spec.
     pose (Ψ2 v := (⌜v = #()⌝ ∗ l2 ↦ᵣ∗ <[i1':=v2]>vs2)%I).
     iApply (dwp_atomic_lift_wp Ψ1 Ψ2 with "[Hl1] [Hl2] [-]").
     { rewrite /TWP1 /Ψ1.
-     iApply (twp_store_offset (heapG0:=heapG1) with "Hl1"); eauto. }
+     iApply (twp_store_offset (heapGS0:=heapG1) with "Hl1"); eauto. }
     { rewrite /TWP2 /Ψ2.
-      iApply (twp_store_offset (heapG0:=heapG2) with "Hl2"); eauto. }
+      iApply (twp_store_offset (heapGS0:=heapG2) with "Hl2"); eauto. }
     iDestruct 1 as (->) "Hl1". iDestruct 1 as (->) "Hl2". iNext.
 
     iDestruct (lrel_list_update_same _ _ _ _ i1' with "Hv HAs") as "HAs";

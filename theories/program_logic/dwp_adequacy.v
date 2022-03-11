@@ -1,7 +1,7 @@
 From stdpp Require Import namespaces.
 From iris.algebra Require Import gmap auth agree gset coPset.
 From iris.base_logic.lib Require Import wsat.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.heap_lang Require Import lang primitive_laws.
 From iris_ni.program_logic Require Export dwp lifting heap_lang_lifting.
 From iris_ni.logrel Require Export types interp.
@@ -25,12 +25,12 @@ Qed.
 (** In this file we define a bisimulation from DWP *)
 
 Class heapPreDG Σ := HeapPreDG {
-  heapPreDG_proph_mapG1 :> proph_mapPreG proph_id (val*val) Σ;
-  heapPreDG_proph_mapG2 :> proph_mapPreG proph_id (val*val) Σ;
-  heapPreDG_gen_heapG1 :> gen_heapPreG loc (option val) Σ;
-  heapPreDG_gen_heapG2 :> gen_heapPreG loc (option val) Σ;
-  heapPreDG_inv_heapG1 :> inv_heapPreG loc (option val) Σ;
-  heapPreDG_inv_heapG2 :> inv_heapPreG loc (option val) Σ
+  heapPreDG_proph_mapG1 :> proph_mapGpreS proph_id (val*val) Σ;
+  heapPreDG_proph_mapG2 :> proph_mapGpreS proph_id (val*val) Σ;
+  heapPreDG_gen_heapG1 :> gen_heapGpreS loc (option val) Σ;
+  heapPreDG_gen_heapG2 :> gen_heapGpreS loc (option val) Σ;
+  heapPreDG_inv_heapG1 :> inv_heapGpreS loc (option val) Σ;
+  heapPreDG_inv_heapG2 :> inv_heapGpreS loc (option val) Σ
 }.
 
 Definition heapDΣ := #[invΣ;
@@ -88,16 +88,16 @@ Section relation_lemmas.
 End relation_lemmas.
 (* END helper lemmas *)
 
-Lemma allocator_helper (σ : gmap loc (option val)) L `{!invG Σ, !gen_heapG loc (option val) Σ} :
+Lemma allocator_helper (σ : gmap loc (option val)) L `{!invGS Σ, !gen_heapGS loc (option val) Σ} :
   (∀ l, l ∈ L → ∃ (n : Z), σ !! l = Some $ Some #n) →
   let σ' := filter ((.∉ L) ∘ fst) σ in
   gen_heap_interp σ' ==∗ gen_heap_interp σ ∗ [∗ set] l ∈ L, l ↦ (extract_fn σ l).
 Proof.
   iIntros (HL) "Hσ'".
   iMod (gen_heap_alloc_big with "Hσ'") as "(Hσ & HL)".
-  { apply map_disjoint_filter. }
+  { apply map_disjoint_filter_complement. }
   iDestruct "HL" as "[HL _]".
-  rewrite map_union_filter. iFrame "Hσ".
+  rewrite map_filter_union_complement. iFrame "Hσ".
   iAssert ([∗ map] l↦d ∈ (filter (λ x, x.1 ∈ L) σ), l ↦ (extract_fn σ l))%I
       with "[HL]" as "HL".
   { iApply (big_sepM_mono with "HL").
@@ -110,8 +110,8 @@ Proof.
 Qed.
 
 (* Useful version of [step_fupdN_soundnes'] *)
-Lemma step_fupdN_soundness'' `{!invPreG Σ} φ n :
-  (∀ `{Hinv: !invG Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤}=> ⌜ φ ⌝) →
+Lemma step_fupdN_soundness'' `{!invGpreS Σ} φ n :
+  (∀ `{Hinv: !invGS Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤}=> ⌜ φ ⌝) →
   φ.
 Proof.
   iIntros (Hiter). eapply (step_fupdN_soundness' _ (S n))=>Hinv.
@@ -123,8 +123,8 @@ Proof.
   iIntros "H2". iModIntro. iNext. iMod "H2" as "_".
   done.
 Qed.
-Lemma step_fupdN_soundness''' `{!invPreG Σ} φ n :
-  (∀ `{Hinv: !invG Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤, ∅}=> ⌜ φ ⌝) →
+Lemma step_fupdN_soundness''' `{!invGpreS Σ} φ n :
+  (∀ `{Hinv: !invGS Σ}, ⊢@{iPropI Σ} |={⊤}[∅]▷=>^n |={⊤, ∅}=> ⌜ φ ⌝) →
   φ.
 Proof.
   iIntros (Hiter).
@@ -140,14 +140,14 @@ Definition I_L (L : gset loc) `{!heapDG Σ} :=
   ([∗ set] l ∈ L, ⟦ tref (tint Low) ⟧ Low #(LitLoc l) #l)%I.
 
 (** Now the relation *)
-Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
+Definition dwp_rel Σ `{!invGpreS Σ, !heapPreDG Σ}
   (es ss : list expr)
   (σ1 σ2 : state) (L : gset loc) (Φ : val → val → iProp Σ) :=
-  ∃ n, ∀ `{Hinv : !invG Σ},
+  ∃ n, ∀ (Hinv : invGS Σ),
       ⊢ |={⊤}[∅]▷=>^n
-         (|={⊤}=> ∃ (h1 h2 : gen_heapG loc (option val) Σ)
-                    (hi1 hi2 : inv_heapG loc (option val) Σ)
-                   (p1 p2 : proph_mapG proph_id (val*val) Σ),
+         (|={⊤}=> ∃ (h1 h2 : gen_heapGS loc (option val) Σ)
+                    (hi1 hi2 : inv_heapGS loc (option val) Σ)
+                   (p1 p2 : proph_mapGS proph_id (val*val) Σ),
             let _ := HeapDG _ _ p1 p2 h1 h2 in
             state_rel σ1 σ2 [] [] ∗
             I_L L ∗
@@ -157,7 +157,7 @@ Definition dwp_rel Σ `{!invPreG Σ, !heapPreDG Σ}
 Definition I {Σ} (v1 v2 : val) : iProp Σ := ⌜v1 = v2⌝%I.
 
 (** Lifting DWP proofs *)
-Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invPreG Σ, !heapPreDG Σ} :
+Lemma dwp_lift_bisim e1 e2 σ1 σ2 L Σ `{!invGpreS Σ, !heapPreDG Σ} :
   low_equiv L σ1 σ2 →
   (∀ `{!heapDG Σ}, I_L L -∗ DWP e1 & e2 : I) →
   dwp_rel Σ [e1] [e2] σ1 σ2 L I.
@@ -199,7 +199,7 @@ Proof.
   iApply (Hdwp with "HI").
 Qed.
 
-Lemma dwp_lift_bisim_singleton e1 e2 σ1 σ2 (out : loc) (n : Z) Σ `{!invPreG Σ, !heapPreDG Σ} :
+Lemma dwp_lift_bisim_singleton e1 e2 σ1 σ2 (out : loc) (n : Z) Σ `{!invGpreS Σ, !heapPreDG Σ} :
   σ1.(heap) !! out = Some (Some #n) →
   σ2.(heap) !! out = Some (Some #n) →
   (∀ `{!heapDG Σ}, ⟦ tref (tint Low) ⟧ Low #out #out -∗ DWP e1 & e2 : I) →
@@ -211,7 +211,7 @@ Proof.
 Qed.
 
 (** The relation has good properties *)
-Lemma dwp_rel_sym `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
+Lemma dwp_rel_sym `{!invGpreS Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
   (∀ v1 v2, Φ v1 v2 ⊢ Φ v2 v1) →
   dwp_rel Σ es ss σ1 σ2 L Φ →
   dwp_rel Σ ss es σ2 σ1 L Φ.
@@ -269,7 +269,7 @@ Proof.
 Qed.
 (* Transitivity is still infeasible! *)
 
-Lemma dwp_rel_hd_to_val Σ `{!invPreG Σ, !heapPreDG Σ} e s es ss σ1 σ2 L :
+Lemma dwp_rel_hd_to_val Σ `{!invGpreS Σ, !heapPreDG Σ} e s es ss σ1 σ2 L :
   dwp_rel Σ (e::es) (s::ss) σ1 σ2 L I →
   to_val e = to_val s.
 Proof.
@@ -291,14 +291,14 @@ Proof.
     by iMod "H".
 Qed.
 
-Lemma dwp_rel_val Σ `{!invPreG Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
+Lemma dwp_rel_val Σ `{!invGpreS Σ, !heapPreDG Σ} (v1 v2 : val) e s σ1 σ2 L :
   dwp_rel Σ (of_val v1::e) (of_val v2::s) σ1 σ2 L I →
   v1 = v2.
 Proof.
   intros HR%dwp_rel_hd_to_val. by simplify_eq/=.
 Qed.
 
-Lemma dwp_rel_progress Σ `{!invPreG Σ, !heapPreDG Σ} e s σ1 σ2 L :
+Lemma dwp_rel_progress Σ `{!invGpreS Σ, !heapPreDG Σ} e s σ1 σ2 L :
   dwp_rel Σ e s σ1 σ2 L I →
   low_equiv L σ1 σ2.
 Proof.
@@ -326,7 +326,7 @@ Proof.
   iModIntro. iPureIntro. eauto.
 Qed.
 
-Lemma dwp_rel_reducible_no_obs Σ `{!invPreG Σ, !heapPreDG Σ} es ss e s i σ1 σ2 L Φ :
+Lemma dwp_rel_reducible_no_obs Σ `{!invGpreS Σ, !heapPreDG Σ} es ss e s i σ1 σ2 L Φ :
   es !! i = Some e →
   ss !! i = Some s →
   language.to_val e = None →
@@ -347,7 +347,7 @@ Proof.
   iModIntro. done.
 Qed.
 
-Lemma dwp_rel_tp_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
+Lemma dwp_rel_tp_length Σ `{!invGpreS Σ, !heapPreDG Σ} es ss σ1 σ2 L Φ :
   dwp_rel Σ es ss σ1 σ2 L Φ →
   length es = length ss.
 Proof.
@@ -360,7 +360,7 @@ Proof.
   rewrite big_sepL2_length. done.
 Qed.
 
-Lemma dwp_rel_efs_length Σ `{!invPreG Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 L Φ :
+Lemma dwp_rel_efs_length Σ `{!invGpreS Σ, !heapPreDG Σ} es ss i e s σ1 σ2 e' σ1' efs1 s' σ2' efs2 L Φ :
   es !! i = Some e →
   ss !! i = Some s →
   dwp_rel Σ es ss σ1 σ2 L Φ →
@@ -390,7 +390,7 @@ Proof.
   iApply (big_sepL2_length with "Hefs").
 Qed.
 
-Lemma dwp_rel_step Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' L Φ :
+Lemma dwp_rel_step Σ `{!invGpreS Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' s' σ1' σ2' L Φ :
   length es = length ss →
   dwp_rel Σ (es ++ e::es') (ss ++ s::ss') σ1 σ2 L Φ →
   (prim_step e σ1 [] e' σ1' []) →
@@ -422,7 +422,7 @@ Proof.
   iMod "HWP" as "(HI & HWP & _)". iModIntro. iModIntro. by iFrame.
 Qed.
 
-Lemma dwp_rel_simul Σ `{!invPreG Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' efs L Φ :
+Lemma dwp_rel_simul Σ `{!invGpreS Σ, !heapPreDG Σ} es ss es' ss' e s σ1 σ2 e' σ1' efs L Φ :
   length es = length ss →
   dwp_rel Σ (es++e::es') (ss++s::ss') σ1 σ2 L Φ →
   (prim_step e σ1 [] e' σ1' efs) →
@@ -487,7 +487,7 @@ Proof.
 Qed.
 
 (* A slightly different version of [dwp_rel_simul] *)
-Lemma dwp_rel_simul' Σ `{!invPreG Σ, !heapPreDG Σ} es1 (e : expr) es2 ss σ1 σ2 L Φ :
+Lemma dwp_rel_simul' Σ `{!invGpreS Σ, !heapPreDG Σ} es1 (e : expr) es2 ss σ1 σ2 L Φ :
   dwp_rel Σ (es1++e::es2) ss σ1 σ2 L Φ →
   ∃ ss1 s ss2, length es1 = length ss1 ∧ ss = ss1++s::ss2 ∧
     ∀ e' σ1' es',
@@ -507,12 +507,12 @@ Qed.
 
 (** Putting everything together *)
 
-Definition R_pre Σ `{!invPreG Σ, !heapPreDG Σ} L x1 x2 : Prop :=
+Definition R_pre Σ `{!invGpreS Σ, !heapPreDG Σ} L x1 x2 : Prop :=
   match x1,x2 with
   | (es, σ1), (ss, σ2) => dwp_rel Σ es ss σ1 σ2 L I
   end.
 
-Definition R Σ `{!invPreG Σ, !heapPreDG Σ} L : relation (list expr*state)
+Definition R Σ `{!invGpreS Σ, !heapPreDG Σ} L : relation (list expr*state)
   := tc (R_pre Σ L).
 
 (** A strong low-bisimulation *)
@@ -535,7 +535,7 @@ Definition strong_bisim (L : gset loc)
         R (es1++(e'::es2)++es', σ1') (ss1++(s'::ss2)++ss', σ2')).
 
 
-Theorem R_strong_bisim Σ L `{!invPreG Σ, !heapPreDG Σ} : strong_bisim L (R Σ L).
+Theorem R_strong_bisim Σ L `{!invGpreS Σ, !heapPreDG Σ} : strong_bisim L (R Σ L).
 Proof.
   unfold R. repeat split.
   - unfold transitive. apply tc_transitive.

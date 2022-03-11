@@ -16,7 +16,7 @@ evaluation context that can trigger the reduction.
 Class NotVal (e : expr) :=
   not_val : to_val e = None.
 
-Hint Extern 1 (NotVal _) => fast_done : typeclass_instances.
+#[global] Hint Extern 1 (NotVal _) => fast_done : typeclass_instances.
 
 Class NoFork (e1 : expr) :=
   nofork : (∀ σ1 κ σ1' e1' efs, prim_step e1 σ1 κ e1' σ1' efs → efs = []).
@@ -71,7 +71,7 @@ Lemma app_fill K (v1 v2 : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K app_fill_item. Qed.
 
-Instance app_nofork e1 e2 v1 v2 :
+#[global] Instance app_nofork e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoFork (App e1 e2).
@@ -87,7 +87,7 @@ Lemma unop_fill K op (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K unop_fill_item. Qed.
 
-Instance unop_nofork op e v :
+#[global] Instance unop_nofork op e v :
   IntoVal e v →
   NoFork (UnOp op e).
 Proof. solve_nofork unop_fill. Qed.
@@ -102,7 +102,7 @@ Lemma binop_fill K op (v1 v2 : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K binop_fill_item. Qed.
 
-Instance binop_nofork op e1 e2 v1 v2 :
+#[global] Instance binop_nofork op e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoFork (BinOp op e1 e2).
@@ -118,7 +118,7 @@ Lemma if_fill K e1 e2 (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K if_fill_item. Qed.
 
-Instance if_nofork e v e1 e2 :
+#[global] Instance if_nofork e v e1 e2 :
   IntoVal e v →
   NoFork (If e e1 e2).
 Proof. solve_nofork if_fill. Qed.
@@ -133,7 +133,7 @@ Lemma fst_fill K (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K fst_fill_item. Qed.
 
-Instance fst_nofork e v :
+#[global] Instance fst_nofork e v :
   IntoVal e v →
   NoFork (Fst e).
 Proof. solve_nofork fst_fill. Qed.
@@ -148,7 +148,7 @@ Lemma snd_fill K (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K snd_fill_item. Qed.
 
-Instance snd_nofork e v :
+#[global] Instance snd_nofork e v :
   IntoVal e v →
   NoFork (Snd e).
 Proof. solve_nofork snd_fill. Qed.
@@ -163,7 +163,7 @@ Lemma case_fill K e1 e2 (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K case_fill_item. Qed.
 
-Instance case_nofork e v e1 e2 :
+#[global] Instance case_nofork e v e1 e2 :
   IntoVal e v →
   NoFork (Case e e1 e2).
 Proof. solve_nofork case_fill. Qed.
@@ -178,7 +178,7 @@ Lemma alloc_fill K (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K alloc_fill_item. Qed.
 
-Instance alloc_nofork e v :
+#[global] Instance alloc_nofork e v :
   IntoVal e v →
   NoFork (ref e).
 Proof. solve_nofork alloc_fill. Qed.
@@ -193,7 +193,7 @@ Lemma allocn_fill K (v1 v2 : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K allocn_fill_item. Qed.
 
-Instance allocn_nofork e1 e2 v1 v2 :
+#[global] Instance allocn_nofork e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoFork (AllocN e1 e2).
@@ -209,7 +209,7 @@ Lemma load_fill K (v : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K load_fill_item. Qed.
 
-Instance load_nofork e v :
+#[global] Instance load_nofork e v :
   IntoVal e v →
   NoFork (! e).
 Proof. solve_nofork load_fill. Qed.
@@ -224,7 +224,7 @@ Lemma store_fill K (v1 v2 : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K store_fill_item. Qed.
 
-Instance store_nofork e1 e2 v1 v2 :
+#[global] Instance store_nofork e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoFork (e1 <- e2).
@@ -240,7 +240,7 @@ Lemma cmpxchg_fill K (v1 v2 v3 : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K cmpxchg_fill_item. Qed.
 
-Instance cmpxchg_nofork e1 e2 e3 v1 v2 v3 :
+#[global] Instance cmpxchg_nofork e1 e2 e3 v1 v2 v3 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   IntoVal e3 v3 →
@@ -257,83 +257,81 @@ Lemma faa_fill K (v1 v2 : val) e :
   is_Some (to_val e) ∨ K = [].
 Proof. solve_fill e K faa_fill_item. Qed.
 
-Instance faa_nofork e1 e2 v1 v2 :
+#[global] Instance faa_nofork e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoFork (FAA e1 e2).
 Proof. solve_nofork faa_fill. Qed.
 
 (* no obs *)
-Instance app_noobs e1 e2 v1 v2 :
+#[global] Instance app_noobs e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoObs (App e1 e2).
 Proof. solve_nofork app_fill. Qed.
 
-Instance unop_noobs op e v :
+#[global] Instance unop_noobs op e v :
   IntoVal e v →
   NoObs (UnOp op e).
 Proof. solve_nofork unop_fill. Qed.
 
-Instance binop_noobs op e1 e2 v1 v2 :
+#[global] Instance binop_noobs op e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoObs (BinOp op e1 e2).
 Proof. solve_nofork binop_fill. Qed.
 
-Instance if_noobs e v e1 e2 :
+#[global] Instance if_noobs e v e1 e2 :
   IntoVal e v →
   NoObs (If e e1 e2).
 Proof. solve_nofork if_fill. Qed.
 
-Instance fst_noobs e v :
+#[global] Instance fst_noobs e v :
   IntoVal e v →
   NoObs (Fst e).
 Proof. solve_nofork fst_fill. Qed.
 
-Instance snd_noobs e v :
+#[global] Instance snd_noobs e v :
   IntoVal e v →
   NoObs (Snd e).
 Proof. solve_nofork snd_fill. Qed.
 
-Instance case_noobs e v e1 e2 :
+#[global] Instance case_noobs e v e1 e2 :
   IntoVal e v →
   NoObs (Case e e1 e2).
 Proof. solve_nofork case_fill. Qed.
 
-Instance alloc_noobs e v :
+#[global] Instance alloc_noobs e v :
   IntoVal e v →
   NoObs (ref e).
 Proof. solve_nofork alloc_fill. Qed.
 
-Instance allocn_noobs e1 e2 v1 v2 :
+#[global] Instance allocn_noobs e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoObs (AllocN e1 e2).
 Proof. solve_nofork allocn_fill. Qed.
 
-Instance load_noobs e v :
+#[global] Instance load_noobs e v :
   IntoVal e v →
   NoObs (! e).
 Proof. solve_nofork load_fill. Qed.
 
-Instance store_noobs e1 e2 v1 v2 :
+#[global] Instance store_noobs e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoObs (e1 <- e2).
 Proof. solve_nofork store_fill. Qed.
 
-Instance cmpxchg_noobs e1 e2 e3 v1 v2 v3 :
+#[global] Instance cmpxchg_noobs e1 e2 e3 v1 v2 v3 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   IntoVal e3 v3 →
   NoObs (CmpXchg e1 e2 e3).
 Proof. solve_nofork cmpxchg_fill. Qed.
 
-Instance faa_noobs e1 e2 v1 v2 :
+#[global] Instance faa_noobs e1 e2 v1 v2 :
   IntoVal e1 v1 →
   IntoVal e2 v2 →
   NoObs (FAA e1 e2).
 Proof. solve_nofork faa_fill. Qed.
-
-

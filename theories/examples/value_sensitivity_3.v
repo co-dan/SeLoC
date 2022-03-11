@@ -2,7 +2,7 @@
 From iris.base_logic Require Import invariants.
 From iris_ni.logrel Require Import types.
 From iris_ni.program_logic Require Import dwp heap_lang_lifting.
-From iris.proofmode Require Import tactics.
+From iris.proofmode Require Import proofmode.
 From iris.heap_lang Require Import lang proofmode.
 From iris_ni.proofmode Require Import dwp_tactics.
 From iris_ni.logrel Require Import interp.
@@ -300,8 +300,10 @@ Section proof.
     iApply dwp_alloc. iIntros (is_classified1 is_classified2) "Hc1 Hc2". iNext.
 
     iMod new_pending as (γs) "Hstt".
-    iMod (own_alloc (● classified ⋅ ◯ classified)) as (γ) "[Hstate Htoken]".
+    iMod (own_alloc (● classified ⋅ ◯ classified)) as (γ) "Hst".
     { by apply (auth_both_valid_2 classified). }
+    rewrite own_op.
+    iDestruct "Hst" as "[Hstate Htoken]".
     iMod (inv_alloc N _
            (inv_body (is_classified1,rd1) (is_classified2,rd2) γ γs ξ) with "[-Htoken]")
       as "#Hinv".
