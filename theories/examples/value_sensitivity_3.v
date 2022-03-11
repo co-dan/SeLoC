@@ -300,8 +300,10 @@ Section proof.
     iApply dwp_alloc. iIntros (is_classified1 is_classified2) "Hc1 Hc2". iNext.
 
     iMod new_pending as (γs) "Hstt".
-    iMod (own_alloc (● classified ⋅ ◯ classified)) as (γ) "[Hstate Htoken]".
+    iMod (own_alloc (● classified ⋅ ◯ classified)) as (γ) "Hst".
     { by apply (auth_both_valid_2 classified). }
+    rewrite own_op.
+    iDestruct "Hst" as "[Hstate Htoken]".
     iMod (inv_alloc N _
            (inv_body (is_classified1,rd1) (is_classified2,rd2) γ γs ξ) with "[-Htoken]")
       as "#Hinv".
